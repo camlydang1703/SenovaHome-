@@ -135,7 +135,7 @@ function renderAllViews() {
   }
 
   // 3. Dashboard Event Banner (Contextual for active warehouse)
-  const activeEvt = EVENTS.find(e => Store.currentDate >= e.start && Store.currentDate <= e.end);
+  const activeEvt = EVENTS.find(e => Store.currentDate >= e.start && Store.currentDate <= e.end && isEventMatchingWarehouse(e.scope_wh, activeWh));
   const evtBadge = document.getElementById('eventBadgeWrap');
   const evtTitle = document.getElementById('eventTitle');
   const evtDesc  = document.getElementById('eventDesc');

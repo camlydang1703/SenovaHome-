@@ -959,3 +959,117 @@
 
     // ----------------------------------------------------------------------------
 
+
+
+// ============================================================================
+// EVENT DETAIL MODAL (Phase 3.3)
+// ============================================================================
+function openEventDetailModal(eventId, whCode) {
+  const ev = EVENTS.find(e => e.id === eventId);
+  if (!ev) return;
+
+  const whObj = WAREHOUSES.find(w => w.code === whCode) || WAREHOUSES[0];
+  const curDate = Store.currentDate;
+
+  let statusText = '';
+  let statusColor = '#2563EB';
+  if (curDate >= ev.start && curDate <= ev.end) {
+    const rem = diffDays(curDate, ev.end);
+    statusText = `Đang diễn ra (Còn ${rem} ngày nữa sẽ kết thúc)`;
+    statusColor = '#16A34A';
+  } else if (ev.start > curDate) {
+    const until = diffDays(curDate, ev.start);
+    statusText = `Sắp diễn ra (Còn ${until} ngày nữa sẽ bắt đầu)`;
+    statusColor = '#D97706';
+  } else {
+    statusText = `Đã kết thúc (Vào ngày ${fmtDateVN(ev.end)})`;
+    statusColor = '#64748B';
+  }
+
+  const modalTitle = document.getElementById('evtModalTitle');
+  if (modalTitle) modalTitle.textContent = `${ev.id} - ${ev.title}`;
+
+  const body = document.getElementById('evtModalBody');
+  if (body) {
+    const affectedSkus = SKUS.filter(s => isEventMatchingTarget(ev.scope_target, s.code, s.cat || s.category, s.sup));
+
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#F8FAFC;border-radius:6px;margin-bottom:14px;">
+        <div>
+          <span style="font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:4px;background:${ev.severity === 'Cao' ? '#FEE2E2;color:#B91C1C' : (ev.severity === 'Trung bình' ? '#FEF3C7;color:#B45309' : '#E0F2FE;color:#0369A1')};">
+            Mức độ: ${ev.severity || 'Trung bình'}
+          </span>
+          <span style="margin-left:10px;font-size:12px;color:${statusColor};font-weight:700;">● ${statusText}</span>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--text-sub);">
+          Thời gian: <strong>${fmtDateVN(ev.start)}</strong> → <strong>${fmtDateVN(ev.end)}</strong>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--navy-main);margin-bottom:4px;">Mô tả kịch bản:</div>
+        <div style="font-size:12.5px;color:var(--text-main);line-height:1.5;background:#FFFFFF;border:1px solid var(--border-color);padding:10px 14px;border-radius:4px;">
+          ${ev.desc}
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-bottom:16px;">
+        <div style="background:#F1F5F9;padding:10px;border-radius:4px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);">Tác động Cầu</div>
+          <div style="font-size:15px;font-weight:800;color:${ev.demand_mult !== 1.0 ? '#D12420' : 'var(--text-main)'};">
+            x${ev.demand_mult !== undefined ? ev.demand_mult : 1.0}
+          </div>
+        </div>
+        <div style="background:#F1F5F9;padding:10px;border-radius:4px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);">Trễ giao hàng</div>
+          <div style="font-size:15px;font-weight:800;color:${ev.delay_days > 0 ? '#D12420' : 'var(--text-main)'};">
+            +${ev.delay_days || 0} ngày
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);">(${ev.delay_scope || 'Cung ứng'})</div>
+        </div>
+        <div style="background:#F1F5F9;padding:10px;border-radius:4px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);">Hệ số lấp đầy</div>
+          <div style="font-size:15px;font-weight:800;color:${ev.fill_rate !== 1.0 ? '#D12420' : 'var(--text-main)'};">
+            ${Math.round((ev.fill_rate !== undefined ? ev.fill_rate : 1.0) * 100)}%
+          </div>
+        </div>
+        <div style="background:#F1F5F9;padding:10px;border-radius:4px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);">Hệ số giá vốn</div>
+          <div style="font-size:15px;font-weight:800;color:${ev.price_mult !== 1.0 ? '#D12420' : 'var(--text-main)'};">
+            x${ev.price_mult !== undefined ? ev.price_mult : 1.0}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy-main);margin-bottom:6px;">
+          Sản phẩm bị ảnh hưởng tại ${whObj.name} (${affectedSkus.length} / 11 SKU):
+        </div>
+        <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border-color);border-radius:4px;">
+          <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
+            <thead style="background:#F8FAFC;border-bottom:1px solid var(--border-color);position:sticky;top:0;">
+              <tr>
+                <th style="padding:6px 10px;text-align:left;">Mã SKU</th>
+                <th style="padding:6px 10px;text-align:left;">Tên sản phẩm</th>
+                <th style="padding:6px 10px;text-align:left;">Ngành hàng</th>
+                <th style="padding:6px 10px;text-align:left;">Nhà cung cấp</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${affectedSkus.map(s => `
+                <tr style="border-bottom:1px solid #F1F5F9;">
+                  <td style="padding:6px 10px;font-weight:700;color:var(--navy-accent);">${s.code}</td>
+                  <td style="padding:6px 10px;">${s.name}</td>
+                  <td style="padding:6px 10px;color:var(--text-muted);">${s.cat || s.category}</td>
+                  <td style="padding:6px 10px;color:var(--text-muted);">${s.sup}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  openModal('eventDetailModal');
+}

@@ -51,6 +51,12 @@
           </div>
         </div>
       </div>
+
+      <!-- KHUNG LỊCH SỰ KIỆN CỦA KHO (Phase 3.3) -->
+      <div class="card-panel event-schedule-card" id="warehouseEventsScheduleCard" style="margin-bottom:16px;">
+        <!-- Rendered dynamically by renderWarehouseEventsSchedule(activeWh) -->
+      </div>
+
     </div>
   </header>
 
@@ -213,14 +219,30 @@
         </div>
       </div>
 
-      <!-- SYSTEM LOG ACCORDION -->
+      <!-- SYSTEM LOG ACCORDION (Phase 3.1) -->
       <div class="card-panel" style="margin-bottom:0;">
-        <div class="card-head" style="cursor:pointer;" onclick="toggleLogAccordion()">
-          <span class="card-title">Nhật ký Hoạt động Hệ thống (System Event Log)</span>
-          <span style="font-size:11.5px;color:var(--text-muted);" id="logToggleText">Mở nhật ký ▾</span>
+        <div class="card-head" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="toggleLogAccordion()">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="card-title">Nhật ký Hoạt động: <span id="logWhName" style="color:var(--navy-accent);">Kho TP. Hồ Chí Minh</span></span>
+            <span id="logCountBadge" class="status-pill status-pill-ok" style="font-size:11px;font-weight:700;">0 bản ghi</span>
+            <span id="serverStatusBadge"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <select id="logTypeFilter" class="time-input" style="padding:2px 8px;font-size:11.5px;" onclick="event.stopPropagation()" onchange="onLogFilterChange(this.value)">
+              <option value="ALL">Tất cả loại (50 dòng mới nhất)</option>
+              <option value="TRANSFER">Điều chuyển kho</option>
+              <option value="RFQ">Yêu cầu Báo giá (RFQ)</option>
+              <option value="INBOUND_NCC">Hàng về định kỳ từ NCC</option>
+              <option value="EVENT">Sự kiện tác động</option>
+              <option value="EXCEPTION">Ngoại lệ chứng từ</option>
+              <option value="SALES_DAILY">Xuất bán hàng ngày</option>
+              <option value="QUICK">Nhập / Xuất nhanh</option>
+            </select>
+            <span style="font-size:11.5px;color:var(--text-muted);" id="logToggleText">Thu gọn nhật ký ▴</span>
+          </div>
         </div>
-        <div class="log-accordion-body" id="systemLogList">
-          <!-- Logs prepended here -->
+        <div class="log-accordion-body open active" id="systemLogList">
+          <!-- Logs rendered dynamically from Store.actions -->
         </div>
       </div>
     </section>
@@ -664,5 +686,22 @@
   <script>
 /* <!-- SCRIPTS --> */
   </script>
+
+  <!-- EVENT DETAIL MODAL (Phase 3.3) -->
+  <div class="modal-overlay" id="eventDetailModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <div class="modal-title" id="evtModalTitle">Chi tiết Sự kiện</div>
+        <button class="modal-close" onclick="closeModal('eventDetailModal')">✕</button>
+      </div>
+      <div id="evtModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-foot">
+        <button class="btn-secondary" onclick="closeModal('eventDetailModal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

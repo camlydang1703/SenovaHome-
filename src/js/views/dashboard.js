@@ -311,3 +311,102 @@ function renderDashboardView() {
     matrixTbody.innerHTML = mHtml;
   }
 }
+
+
+// ============================================================================
+// KHUNG "LỊCH SỰ KIỆN CỦA KHO" TRÊN DASHBOARD (Yêu cầu 3.3)
+// ============================================================================
+function renderWarehouseEventsSchedule(activeWh) {
+  const container = document.getElementById('warehouseEventsScheduleCard');
+  if (!container) return;
+
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+  const curDate = Store.currentDate;
+
+  // Filter events matching activeWh
+  const whEvents = EVENTS.filter(ev => isEventMatchingWarehouse(ev.scope_wh, activeWh));
+
+  const activeEvts = whEvents.filter(ev => curDate >= ev.start && curDate <= ev.end);
+  const upcomingEvts = whEvents.filter(ev => ev.start > curDate && ev.start <= addDays(curDate, 14));
+  const pastEvts = whEvents.filter(ev => ev.end < curDate).sort((a, b) => (b.end > a.end ? 1 : -1)).slice(0, 5);
+
+  function renderEvtRow(ev, badgeStatus) {
+    let sevBadge = '<span class="status-pill status-pill-ok" style="background:#E0F2FE;color:#0369A1;border:1px solid #BAE6FD;font-weight:700;">Thấp</span>';
+    if (ev.severity === 'Cao') {
+      sevBadge = '<span class="status-pill status-pill-low" style="background:#FEE2E2;color:#B91C1C;border:1px solid #FCA5A5;font-weight:700;">Cao</span>';
+    } else if (ev.severity === 'Trung bình') {
+      sevBadge = '<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#B45309;border:1px solid #FCD34D;font-weight:700;">Trung bình</span>';
+    }
+
+    const impact = (typeof formatWhEventImpact === 'function') ? formatWhEventImpact(ev, activeWh) : '';
+    const target = (ev.scope_target === 'ALL' || !ev.scope_target) ? 'Toàn bộ SKU' : ev.scope_target;
+
+    return `
+      <div class="event-row" onclick="openEventDetailModal('${ev.id}', '${activeWh}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border-subtle);border-radius:4px;cursor:pointer;transition:background 0.15s ease;" title="Bấm để xem chi tiết tác động tại ${whObj.name}">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;">
+          ${sevBadge}
+          <div>
+            <div style="font-size:12.5px;font-weight:700;color:var(--text-main);">
+              ${ev.title}
+              <span style="font-size:11px;font-weight:500;color:var(--text-muted);margin-left:6px;">(${fmtDateVN(ev.start)} - ${fmtDateVN(ev.end)})</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-sub);margin-top:2px;">
+              <span>Mục tiêu: <strong>${target}</strong></span>
+              <span style="margin:0 6px;">•</span>
+              <span style="color:#B45309;font-weight:600;">${impact}</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--navy-accent);font-weight:600;">Xem chi tiết ›</span>
+        </div>
+      </div>
+    `;
+  }
+
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy-main);display:flex;align-items:center;gap:8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        Lịch sự kiện & Tác động chuỗi cung ứng tại ${whObj.name}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);">
+        ${activeEvts.length} đang diễn ra • ${upcomingEvts.length} sắp diễn ra (14 ngày tới)
+      </div>
+    </div>
+  `;
+
+  // 1. Đang diễn ra
+  html += `
+    <div style="margin-top:8px;">
+      <div style="font-size:11px;font-weight:700;color:#15803D;background:#F0FDF4;padding:4px 8px;border-radius:4px;border-left:3px solid #16A34A;margin-bottom:6px;">
+        ĐANG DIỄN RA (${activeEvts.length})
+      </div>
+      ${activeEvts.length > 0 ? activeEvts.map(e => renderEvtRow(e, 'ACTIVE')).join('') : '<div style="font-size:11.5px;color:var(--text-muted);padding:4px 8px;font-style:italic;">Không có sự kiện bất thường nào đang diễn ra tại kho này.</div>'}
+    </div>
+  `;
+
+  // 2. Sắp diễn ra
+  html += `
+    <div style="margin-top:12px;">
+      <div style="font-size:11px;font-weight:700;color:#B45309;background:#FFFBEB;padding:4px 8px;border-radius:4px;border-left:3px solid #D97706;margin-bottom:6px;">
+        SẮP DIỄN RA TRONG 14 NGÀY TỚI (${upcomingEvts.length})
+      </div>
+      ${upcomingEvts.length > 0 ? upcomingEvts.map(e => renderEvtRow(e, 'UPCOMING')).join('') : '<div style="font-size:11.5px;color:var(--text-muted);padding:4px 8px;font-style:italic;">Chưa có sự kiện nào sắp tới trong 14 ngày tới.</div>'}
+    </div>
+  `;
+
+  // 3. Đã qua
+  if (pastEvts.length > 0) {
+    html += `
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;font-weight:700;color:#64748B;background:#F8FAFC;padding:4px 8px;border-radius:4px;border-left:3px solid #94A3B8;margin-bottom:6px;">
+          ĐÃ KẾT THÚC GẦN ĐÂY (${pastEvts.length})
+        </div>
+        ${pastEvts.map(e => renderEvtRow(e, 'PAST')).join('')}
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}

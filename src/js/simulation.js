@@ -217,6 +217,20 @@
         revenue: dayTotalRev,
         lostSalesVal: dayTotalLost
       };
+
+      // Ghi nhật ký xuất bán tổng kết ngày cho từng kho có phát sinh
+      WAREHOUSES.forEach(wh => {
+        let whRev = 0;
+        let whUnits = 0;
+        SKUS.forEach(sku => {
+          const soldUnits = Store.currentWeekDemand[sku.code][wh.code] || 0;
+          whUnits += soldUnits;
+        });
+        // Log action nếu có doanh số phát sinh
+        if (dayTotalRev > 0) {
+          logAction('SALES_DAILY', wh.code, `Tổng kết bán hàng ngày ${fmtDateVN(curDate)} tại ${wh.name}: doanh thu chuỗi ${fmtVND(dayTotalRev)}`, 0, wh.code);
+        }
+      });
     }
 
     // ----------------------------------------------------------------------------
@@ -280,8 +294,8 @@
             const addQty = Math.max(1, Math.round(pick.p.qmax * 1.25 - pick.eff));
             pick.st.on_hand += addQty;
             executedEventInWh = true;
-            logAction('EXCEPTION_INBOUND', pick.sku.code, [Ngoại lệ] Lô hàng giao dư từ NCC  tại : +  (Vượt trần tạm thời), addQty * pick.sku.cogs);
-            pushNotification('EXCEPTION_EVENT', pick.sku.code, Chứng từ nhập kho ngoại lệ: NCC giao dư +  tại );
+            logAction('EXCEPTION_INBOUND', pick.sku.code, `[Ngoại lệ] Lô hàng giao dư từ NCC ${pick.sku.sup} tại ${wh.name}: +${addQty} (Vượt trần tạm thời)`, addQty * pick.sku.cogs, wh.code);
+            pushNotification('EXCEPTION_EVENT', pick.sku.code, `Chứng từ nhập kho ngoại lệ: NCC giao dư +${addQty} ${pick.sku.code} tại ${wh.name}`, wh.code);
           }
         }
 
@@ -299,15 +313,86 @@
               executedEventInWh = true;
               const rev = subQty * pick.sku.price;
               if (Store.dailySales[curDate]) Store.dailySales[curDate].revenue += rev;
-              logAction('EXCEPTION_OUTBOUND', pick.sku.code, [Ngoại lệ] Đơn hàng dự án lớn đột xuất tại : Xuất ngay  , rev);
-              pushNotification('EXCEPTION_EVENT', pick.sku.code, Chứng từ xuất kho ngoại lệ: Dự án lớn mua gấp   tại );
+              logAction('EXCEPTION_OUTBOUND', pick.sku.code, `[Ngoại lệ] Đơn hàng dự án lớn đột xuất tại ${wh.name}: Xuất ngay ${subQty} ${pick.sku.code}`, rev, wh.code);
+              pushNotification('EXCEPTION_EVENT', pick.sku.code, `Chứng từ xuất kho ngoại lệ: Dự án lớn mua gấp ${subQty} ${pick.sku.code} tại ${wh.name}`, wh.code);
             }
           }
         }
       });
     }
 
-    function advanceOneDay() {
+        // ----------------------------------------------------------------------------
+    // 2.7b EVENT LIFECYCLE TRACKER & ADVISORY (Yêu cầu 3.2 & 3.4d)
+    // ----------------------------------------------------------------------------
+    function formatWhEventImpact(ev, whCode) {
+      const parts = [];
+      if (ev.demand_mult !== undefined && ev.demand_mult !== null && ev.demand_mult !== 1.0) {
+        const pct = Math.round((ev.demand_mult - 1.0) * 100);
+        const sign = pct > 0 ? `+${pct}%` : `${pct}%`;
+        parts.push(`Cầu ${sign}`);
+      }
+      if (ev.delay_days && ev.delay_days > 0) {
+        parts.push(`Trễ giao +${ev.delay_days} ngày (${ev.delay_scope || 'Cung ứng'})`);
+      }
+      if (ev.fill_rate !== undefined && ev.fill_rate !== null && ev.fill_rate !== 1.0) {
+        parts.push(`Lấp đầy ${Math.round(ev.fill_rate * 100)}%`);
+      }
+      if (ev.price_mult !== undefined && ev.price_mult !== null && ev.price_mult !== 1.0) {
+        const pct = Math.round((ev.price_mult - 1.0) * 100);
+        const sign = pct > 0 ? `+${pct}%` : `${pct}%`;
+        parts.push(`Giá vốn ${sign}`);
+      }
+      const targetStr = (ev.scope_target && ev.scope_target !== 'ALL') ? ` (${ev.scope_target})` : '';
+      return (parts.length > 0 ? parts.join(', ') : 'Điều chỉnh cục bộ') + targetStr;
+    }
+
+    function processEventLifecycle(curDate) {
+      if (!Store.eventLifecycleTrack) Store.eventLifecycleTrack = {};
+      if (typeof EVENTS === 'undefined' || !Array.isArray(EVENTS)) return;
+
+      EVENTS.forEach(ev => {
+        const advDays = ev.advisory_days !== undefined ? ev.advisory_days : 3;
+        const advDate = addDays(ev.start, -advDays);
+
+        WAREHOUSES.forEach(wh => {
+          if (!isEventMatchingWarehouse(ev.scope_wh, wh.code)) return;
+          const impact = formatWhEventImpact(ev, wh.code);
+
+          // 1. ADVISORY (Cảnh báo sớm)
+          if (curDate === advDate) {
+            const key = `ADV_${ev.id}_${wh.code}`;
+            if (!Store.eventLifecycleTrack[key]) {
+              Store.eventLifecycleTrack[key] = true;
+              pushNotification('EVENT_ADVISORY', ev.id, `[Dự báo sự kiện] ${ev.title}: ${impact}. Bắt đầu từ ${fmtDateVN(ev.start)} tại ${wh.name}.`, wh.code);
+              logAction('EVENT', ev.id, `Dự báo sự kiện: ${ev.title} (${impact}) từ ${fmtDateVN(ev.start)}`, 0, wh.code);
+            }
+          }
+
+          // 2. START (Bắt đầu sự kiện)
+          if (curDate === ev.start) {
+            const key = `START_${ev.id}_${wh.code}`;
+            if (!Store.eventLifecycleTrack[key]) {
+              Store.eventLifecycleTrack[key] = true;
+              pushNotification('EVENT_START', ev.id, `[Sự kiện bắt đầu] ${ev.title}: ${impact}. Hiệu lực đến ${fmtDateVN(ev.end)} tại ${wh.name}.`, wh.code);
+              logAction('EVENT', ev.id, `Sự kiện bắt đầu: ${ev.title} - ${impact}`, 0, wh.code);
+            }
+          }
+
+          // 3. END (Kết thúc sự kiện)
+          const endPlus1 = addDays(ev.end, 1);
+          if (curDate === endPlus1) {
+            const key = `END_${ev.id}_${wh.code}`;
+            if (!Store.eventLifecycleTrack[key]) {
+              Store.eventLifecycleTrack[key] = true;
+              pushNotification('EVENT_END', ev.id, `[Sự kiện kết thúc] ${ev.title} đã hết hiệu lực. Chuỗi cung ứng tại ${wh.name} trở lại bình thường.`, wh.code);
+              logAction('EVENT', ev.id, `Sự kiện kết thúc: ${ev.title}`, 0, wh.code);
+            }
+          }
+        });
+      });
+    }
+
+function advanceOneDay() {
       if (Store.currentDate >= Store.endDate) {
         if (Store.autoPilot) toggleAutoPilot();
         showToast('Đã đạt đến ngày kết thúc mô phỏng (23/10/2026)', 'info');
@@ -331,7 +416,8 @@
         }
       });
 
-      // Bước 2: Bổ sung định kỳ từ Nhà cung cấp
+      // Bước 2: Bổ sung định kỳ từ Nhà cung cấp & Theo dõi vòng đời sự kiện
+      processEventLifecycle(curDate);
       processInboundReplenishment(curDate, dayIdx);
 
       // Bước 3: Tiêu thụ hàng ngày và ghi nhận doanh thu

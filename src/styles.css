@@ -999,3 +999,34 @@
     .matrix-tbl tr:last-child td.active-wh-col {
       border-bottom: 2px solid var(--navy-accent) !important;
     }
+
+
+    /* --- PHASE 3 LOG & EVENT STYLES --- */
+    .log-role {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+    .log-role.role-src {
+      background: #FEE2E2;
+      color: #B91C1C;
+      border: 1px solid #FCA5A5;
+    }
+    .log-role.role-dst {
+      background: #DCFCE7;
+      color: #15803D;
+      border: 1px solid #86EFAC;
+    }
+    .event-schedule-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+    }
+    .event-row:hover {
+      background: #F8FAFC;
+    }

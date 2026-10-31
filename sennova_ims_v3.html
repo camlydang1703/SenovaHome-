@@ -1010,6 +1010,37 @@
       border-bottom: 2px solid var(--navy-accent) !important;
     }
 
+
+    /* --- PHASE 3 LOG & EVENT STYLES --- */
+    .log-role {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+    .log-role.role-src {
+      background: #FEE2E2;
+      color: #B91C1C;
+      border: 1px solid #FCA5A5;
+    }
+    .log-role.role-dst {
+      background: #DCFCE7;
+      color: #15803D;
+      border: 1px solid #86EFAC;
+    }
+    .event-schedule-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+    }
+    .event-row:hover {
+      background: #F8FAFC;
+    }
+
   </style>
 </head>
 <body>
@@ -1052,6 +1083,12 @@
           </div>
         </div>
       </div>
+
+      <!-- KHUNG LỊCH SỰ KIỆN CỦA KHO (Phase 3.3) -->
+      <div class="card-panel event-schedule-card" id="warehouseEventsScheduleCard" style="margin-bottom:16px;">
+        <!-- Rendered dynamically by renderWarehouseEventsSchedule(activeWh) -->
+      </div>
+
     </div>
   </header>
 
@@ -1214,14 +1251,30 @@
         </div>
       </div>
 
-      <!-- SYSTEM LOG ACCORDION -->
+      <!-- SYSTEM LOG ACCORDION (Phase 3.1) -->
       <div class="card-panel" style="margin-bottom:0;">
-        <div class="card-head" style="cursor:pointer;" onclick="toggleLogAccordion()">
-          <span class="card-title">Nhật ký Hoạt động Hệ thống (System Event Log)</span>
-          <span style="font-size:11.5px;color:var(--text-muted);" id="logToggleText">Mở nhật ký ▾</span>
+        <div class="card-head" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="toggleLogAccordion()">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="card-title">Nhật ký Hoạt động: <span id="logWhName" style="color:var(--navy-accent);">Kho TP. Hồ Chí Minh</span></span>
+            <span id="logCountBadge" class="status-pill status-pill-ok" style="font-size:11px;font-weight:700;">0 bản ghi</span>
+            <span id="serverStatusBadge"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <select id="logTypeFilter" class="time-input" style="padding:2px 8px;font-size:11.5px;" onclick="event.stopPropagation()" onchange="onLogFilterChange(this.value)">
+              <option value="ALL">Tất cả loại (50 dòng mới nhất)</option>
+              <option value="TRANSFER">Điều chuyển kho</option>
+              <option value="RFQ">Yêu cầu Báo giá (RFQ)</option>
+              <option value="INBOUND_NCC">Hàng về định kỳ từ NCC</option>
+              <option value="EVENT">Sự kiện tác động</option>
+              <option value="EXCEPTION">Ngoại lệ chứng từ</option>
+              <option value="SALES_DAILY">Xuất bán hàng ngày</option>
+              <option value="QUICK">Nhập / Xuất nhanh</option>
+            </select>
+            <span style="font-size:11.5px;color:var(--text-muted);" id="logToggleText">Thu gọn nhật ký ▴</span>
+          </div>
         </div>
-        <div class="log-accordion-body" id="systemLogList">
-          <!-- Logs prepended here -->
+        <div class="log-accordion-body open active" id="systemLogList">
+          <!-- Logs rendered dynamically from Store.actions -->
         </div>
       </div>
     </section>
@@ -2798,14 +2851,23 @@ function fmt(n) {
 
 // --- BEGIN src/js/notifications.js ---
 // ============================================================================
-// NOTIFICATIONS SYSTEM & AUDIT LOGGING
+// NOTIFICATIONS SYSTEM & AUDIT LOGGING (PHASE 3)
 // ============================================================================
 
-    // 2.1 NOTIFICATIONS SYSTEM (Yêu cầu 5)
+    // 2.1 NOTIFICATIONS SYSTEM (Yêu cầu 3.1 & 3.4a)
     // ----------------------------------------------------------------------------
     function pushNotification(type, refId, text, whCode = null) {
       const notifId = 'NT-' + String(Store.seq.notif++).padStart(4, '0');
       let targetWh = whCode;
+
+      if (!targetWh && refId && typeof Store !== 'undefined' && Store.transfers) {
+        const tr = Store.transfers.find(t => t.id === refId);
+        if (tr) targetWh = tr.dstWh || tr.srcWh;
+      }
+      if (!targetWh && refId && typeof Store !== 'undefined' && Store.rfqs) {
+        const r = Store.rfqs.find(x => x.id === refId);
+        if (r) targetWh = r.wh;
+      }
       if (!targetWh && refId) {
         for (const w of WAREHOUSES) {
           if (refId.startsWith(w.code + '-') || refId.endsWith('-' + w.code) || refId === w.code) {
@@ -2816,12 +2878,16 @@ function fmt(n) {
       }
       if (!targetWh && text) {
         for (const w of WAREHOUSES) {
-          if (text.includes(w.name) || text.includes(`kho ${w.code}`) || text.includes(`Kho ${w.code}`) || text.includes(`về ${w.code}`) || text.includes(`tại ${w.code}`)) {
+          if (text.includes(w.name) || text.includes(`kho ${w.code}`) || text.includes(`Kho ${w.code}`) || text.includes(`về ${w.code}`) || text.includes(`tại ${w.code}`) || text.includes(`sang ${w.code}`)) {
             targetWh = w.code;
             break;
           }
         }
       }
+      if (!targetWh) {
+        targetWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+      }
+
       const item = {
         id: notifId,
         date: Store.currentDate,
@@ -2832,13 +2898,19 @@ function fmt(n) {
         read: false,
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       };
+
       Store.notifications.unshift(item);
       updateNotificationBadge();
       return item;
     }
 
     function updateNotificationBadge() {
-      const unreadCount = Store.notifications.filter(n => !n.read).length;
+      const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+      const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+      const whNotifs = Store.notifications.filter(n => n.wh === activeWh);
+      const unreadCount = whNotifs.filter(n => !n.read).length;
+      const totalCount = whNotifs.length;
+
       const badge = document.getElementById('bellBadge');
       if (badge) {
         if (unreadCount > 0) {
@@ -2850,12 +2922,13 @@ function fmt(n) {
       }
       const headText = document.getElementById('bellHeadText');
       if (headText) {
-        headText.textContent = `Thông báo & Cảnh báo (${unreadCount} chưa đọc)`;
+        headText.textContent = `Thông báo (${unreadCount} chưa đọc / ${totalCount} tổng của ${whObj.name})`;
       }
     }
 
     function markAllNotificationsRead() {
-      Store.notifications.forEach(n => { n.read = true; });
+      const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+      Store.notifications.filter(n => n.wh === activeWh).forEach(n => { n.read = true; });
       updateNotificationBadge();
       renderBellPopover();
     }
@@ -2874,20 +2947,25 @@ function fmt(n) {
     function renderBellPopover() {
       const list = document.getElementById('bellList');
       if (!list) return;
+      const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+      const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
       updateNotificationBadge();
 
-      if (Store.notifications.length === 0) {
-        list.innerHTML = '<div style="padding:24px 16px;text-align:center;color:var(--text-muted);font-size:12px;">Chưa có thông báo nào.</div>';
+      const whNotifs = Store.notifications.filter(n => n.wh === activeWh);
+
+      if (whNotifs.length === 0) {
+        list.innerHTML = `<div style="padding:24px 16px;text-align:center;color:var(--text-muted);font-size:12px;">Kho ${whObj.name} hiện chưa có thông báo nào.</div>`;
         return;
       }
 
       let html = '';
-      Store.notifications.slice(0, 30).forEach(n => {
+      whNotifs.slice(0, 50).forEach(n => {
         let color = '#2563EB';
-        if (n.type === 'ALERT_LOW')  { color = '#EF4444'; }
-        if (n.type === 'ALERT_HIGH') { color = '#F59E0B'; }
+        if (n.type.includes('LOW'))  { color = '#EF4444'; }
+        if (n.type.includes('HIGH')) { color = '#F59E0B'; }
         if (n.type.includes('TRANSFER')) { color = '#059669'; }
         if (n.type.includes('RFQ'))      { color = '#8B5CF6'; }
+        if (n.type.includes('EVENT'))    { color = '#D97706'; }
 
         html += `
           <div class="bell-item ${n.read ? '' : 'unread'}" onclick="onNotificationClick('${n.id}')">
@@ -2919,7 +2997,6 @@ function fmt(n) {
       if (popover) popover.classList.remove('active');
 
       if (item) {
-        // C3: Auto-switch active warehouse to the notification's warehouse before switching tab
         if (item.wh && typeof switchWarehouse === 'function') {
           switchWarehouse(item.wh);
         }
@@ -2934,9 +3011,57 @@ function fmt(n) {
     }
 
     // ----------------------------------------------------------------------------
-    // 2.2 ACTION LOGGING & SERVER LEDGER SYNC (Yêu cầu 11)
+    // 2.2 ACTION LOGGING & SYSTEM AUDIT LOG (Yêu cầu 3.1 & 3.4b, c)
     // ----------------------------------------------------------------------------
-    function logAction(type, target, details, cost = 0) {
+    function logAction(type, target, details, cost = 0, whCode = null, extra = {}) {
+      // SYSTEM_INIT chỉ ghi console theo đúng quy tắc Phase 3
+      if (type === 'SYSTEM_INIT') {
+        console.log(`[SYSTEM_INIT] ${details}`);
+        return;
+      }
+
+      let targetWh = whCode || extra.wh || null;
+      let srcWh = extra.srcWh || null;
+      let dstWh = extra.dstWh || null;
+
+      // Trích xuất srcWh và dstWh từ details nếu là lệnh chuyển
+      const routeMatch = details.match(/\(([A-Z_]+)\s*->\s*([A-Z_]+)\)/);
+      if (routeMatch) {
+        srcWh = routeMatch[1];
+        dstWh = routeMatch[2];
+        if (!targetWh) targetWh = srcWh;
+      }
+
+      // Trích xuất từ Transfer ID
+      if ((!srcWh || !dstWh) && target && target.startsWith('TR-') && Store.transfers) {
+        const tr = Store.transfers.find(t => t.id === target);
+        if (tr) {
+          srcWh = tr.srcWh;
+          dstWh = tr.dstWh;
+          if (!targetWh) targetWh = dstWh;
+        }
+      }
+
+      // Trích xuất từ RFQ ID
+      if (!targetWh && target && target.startsWith('RFQ-') && Store.rfqs) {
+        const r = Store.rfqs.find(x => x.id === target);
+        if (r) targetWh = r.wh;
+      }
+
+      // Trích xuất từ warehouse code
+      if (!targetWh) {
+        for (const w of WAREHOUSES) {
+          if (target === w.code || details.includes(`tại ${w.code}`) || details.includes(`kho ${w.code}`) || details.includes(`Kho ${w.code}`) || details.includes(w.name)) {
+            targetWh = w.code;
+            break;
+          }
+        }
+      }
+
+      if (!targetWh) {
+        targetWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+      }
+
       const act = {
         id: padSeq('ACT'),
         date: Store.currentDate,
@@ -2944,49 +3069,128 @@ function fmt(n) {
         type: type,
         target: target,
         details: details,
-        cost: cost
+        cost: cost,
+        wh: targetWh,
+        srcWh: srcWh,
+        dstWh: dstWh
       };
+
       Store.actions.unshift(act);
 
-      // Render to DOM if list exists
-      const list = document.getElementById('systemLogList');
-      if (list) {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'log-item';
-        itemDiv.innerHTML = `
-          <div class="log-time">${fmtDateVN(act.date)} ${act.time}</div>
-          <div class="log-tag">${act.type}</div>
-          <div class="log-desc"><strong>${act.target}</strong>: ${act.details}</div>
-          <div class="log-cost">${act.cost > 0 ? fmtVND(act.cost) : '-'}</div>
-        `;
-        list.insertBefore(itemDiv, list.firstChild);
-      }
+      // Cập nhật DOM nếu đang ở dashboard
+      renderSystemLog((Store.ui && Store.ui.activeWh) || 'HCM');
 
-      // Non-blocking sync with backend server
+      // Đồng bộ backend server (ghi ledger.csv & decisions.csv)
       fetch('http://localhost:8000/api/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(act)
+      }).then(() => {
+        Store.serverStatus = 'online';
+        updateServerStatusIndicator();
       }).catch(err => {
-        // Actions logged in Store.actions; silent catch when offline
+        Store.serverStatus = 'offline';
+        updateServerStatusIndicator();
       });
+    }
+
+    function updateServerStatusIndicator() {
+      const el = document.getElementById('serverStatusBadge');
+      if (!el) return;
+      if (Store.serverStatus === 'online') {
+        el.innerHTML = '<span style="color:#16A34A;font-size:11px;font-weight:600;">● Đã kết nối ledger.csv</span>';
+      } else {
+        el.innerHTML = '<span style="color:#D97706;font-size:11px;font-weight:600;" title="Server backend chưa khởi động - Chưa ghi ledger.csv">⚠️ Chưa kết nối ledger.csv</span>';
+      }
+    }
+
+    function renderSystemLog(activeWh) {
+      const list = document.getElementById('systemLogList');
+      if (!list) return;
+
+      const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+      const whNameEl = document.getElementById('logWhName');
+      if (whNameEl) whNameEl.textContent = whObj.name;
+
+      // Lọc các bản ghi liên quan đến activeWh:
+      // wh === activeWh HOẶC srcWh === activeWh HOẶC dstWh === activeWh
+      const whActions = Store.actions.filter(a =>
+        a.wh === activeWh || a.srcWh === activeWh || a.dstWh === activeWh
+      );
+
+      // Bộ lọc loại nếu có
+      const filterType = (Store.ui && Store.ui.logFilter) ? Store.ui.logFilter : 'ALL';
+      let filtered = whActions;
+      if (filterType !== 'ALL') {
+        filtered = whActions.filter(a => {
+          if (filterType === 'TRANSFER') return a.type.includes('TRANSFER') || a.type === 'SAN_TAI_2A';
+          if (filterType === 'RFQ') return a.type.includes('RFQ');
+          if (filterType === 'INBOUND_NCC') return a.type === 'INBOUND_NCC';
+          if (filterType === 'EVENT') return a.type === 'EVENT';
+          if (filterType === 'EXCEPTION') return a.type.includes('EXCEPTION');
+          if (filterType === 'QUICK') return a.type.includes('QUICK') || a.type.includes('STOCK_');
+          return a.type === filterType;
+        });
+      }
+
+      const countBadge = document.getElementById('logCountBadge');
+      if (countBadge) countBadge.textContent = `${filtered.length} bản ghi`;
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<div style="padding:16px;text-align:center;color:#94A3B8;font-size:12px;">Chưa có bản ghi nhật ký nào cho ${whObj.name}.</div>`;
+        return;
+      }
+
+      let html = '';
+      filtered.slice(0, 50).forEach(act => {
+        // Nhãn vai trò cho lệnh điều chuyển
+        let roleBadge = '';
+        if (act.srcWh && act.dstWh) {
+          if (act.srcWh === activeWh) {
+            roleBadge = `<span class="log-role role-src">Xuất đi tới ${act.dstWh}</span>`;
+          } else if (act.dstWh === activeWh) {
+            roleBadge = `<span class="log-role role-dst">Nhận về từ ${act.srcWh}</span>`;
+          }
+        }
+
+        html += `
+          <div class="log-item" style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #334155;font-size:11.5px;">
+            <div class="log-time" style="color:#94A3B8;white-space:nowrap;min-width:130px;">${fmtDateVN(act.date)} ${act.time}</div>
+            <div class="log-tag" style="background:#334155;color:#F8FAFC;padding:1px 6px;border-radius:3px;font-size:10.5px;font-weight:600;white-space:nowrap;">${act.type}</div>
+            <div class="log-desc" style="flex:1;color:#CBD5E1;">
+              <strong>${act.target}</strong>: ${act.details}
+              ${roleBadge}
+            </div>
+            <div class="log-cost" style="color:#FBBF24;font-weight:600;white-space:nowrap;">${act.cost > 0 ? fmtVND(act.cost) : '-'}</div>
+          </div>
+        `;
+      });
+
+      list.innerHTML = html;
     }
 
     function toggleLogAccordion() {
       const body = document.getElementById('systemLogList');
       const text = document.getElementById('logToggleText');
       if (!body) return;
-      if (body.classList.contains('active')) {
+
+      const isOpen = body.classList.contains('open') || body.classList.contains('active');
+      if (isOpen) {
+        body.classList.remove('open');
         body.classList.remove('active');
         if (text) text.textContent = 'Mở nhật ký ▾';
       } else {
+        body.classList.add('open');
         body.classList.add('active');
         if (text) text.textContent = 'Thu gọn nhật ký ▴';
       }
     }
 
-    // ----------------------------------------------------------------------------
-
+    function onLogFilterChange(val) {
+      if (!Store.ui) Store.ui = {};
+      Store.ui.logFilter = val;
+      renderSystemLog(Store.ui.activeWh || 'HCM');
+    }
 
 // --- END src/js/notifications.js ---
 
@@ -3210,6 +3414,20 @@ function fmt(n) {
         revenue: dayTotalRev,
         lostSalesVal: dayTotalLost
       };
+
+      // Ghi nhật ký xuất bán tổng kết ngày cho từng kho có phát sinh
+      WAREHOUSES.forEach(wh => {
+        let whRev = 0;
+        let whUnits = 0;
+        SKUS.forEach(sku => {
+          const soldUnits = Store.currentWeekDemand[sku.code][wh.code] || 0;
+          whUnits += soldUnits;
+        });
+        // Log action nếu có doanh số phát sinh
+        if (dayTotalRev > 0) {
+          logAction('SALES_DAILY', wh.code, `Tổng kết bán hàng ngày ${fmtDateVN(curDate)} tại ${wh.name}: doanh thu chuỗi ${fmtVND(dayTotalRev)}`, 0, wh.code);
+        }
+      });
     }
 
     // ----------------------------------------------------------------------------
@@ -3273,8 +3491,8 @@ function fmt(n) {
             const addQty = Math.max(1, Math.round(pick.p.qmax * 1.25 - pick.eff));
             pick.st.on_hand += addQty;
             executedEventInWh = true;
-            logAction('EXCEPTION_INBOUND', pick.sku.code, [Ngoại lệ] Lô hàng giao dư từ NCC  tại : +  (Vượt trần tạm thời), addQty * pick.sku.cogs);
-            pushNotification('EXCEPTION_EVENT', pick.sku.code, Chứng từ nhập kho ngoại lệ: NCC giao dư +  tại );
+            logAction('EXCEPTION_INBOUND', pick.sku.code, `[Ngoại lệ] Lô hàng giao dư từ NCC ${pick.sku.sup} tại ${wh.name}: +${addQty} (Vượt trần tạm thời)`, addQty * pick.sku.cogs, wh.code);
+            pushNotification('EXCEPTION_EVENT', pick.sku.code, `Chứng từ nhập kho ngoại lệ: NCC giao dư +${addQty} ${pick.sku.code} tại ${wh.name}`, wh.code);
           }
         }
 
@@ -3292,15 +3510,86 @@ function fmt(n) {
               executedEventInWh = true;
               const rev = subQty * pick.sku.price;
               if (Store.dailySales[curDate]) Store.dailySales[curDate].revenue += rev;
-              logAction('EXCEPTION_OUTBOUND', pick.sku.code, [Ngoại lệ] Đơn hàng dự án lớn đột xuất tại : Xuất ngay  , rev);
-              pushNotification('EXCEPTION_EVENT', pick.sku.code, Chứng từ xuất kho ngoại lệ: Dự án lớn mua gấp   tại );
+              logAction('EXCEPTION_OUTBOUND', pick.sku.code, `[Ngoại lệ] Đơn hàng dự án lớn đột xuất tại ${wh.name}: Xuất ngay ${subQty} ${pick.sku.code}`, rev, wh.code);
+              pushNotification('EXCEPTION_EVENT', pick.sku.code, `Chứng từ xuất kho ngoại lệ: Dự án lớn mua gấp ${subQty} ${pick.sku.code} tại ${wh.name}`, wh.code);
             }
           }
         }
       });
     }
 
-    function advanceOneDay() {
+        // ----------------------------------------------------------------------------
+    // 2.7b EVENT LIFECYCLE TRACKER & ADVISORY (Yêu cầu 3.2 & 3.4d)
+    // ----------------------------------------------------------------------------
+    function formatWhEventImpact(ev, whCode) {
+      const parts = [];
+      if (ev.demand_mult !== undefined && ev.demand_mult !== null && ev.demand_mult !== 1.0) {
+        const pct = Math.round((ev.demand_mult - 1.0) * 100);
+        const sign = pct > 0 ? `+${pct}%` : `${pct}%`;
+        parts.push(`Cầu ${sign}`);
+      }
+      if (ev.delay_days && ev.delay_days > 0) {
+        parts.push(`Trễ giao +${ev.delay_days} ngày (${ev.delay_scope || 'Cung ứng'})`);
+      }
+      if (ev.fill_rate !== undefined && ev.fill_rate !== null && ev.fill_rate !== 1.0) {
+        parts.push(`Lấp đầy ${Math.round(ev.fill_rate * 100)}%`);
+      }
+      if (ev.price_mult !== undefined && ev.price_mult !== null && ev.price_mult !== 1.0) {
+        const pct = Math.round((ev.price_mult - 1.0) * 100);
+        const sign = pct > 0 ? `+${pct}%` : `${pct}%`;
+        parts.push(`Giá vốn ${sign}`);
+      }
+      const targetStr = (ev.scope_target && ev.scope_target !== 'ALL') ? ` (${ev.scope_target})` : '';
+      return (parts.length > 0 ? parts.join(', ') : 'Điều chỉnh cục bộ') + targetStr;
+    }
+
+    function processEventLifecycle(curDate) {
+      if (!Store.eventLifecycleTrack) Store.eventLifecycleTrack = {};
+      if (typeof EVENTS === 'undefined' || !Array.isArray(EVENTS)) return;
+
+      EVENTS.forEach(ev => {
+        const advDays = ev.advisory_days !== undefined ? ev.advisory_days : 3;
+        const advDate = addDays(ev.start, -advDays);
+
+        WAREHOUSES.forEach(wh => {
+          if (!isEventMatchingWarehouse(ev.scope_wh, wh.code)) return;
+          const impact = formatWhEventImpact(ev, wh.code);
+
+          // 1. ADVISORY (Cảnh báo sớm)
+          if (curDate === advDate) {
+            const key = `ADV_${ev.id}_${wh.code}`;
+            if (!Store.eventLifecycleTrack[key]) {
+              Store.eventLifecycleTrack[key] = true;
+              pushNotification('EVENT_ADVISORY', ev.id, `[Dự báo sự kiện] ${ev.title}: ${impact}. Bắt đầu từ ${fmtDateVN(ev.start)} tại ${wh.name}.`, wh.code);
+              logAction('EVENT', ev.id, `Dự báo sự kiện: ${ev.title} (${impact}) từ ${fmtDateVN(ev.start)}`, 0, wh.code);
+            }
+          }
+
+          // 2. START (Bắt đầu sự kiện)
+          if (curDate === ev.start) {
+            const key = `START_${ev.id}_${wh.code}`;
+            if (!Store.eventLifecycleTrack[key]) {
+              Store.eventLifecycleTrack[key] = true;
+              pushNotification('EVENT_START', ev.id, `[Sự kiện bắt đầu] ${ev.title}: ${impact}. Hiệu lực đến ${fmtDateVN(ev.end)} tại ${wh.name}.`, wh.code);
+              logAction('EVENT', ev.id, `Sự kiện bắt đầu: ${ev.title} - ${impact}`, 0, wh.code);
+            }
+          }
+
+          // 3. END (Kết thúc sự kiện)
+          const endPlus1 = addDays(ev.end, 1);
+          if (curDate === endPlus1) {
+            const key = `END_${ev.id}_${wh.code}`;
+            if (!Store.eventLifecycleTrack[key]) {
+              Store.eventLifecycleTrack[key] = true;
+              pushNotification('EVENT_END', ev.id, `[Sự kiện kết thúc] ${ev.title} đã hết hiệu lực. Chuỗi cung ứng tại ${wh.name} trở lại bình thường.`, wh.code);
+              logAction('EVENT', ev.id, `Sự kiện kết thúc: ${ev.title}`, 0, wh.code);
+            }
+          }
+        });
+      });
+    }
+
+function advanceOneDay() {
       if (Store.currentDate >= Store.endDate) {
         if (Store.autoPilot) toggleAutoPilot();
         showToast('Đã đạt đến ngày kết thúc mô phỏng (23/10/2026)', 'info');
@@ -3324,7 +3613,8 @@ function fmt(n) {
         }
       });
 
-      // Bước 2: Bổ sung định kỳ từ Nhà cung cấp
+      // Bước 2: Bổ sung định kỳ từ Nhà cung cấp & Theo dõi vòng đời sự kiện
+      processEventLifecycle(curDate);
       processInboundReplenishment(curDate, dayIdx);
 
       // Bước 3: Tiêu thụ hàng ngày và ghi nhận doanh thu
@@ -4674,6 +4964,120 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
     // ----------------------------------------------------------------------------
 
 
+
+// ============================================================================
+// EVENT DETAIL MODAL (Phase 3.3)
+// ============================================================================
+function openEventDetailModal(eventId, whCode) {
+  const ev = EVENTS.find(e => e.id === eventId);
+  if (!ev) return;
+
+  const whObj = WAREHOUSES.find(w => w.code === whCode) || WAREHOUSES[0];
+  const curDate = Store.currentDate;
+
+  let statusText = '';
+  let statusColor = '#2563EB';
+  if (curDate >= ev.start && curDate <= ev.end) {
+    const rem = diffDays(curDate, ev.end);
+    statusText = `Đang diễn ra (Còn ${rem} ngày nữa sẽ kết thúc)`;
+    statusColor = '#16A34A';
+  } else if (ev.start > curDate) {
+    const until = diffDays(curDate, ev.start);
+    statusText = `Sắp diễn ra (Còn ${until} ngày nữa sẽ bắt đầu)`;
+    statusColor = '#D97706';
+  } else {
+    statusText = `Đã kết thúc (Vào ngày ${fmtDateVN(ev.end)})`;
+    statusColor = '#64748B';
+  }
+
+  const modalTitle = document.getElementById('evtModalTitle');
+  if (modalTitle) modalTitle.textContent = `${ev.id} - ${ev.title}`;
+
+  const body = document.getElementById('evtModalBody');
+  if (body) {
+    const affectedSkus = SKUS.filter(s => isEventMatchingTarget(ev.scope_target, s.code, s.cat || s.category, s.sup));
+
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#F8FAFC;border-radius:6px;margin-bottom:14px;">
+        <div>
+          <span style="font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:4px;background:${ev.severity === 'Cao' ? '#FEE2E2;color:#B91C1C' : (ev.severity === 'Trung bình' ? '#FEF3C7;color:#B45309' : '#E0F2FE;color:#0369A1')};">
+            Mức độ: ${ev.severity || 'Trung bình'}
+          </span>
+          <span style="margin-left:10px;font-size:12px;color:${statusColor};font-weight:700;">● ${statusText}</span>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--text-sub);">
+          Thời gian: <strong>${fmtDateVN(ev.start)}</strong> → <strong>${fmtDateVN(ev.end)}</strong>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--navy-main);margin-bottom:4px;">Mô tả kịch bản:</div>
+        <div style="font-size:12.5px;color:var(--text-main);line-height:1.5;background:#FFFFFF;border:1px solid var(--border-color);padding:10px 14px;border-radius:4px;">
+          ${ev.desc}
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-bottom:16px;">
+        <div style="background:#F1F5F9;padding:10px;border-radius:4px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);">Tác động Cầu</div>
+          <div style="font-size:15px;font-weight:800;color:${ev.demand_mult !== 1.0 ? '#D12420' : 'var(--text-main)'};">
+            x${ev.demand_mult !== undefined ? ev.demand_mult : 1.0}
+          </div>
+        </div>
+        <div style="background:#F1F5F9;padding:10px;border-radius:4px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);">Trễ giao hàng</div>
+          <div style="font-size:15px;font-weight:800;color:${ev.delay_days > 0 ? '#D12420' : 'var(--text-main)'};">
+            +${ev.delay_days || 0} ngày
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);">(${ev.delay_scope || 'Cung ứng'})</div>
+        </div>
+        <div style="background:#F1F5F9;padding:10px;border-radius:4px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);">Hệ số lấp đầy</div>
+          <div style="font-size:15px;font-weight:800;color:${ev.fill_rate !== 1.0 ? '#D12420' : 'var(--text-main)'};">
+            ${Math.round((ev.fill_rate !== undefined ? ev.fill_rate : 1.0) * 100)}%
+          </div>
+        </div>
+        <div style="background:#F1F5F9;padding:10px;border-radius:4px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);">Hệ số giá vốn</div>
+          <div style="font-size:15px;font-weight:800;color:${ev.price_mult !== 1.0 ? '#D12420' : 'var(--text-main)'};">
+            x${ev.price_mult !== undefined ? ev.price_mult : 1.0}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy-main);margin-bottom:6px;">
+          Sản phẩm bị ảnh hưởng tại ${whObj.name} (${affectedSkus.length} / 11 SKU):
+        </div>
+        <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border-color);border-radius:4px;">
+          <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
+            <thead style="background:#F8FAFC;border-bottom:1px solid var(--border-color);position:sticky;top:0;">
+              <tr>
+                <th style="padding:6px 10px;text-align:left;">Mã SKU</th>
+                <th style="padding:6px 10px;text-align:left;">Tên sản phẩm</th>
+                <th style="padding:6px 10px;text-align:left;">Ngành hàng</th>
+                <th style="padding:6px 10px;text-align:left;">Nhà cung cấp</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${affectedSkus.map(s => `
+                <tr style="border-bottom:1px solid #F1F5F9;">
+                  <td style="padding:6px 10px;font-weight:700;color:var(--navy-accent);">${s.code}</td>
+                  <td style="padding:6px 10px;">${s.name}</td>
+                  <td style="padding:6px 10px;color:var(--text-muted);">${s.cat || s.category}</td>
+                  <td style="padding:6px 10px;color:var(--text-muted);">${s.sup}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  openModal('eventDetailModal');
+}
+
 // --- END src/js/ui/modals.js ---
 
 // --- BEGIN src/js/views/dashboard.js ---
@@ -4989,6 +5393,105 @@ function renderDashboardView() {
 
     matrixTbody.innerHTML = mHtml;
   }
+}
+
+
+// ============================================================================
+// KHUNG "LỊCH SỰ KIỆN CỦA KHO" TRÊN DASHBOARD (Yêu cầu 3.3)
+// ============================================================================
+function renderWarehouseEventsSchedule(activeWh) {
+  const container = document.getElementById('warehouseEventsScheduleCard');
+  if (!container) return;
+
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+  const curDate = Store.currentDate;
+
+  // Filter events matching activeWh
+  const whEvents = EVENTS.filter(ev => isEventMatchingWarehouse(ev.scope_wh, activeWh));
+
+  const activeEvts = whEvents.filter(ev => curDate >= ev.start && curDate <= ev.end);
+  const upcomingEvts = whEvents.filter(ev => ev.start > curDate && ev.start <= addDays(curDate, 14));
+  const pastEvts = whEvents.filter(ev => ev.end < curDate).sort((a, b) => (b.end > a.end ? 1 : -1)).slice(0, 5);
+
+  function renderEvtRow(ev, badgeStatus) {
+    let sevBadge = '<span class="status-pill status-pill-ok" style="background:#E0F2FE;color:#0369A1;border:1px solid #BAE6FD;font-weight:700;">Thấp</span>';
+    if (ev.severity === 'Cao') {
+      sevBadge = '<span class="status-pill status-pill-low" style="background:#FEE2E2;color:#B91C1C;border:1px solid #FCA5A5;font-weight:700;">Cao</span>';
+    } else if (ev.severity === 'Trung bình') {
+      sevBadge = '<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#B45309;border:1px solid #FCD34D;font-weight:700;">Trung bình</span>';
+    }
+
+    const impact = (typeof formatWhEventImpact === 'function') ? formatWhEventImpact(ev, activeWh) : '';
+    const target = (ev.scope_target === 'ALL' || !ev.scope_target) ? 'Toàn bộ SKU' : ev.scope_target;
+
+    return `
+      <div class="event-row" onclick="openEventDetailModal('${ev.id}', '${activeWh}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border-subtle);border-radius:4px;cursor:pointer;transition:background 0.15s ease;" title="Bấm để xem chi tiết tác động tại ${whObj.name}">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;">
+          ${sevBadge}
+          <div>
+            <div style="font-size:12.5px;font-weight:700;color:var(--text-main);">
+              ${ev.title}
+              <span style="font-size:11px;font-weight:500;color:var(--text-muted);margin-left:6px;">(${fmtDateVN(ev.start)} - ${fmtDateVN(ev.end)})</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-sub);margin-top:2px;">
+              <span>Mục tiêu: <strong>${target}</strong></span>
+              <span style="margin:0 6px;">•</span>
+              <span style="color:#B45309;font-weight:600;">${impact}</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--navy-accent);font-weight:600;">Xem chi tiết ›</span>
+        </div>
+      </div>
+    `;
+  }
+
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy-main);display:flex;align-items:center;gap:8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        Lịch sự kiện & Tác động chuỗi cung ứng tại ${whObj.name}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);">
+        ${activeEvts.length} đang diễn ra • ${upcomingEvts.length} sắp diễn ra (14 ngày tới)
+      </div>
+    </div>
+  `;
+
+  // 1. Đang diễn ra
+  html += `
+    <div style="margin-top:8px;">
+      <div style="font-size:11px;font-weight:700;color:#15803D;background:#F0FDF4;padding:4px 8px;border-radius:4px;border-left:3px solid #16A34A;margin-bottom:6px;">
+        ĐANG DIỄN RA (${activeEvts.length})
+      </div>
+      ${activeEvts.length > 0 ? activeEvts.map(e => renderEvtRow(e, 'ACTIVE')).join('') : '<div style="font-size:11.5px;color:var(--text-muted);padding:4px 8px;font-style:italic;">Không có sự kiện bất thường nào đang diễn ra tại kho này.</div>'}
+    </div>
+  `;
+
+  // 2. Sắp diễn ra
+  html += `
+    <div style="margin-top:12px;">
+      <div style="font-size:11px;font-weight:700;color:#B45309;background:#FFFBEB;padding:4px 8px;border-radius:4px;border-left:3px solid #D97706;margin-bottom:6px;">
+        SẮP DIỄN RA TRONG 14 NGÀY TỚI (${upcomingEvts.length})
+      </div>
+      ${upcomingEvts.length > 0 ? upcomingEvts.map(e => renderEvtRow(e, 'UPCOMING')).join('') : '<div style="font-size:11.5px;color:var(--text-muted);padding:4px 8px;font-style:italic;">Chưa có sự kiện nào sắp tới trong 14 ngày tới.</div>'}
+    </div>
+  `;
+
+  // 3. Đã qua
+  if (pastEvts.length > 0) {
+    html += `
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;font-weight:700;color:#64748B;background:#F8FAFC;padding:4px 8px;border-radius:4px;border-left:3px solid #94A3B8;margin-bottom:6px;">
+          ĐÃ KẾT THÚC GẦN ĐÂY (${pastEvts.length})
+        </div>
+        ${pastEvts.map(e => renderEvtRow(e, 'PAST')).join('')}
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
 }
 
 // --- END src/js/views/dashboard.js ---
@@ -6247,7 +6750,7 @@ function renderAllViews() {
   }
 
   // 3. Dashboard Event Banner (Contextual for active warehouse)
-  const activeEvt = EVENTS.find(e => Store.currentDate >= e.start && Store.currentDate <= e.end);
+  const activeEvt = EVENTS.find(e => Store.currentDate >= e.start && Store.currentDate <= e.end && isEventMatchingWarehouse(e.scope_wh, activeWh));
   const evtBadge = document.getElementById('eventBadgeWrap');
   const evtTitle = document.getElementById('eventTitle');
   const evtDesc  = document.getElementById('eventDesc');
@@ -6470,5 +6973,22 @@ window.addEventListener('DOMContentLoaded', () => {
 // --- END src/js/main.js ---
 
   </script>
+
+  <!-- EVENT DETAIL MODAL (Phase 3.3) -->
+  <div class="modal-overlay" id="eventDetailModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <div class="modal-title" id="evtModalTitle">Chi tiết Sự kiện</div>
+        <button class="modal-close" onclick="closeModal('eventDetailModal')">✕</button>
+      </div>
+      <div id="evtModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-foot">
+        <button class="btn-secondary" onclick="closeModal('eventDetailModal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
