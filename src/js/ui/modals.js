@@ -48,7 +48,8 @@
       const wh  = WAREHOUSES.find(w => w.code === whCode);
       const p   = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
       const st  = Store.stock[whCode][skuCode];
-      const excess = Math.max(0, st.on_hand - p.qmax);
+      const effSrc = st.on_hand + st.in_transit - st.committed;
+      const excess = Math.max(0, Math.min(effSrc - p.qmax, getTransferableQty(skuCode, whCode, Store.currentDate)));
       const baseP = (Store.baseParams && Store.baseParams[skuCode] && Store.baseParams[skuCode][whCode]) || p;
       const driver = getDriverExplanation(skuCode, whCode, Store.currentDate, p, baseP);
       const dualQmax = renderDualParam(baseP ? baseP.qmax : p.qmax, p.qmax, 'Qmax', driver);
@@ -195,7 +196,8 @@
       const sku = SKUS.find(s => s.code === skuCode);
       const st  = Store.stock[srcWhCode][skuCode];
       const p   = calcSKUParams(skuCode, srcWhCode, Store.currentDate, Store.history);
-      const excess = Math.max(0, st.on_hand - p.qmax);
+      const effSrc = st.on_hand + st.in_transit - st.committed;
+      const excess = Math.max(0, Math.min(effSrc - p.qmax, getTransferableQty(skuCode, srcWhCode, Store.currentDate)));
 
       if (excess <= 0) {
         showToast('Kho không còn lượng tồn dư vượt MAX để chuyển!', 'info');
@@ -209,6 +211,11 @@
 
       const qtyInput = document.getElementById('overstockQtyInput');
       const qty = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || excess) : excess;
+      const safety = checkTransferSafety(skuCode, srcWhCode, qty, Store.currentDate);
+      if (!safety.ok) {
+        showToast(safety.msg, 'error');
+        return;
+      }
 
       const tDays = getTransferDays(srcWhCode, targetWh.code);
       const unitRate = getUnitFreightRate(srcWhCode, targetWh.code, skuCode);
@@ -231,6 +238,7 @@
 
       // Xóa proposal tồn dư nếu có
       delete Store.proposals[`${skuCode}-${srcWhCode}`];
+      recalcCommittedStock();
 
       closeModal('overstockModal');
       pushNotification('TRANSFER_PROPOSED', trId, `Đã đề xuất san tải ${qty} ${skuCode} sang ${targetWh.name}. Chờ kho nhận xác nhận.`);
@@ -283,35 +291,16 @@
       const wh  = WAREHOUSES.find(w => w.code === toWh) || WAREHOUSES[0];
       const params = calcSKUParams(skuCode, toWh, Store.currentDate, Store.history);
       const st = Store.stock[toWh][skuCode];
-      const eff = st.on_hand + st.in_transit - st.committed;
+      const ev = evaluateReplenishmentOptions(skuCode, toWh, Store.currentDate);
 
-      if (eff > params.rop) {
-        showToast(`Kho ${wh.name} đang ở trạng thái an toàn (Tồn ${eff} > ROP ${params.rop}).`, 'info');
+      if (ev.eff > params.rop) {
+        showToast(`Kho ${wh.name} đang ở trạng thái an toàn (Tồn ${ev.eff} > ROP ${params.rop}).`, 'info');
       }
 
-      const qNeed = Math.max(1, params.qmax - eff);
-
-      // Tìm kho nguồn mặc định có dư lượng nhiều nhất
-      let bestSource = null;
-      let maxSurplus = -Infinity;
-      WAREHOUSES.forEach(w => {
-        if (w.code !== toWh) {
-          const sP = calcSKUParams(skuCode, w.code, Store.currentDate, Store.history);
-          const sSt = Store.stock[w.code][skuCode];
-          const sEff = sSt.on_hand + sSt.in_transit - sSt.committed;
-          const surplus = sEff - sP.rop;
-          if (surplus > maxSurplus) {
-            maxSurplus = surplus;
-            bestSource = w.code;
-          }
-        }
-      });
-      if (!bestSource) bestSource = (toWh === 'HCM' ? 'BD' : 'HCM');
-
-      const srcStInit = Store.stock[bestSource][skuCode];
-      const srcPInit  = calcSKUParams(skuCode, bestSource, Store.currentDate, Store.history);
-      const srcEffInit = srcStInit.on_hand + srcStInit.in_transit - srcStInit.committed;
-      const srcSafeInit = (qNeed <= srcStInit.on_hand) && ((srcEffInit - qNeed) > srcPInit.rop);
+      // Kho nguồn mặc định = phương án điều chuyển AI đánh giá tốt nhất (dư hàng, cước thấp)
+      const defaultSrc = ev.bestTransfer
+        ? ev.bestTransfer.srcWh
+        : ([...ev.sources].sort((a, b) => b.transferable - a.transferable)[0] || {}).srcWh;
 
       ActiveModalContext = {
         skuCode: skuCode,
@@ -320,12 +309,14 @@
         destWh: wh,
         params: params,
         st: st,
-        eff: eff,
-        qNeed: qNeed,
-        sourceWh: bestSource,
+        eff: ev.eff,
+        qNeed: ev.qNeed,
+        sourceWh: defaultSrc,
         supplier: sku.sup,
-        selectedPlan: srcSafeInit ? 'A' : 'B',
-        customQty: qNeed
+        selectedPlan: ev.best.type === 'TRANSFER' ? 'A' : 'B',
+        recommendedPlan: ev.best.type === 'TRANSFER' ? 'A' : 'B',
+        recommendedSrc: ev.bestTransfer ? ev.bestTransfer.srcWh : null,
+        customQty: ev.best.qty
       };
 
       renderReplenishmentModalUI();
@@ -341,106 +332,107 @@
       const title = document.getElementById('transferModalTitle');
       if (title) title.textContent = `So sánh Nguồn Bổ sung: ${ctx.sku.code} - ${ctx.sku.name} tại ${ctx.destWh.name}`;
 
-      const srcSt = Store.stock[ctx.sourceWh][ctx.skuCode];
-      const srcP  = calcSKUParams(ctx.skuCode, ctx.sourceWh, Store.currentDate, Store.history);
-      const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
-      const srcSurplus = srcEff - srcP.rop;
-      const srcSafe = (ctx.customQty <= srcSt.on_hand) && (srcSurplus >= ctx.customQty);
-
-      const tDays = getTransferDays(ctx.sourceWh, ctx.toWh);
-      const unitFreight = getUnitFreightRate(ctx.sourceWh, ctx.toWh, ctx.skuCode);
-      const totalFreight = calcFreightCost(ctx.sourceWh, ctx.toWh, ctx.skuCode, ctx.customQty);
-
-      const supLead = ctx.sku.lead;
-      const supCost = ctx.customQty * ctx.sku.cogs;
-      const transferCogsVal = ctx.customQty * ctx.sku.cogs;
-      const totalCostPlanA = transferCogsVal + totalFreight;
+      const ev = evaluateReplenishmentOptions(ctx.skuCode, ctx.toWh, Store.currentDate, { qty: ctx.customQty });
+      const sel = ev.sources.find(s => s.srcWh === ctx.sourceWh) || ev.sources[0];
+      const selSafe = sel && sel.transferable >= ctx.customQty;
+      const unit = ctx.sku.unit;
+      const whName = code => (WAREHOUSES.find(w => w.code === code) || { name: code }).name;
+      const statusPill = s => s === 'HIGH'
+        ? '<span class="status-pill status-pill-high">Dư (vượt MAX)</span>'
+        : (s === 'LOW' ? '<span class="status-pill status-pill-low">Thiếu</span>' : '<span class="status-pill status-pill-ok">An toàn</span>');
 
       const baseP = (Store.baseParams && Store.baseParams[ctx.skuCode] && Store.baseParams[ctx.skuCode][ctx.toWh]) || ctx.params;
       const driver = getDriverExplanation(ctx.skuCode, ctx.toWh, Store.currentDate, ctx.params, baseP);
       const dualRop = renderDualParam(baseP ? baseP.rop : ctx.params.rop, ctx.params.rop, 'ROP', driver);
       const dualQmax = renderDualParam(baseP ? baseP.qmax : ctx.params.qmax, ctx.params.qmax, 'Qmax', driver);
 
+      const rec = ctx.recommendedPlan === 'A'
+        ? `• <strong>AI khuyến nghị: Điều chuyển từ ${whName(ctx.recommendedSrc)}</strong> — kho này còn tồn dư an toàn, cước ${fmtVND(ev.sources.find(s => s.srcWh === ctx.recommendedSrc).unitFreight)}/${unit}, hàng về sau ${ev.sources.find(s => s.srcWh === ctx.recommendedSrc).days} ngày (NCC cần ~${ev.rfq.days} ngày). Không phát sinh vốn mua mới.`
+        : `• <strong>AI khuyến nghị: Gửi RFQ tới NCC</strong> — ${ev.sources.every(s => s.transferable < 1)
+            ? 'không kho nào còn tồn dư an toàn (xuất sẽ rơi dưới ROP).'
+            : 'các kho còn dư nhưng cước điều chuyển vượt 50% biên lợi nhuận gộp, không kinh tế.'}`;
+
+      const rows = ev.sources.map(s => {
+        const isSel = ctx.selectedPlan === 'A' && s.srcWh === ctx.sourceWh;
+        const isRec = ctx.recommendedPlan === 'A' && s.srcWh === ctx.recommendedSrc;
+        const disabled = s.transferable < 1;
+        return `
+          <tr style="cursor:${disabled ? 'not-allowed' : 'pointer'};background:${isSel ? '#EFF6FF' : (disabled ? '#F9FAFB' : '#FFFFFF')};opacity:${disabled ? 0.6 : 1};"
+              ${disabled ? '' : `onclick="onModalPickOption('A','${s.srcWh}')"`}>
+            <td><input type="radio" name="planSelect" ${isSel ? 'checked' : ''} ${disabled ? 'disabled' : ''}></td>
+            <td><strong>${s.name}</strong>${isRec ? ' <span class="status-pill status-pill-ok" style="font-size:10px;">AI đề xuất</span>' : ''}</td>
+            <td>${statusPill(s.status)}</td>
+            <td style="text-align:right;">${fmtNum(s.eff)} / ${fmtNum(s.rop)} / ${fmtNum(s.qmax)}</td>
+            <td style="text-align:right;"><strong>${fmtNum(s.transferable)}</strong></td>
+            <td style="text-align:right;">${s.days} ngày</td>
+            <td style="text-align:right;">${fmtVND(s.unitFreight)}</td>
+            <td style="text-align:right;">${s.qty > 0 ? fmtVND(s.freight) : '—'}</td>
+            <td style="font-size:11px;color:${s.eligible ? 'var(--status-green)' : 'var(--status-red)'};">${s.eligible ? (s.uncovered > 0 ? `Đáp ứng ${fmtNum(s.qty)}/${fmtNum(ctx.customQty)}` : 'Hợp lệ') : s.reason}</td>
+          </tr>`;
+      }).join('');
+
+      const rfqSel = ctx.selectedPlan === 'B';
+      const sups = Object.keys(SUPPLIERS).filter(s => !ctx.sku.cat || SUPPLIERS[s].cat === ctx.sku.cat);
+
       body.innerHTML = `
         <div style="background:#F8FAFC;border:1px solid var(--border-color);padding:12px;border-radius:6px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <div>
-            <span style="font-size:12px;color:var(--text-muted);">Tồn kho khả dụng hiện tại:</span>
-            <strong style="font-size:13px;color:var(--text-main);"> ${ctx.eff} ${ctx.sku.unit}</strong>
+            <span style="font-size:12px;color:var(--text-muted);">Tồn khả dụng (gồm hàng sắp về):</span>
+            <strong style="font-size:13px;color:var(--text-main);"> ${ctx.eff} ${unit}</strong>
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
-            <span style="font-size:12px;color:var(--text-muted);">Ngưỡng MIN (ROP):</span>
-            ${dualRop}
+            <span style="font-size:12px;color:var(--text-muted);">MIN (ROP):</span> ${dualRop}
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
-            <span style="font-size:12px;color:var(--text-muted);">Trần MAX:</span>
-            ${dualQmax}
+            <span style="font-size:12px;color:var(--text-muted);">MAX:</span> ${dualQmax}
+            <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
+            <span style="font-size:12px;color:var(--text-muted);">Cần bổ sung tới MAX:</span> <strong>${ctx.qNeed} ${unit}</strong>
             <div style="font-size:11px;color:var(--navy-main);margin-top:4px;"><em>${driver}</em></div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng bổ sung:</span>
-            <input type="number" class="time-input" id="modalCustomQty" value="${ctx.customQty}" min="1" style="width:90px;" oninput="onModalCustomQtyChange(this.value)">
-            <span style="font-size:11.5px;color:var(--text-muted);">${ctx.sku.unit}</span>
+            <span style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng xử lý:</span>
+            <input type="number" class="time-input" id="modalCustomQty" value="${ctx.customQty}" min="1" style="width:90px;" onchange="onModalCustomQtyChange(this.value)">
+            <span style="font-size:11.5px;color:var(--text-muted);">${unit}</span>
           </div>
         </div>
 
-        <!-- PHÂN TÍCH VÀ KHUYẾN NGHỊ ĐIỀU HÀNH -->
-        <div style="background:${srcSafe ? '#ECFDF5' : '#FEF3C7'};border:1px solid ${srcSafe ? '#A7F3D0' : '#FDE68A'};border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:${srcSafe ? '#065F46' : '#92400E'};line-height:1.5;">
-          <strong>Phân tích chi phí & khuyến nghị tối ưu:</strong><br>
-          ${srcSafe 
-            ? `• <strong>Khuyến nghị Phương án A (Điều chuyển nội bộ)</strong>: Kho ${WAREHOUSES.find(w => w.code === ctx.sourceWh)?.name || ctx.sourceWh} đủ thặng dư an toàn. Chi phí vận chuyển chỉ <strong>${fmtVND(totalFreight)}</strong> (so với giá mua NCC <strong>${fmtVND(supCost)}</strong>), hàng về nhanh trong <strong>${tDays} ngày</strong> (nhanh hơn đặt NCC ${Math.max(0, supLead - tDays)} ngày).`
-            : `• <strong>Khuyến nghị Phương án B (Yêu cầu Báo giá NCC)</strong>: Kho nội bộ đang không đủ tồn thặng dư an toàn (nếu xuất sẽ rơi dưới ROP). Đề xuất gửi RFQ tới NCC để bảo toàn nguồn cung mạng lưới.`
-          }
+        <div style="background:${ctx.recommendedPlan === 'A' ? '#ECFDF5' : '#FEF3C7'};border:1px solid ${ctx.recommendedPlan === 'A' ? '#A7F3D0' : '#FDE68A'};border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:${ctx.recommendedPlan === 'A' ? '#065F46' : '#92400E'};line-height:1.5;">
+          <strong>Phân tích chi phí & khuyến nghị tối ưu:</strong><br>${rec}
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <!-- OPTION A: INTERNAL TRANSFER -->
-          <div style="border:2px solid ${ctx.selectedPlan === 'A' ? 'var(--navy-accent)' : 'var(--border-color)'};border-radius:8px;padding:14px;background:#FFFFFF;position:relative;cursor:pointer;" onclick="selectModalPlan('A')">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="${srcSafe ? 'background:#DCFCE7;color:#15803D;border:1px solid #86EFAC;' : 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;'}font-size:11px;font-weight:700;padding:2px 8px;border-radius:9999px;">
-                ${srcSafe ? 'Khuyến nghị: Tối ưu chi phí & Tốc độ' : 'Cảnh báo kho xuất'}
-              </span>
-              <input type="radio" name="planSelect" value="A" ${ctx.selectedPlan === 'A' ? 'checked' : ''}>
-            </div>
-            <strong style="font-size:13.5px;color:var(--navy-main);">Phương án A: Điều chuyển nội bộ</strong>
-            <div class="form-row" style="margin-top:10px;margin-bottom:8px;">
-              <label class="form-lbl" style="font-size:11.5px;">Kho xuất nguồn:</label>
-              <select class="form-ctrl" id="modalSourceWh" style="font-size:12px;" onclick="event.stopPropagation()" onchange="onModalSourceWhChange(this.value)">
-                ${WAREHOUSES.filter(w => w.code !== ctx.toWh).map(w => {
-                  const sSt = Store.stock[w.code][ctx.skuCode];
-                  return `<option value="${w.code}" ${w.code === ctx.sourceWh ? 'selected' : ''}>${w.name} (Tồn: ${sSt.on_hand})</option>`;
-                }).join('')}
-              </select>
-            </div>
-            <div style="font-size:11.5px;color:var(--text-main);line-height:1.6;background:#F8FAFC;padding:8px;border-radius:4px;">
-              • Thời gian vận chuyển: <strong>${tDays} ngày</strong> (Đến ngày: ${fmtDateVN(addDays(Store.currentDate, tDays))})<br>
-              • Giá vốn hàng chuyển (COGS): <strong>${fmtVND(transferCogsVal)}</strong> (${fmtVND(ctx.sku.cogs)}/${ctx.sku.unit})<br>
-              • Chi phí cước vận chuyển tuyến: <strong>${fmtVND(totalFreight)}</strong> (${fmtVND(unitFreight)}/${ctx.sku.unit})<br>
-              • <strong>Tổng chi phí Phương án A (Giá vốn + Cước):</strong> <strong style="color:var(--navy-accent);font-size:12.5px;">${fmtVND(totalCostPlanA)}</strong><br>
-              • Tình trạng kho xuất: ${srcSafe ? '<span style="color:var(--status-green);font-weight:600;">Đủ hàng an toàn (Sau chuyển > ROP)</span>' : '<span style="color:var(--status-red);font-weight:600;">Thiếu hụt hoặc <= ROP</span>'}
-            </div>
-          </div>
+        <div style="font-weight:700;font-size:12.5px;color:var(--navy-main);margin-bottom:6px;">Phương án A: Điều chuyển nội bộ từ kho khác</div>
+        <table class="data-table" style="width:100%;font-size:11.5px;margin-bottom:12px;">
+          <thead><tr>
+            <th></th><th>Kho nguồn</th><th>Tình trạng</th><th style="text-align:right;">Tồn / ROP / MAX</th>
+            <th style="text-align:right;">Xuất an toàn tối đa</th><th style="text-align:right;">Thời gian</th>
+            <th style="text-align:right;">Cước/${unit}</th><th style="text-align:right;">Tổng cước</th><th>Đánh giá</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
 
-          <!-- OPTION B: RFQ ALL SUPPLIERS -->
-          <div style="border:2px solid ${ctx.selectedPlan === 'B' ? 'var(--navy-accent)' : 'var(--border-color)'};border-radius:8px;padding:14px;background:#FFFFFF;position:relative;cursor:pointer;" onclick="selectModalPlan('B')">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="${!srcSafe ? 'background:#DCFCE7;color:#15803D;border:1px solid #86EFAC;' : 'background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;'}font-size:11px;font-weight:700;padding:2px 8px;border-radius:9999px;">
-                ${!srcSafe ? 'Khuyến nghị: Chào giá cạnh tranh toàn bộ NCC' : 'Dự phòng: Gửi chào giá toàn bộ NCC'}
-              </span>
-              <input type="radio" name="planSelect" value="B" ${ctx.selectedPlan === 'B' ? 'checked' : ''}>
-            </div>
-            <strong style="font-size:13.5px;color:var(--navy-main);">Phương án B: Yêu cầu Báo giá Tất cả Nhà cung cấp (RFQ)</strong>
-            <div style="font-size:11.5px;color:var(--text-main);margin-top:8px;margin-bottom:6px;">
-              Gửi đồng thời tới <strong>toàn bộ ${Object.keys(SUPPLIERS).filter(s => !ctx.sku.cat || SUPPLIERS[s].cat === ctx.sku.cat).length} NCC</strong> trong ngành hàng để so sánh báo giá tốt nhất:
-            </div>
-            <div style="background:#F8FAFC;border:1px solid #E2E8F0;padding:6px 10px;border-radius:4px;font-size:11px;line-height:1.5;margin-bottom:8px;">
-              ${Object.keys(SUPPLIERS).filter(s => !ctx.sku.cat || SUPPLIERS[s].cat === ctx.sku.cat).map(s => `• <strong>${s}</strong>: ${SUPPLIERS[s].name} (Lead: ~${SUPPLIERS[s].leadDays} ngày)`).join('<br>')}
-            </div>
-            <div style="font-size:11.5px;color:var(--text-main);line-height:1.6;background:#F8FAFC;padding:8px;border-radius:4px;">
-              • Đơn giá vốn tham chiếu (COGS): <strong>${fmtVND(ctx.sku.cogs)}/${ctx.sku.unit}</strong><br>
-              • Dự toán ngân sách tạm tính: <strong>${fmtVND(supCost)}</strong> <em>(Chờ NCC phản hồi báo giá chính thức)</em><br>
-              • Trạng thái lệnh: <strong>Gửi RFQ đồng loạt cho toàn bộ NCC có mặt hàng</strong>
-            </div>
+        <div style="font-weight:700;font-size:12.5px;color:var(--navy-main);margin-bottom:6px;">Phương án B: Yêu cầu báo giá NCC (RFQ)</div>
+        <div style="border:2px solid ${rfqSel ? 'var(--navy-accent)' : 'var(--border-color)'};border-radius:8px;padding:10px 12px;background:#FFFFFF;cursor:pointer;display:flex;gap:10px;align-items:flex-start;" onclick="onModalPickOption('B')">
+          <input type="radio" name="planSelect" ${rfqSel ? 'checked' : ''}>
+          <div style="font-size:11.5px;line-height:1.6;">
+            Gửi RFQ đồng loạt tới <strong>${sups.length} NCC</strong> (${sups.join(', ')})${ctx.recommendedPlan === 'B' ? ' <span class="status-pill status-pill-ok" style="font-size:10px;">AI đề xuất</span>' : ''}<br>
+            • Lead time NCC dự kiến: <strong>~${ev.rfq.days} ngày</strong><br>
+            • Vốn mua mới tạm tính: <strong>${fmtVND(ev.rfq.purchaseValue)}</strong> (${fmtVND(ctx.sku.cogs)}/${unit}) + phí đặt hàng ${fmtVND(ev.rfq.orderCost)}<br>
+            • Rủi ro thiếu hàng trong thời gian chờ: <strong>${fmtVND(ev.rfq.shortCost)}</strong> (biên LN mất đi)
           </div>
         </div>
+        ${ctx.selectedPlan === 'A' && sel && !selSafe ? `<div style="margin-top:10px;color:var(--status-red);font-size:12px;font-weight:600;">Kho ${sel.name} chỉ xuất an toàn tối đa ${fmtNum(sel.transferable)} ${unit} (sau chuyển vẫn > ROP). Hãy giảm số lượng hoặc chọn kho khác.</div>` : ''}
       `;
+
+      const btn = document.getElementById('btnApproveModalDecision');
+      if (btn) {
+        btn.disabled = ctx.selectedPlan === 'A' && !selSafe;
+        btn.textContent = ctx.selectedPlan === 'A' ? 'Xử lý: Tạo lệnh điều chuyển' : 'Xử lý: Gửi RFQ tới NCC';
+      }
+    }
+
+    function onModalPickOption(plan, srcWh) {
+      if (!ActiveModalContext) return;
+      ActiveModalContext.selectedPlan = plan;
+      if (plan === 'A' && srcWh) ActiveModalContext.sourceWh = srcWh;
+      renderReplenishmentModalUI();
     }
 
     function selectModalPlan(planId) {
@@ -479,16 +471,12 @@
 
       if (ctx.selectedPlan === 'A') {
         // Thực thi Điều chuyển nội bộ
-        const srcSt = Store.stock[ctx.sourceWh][ctx.skuCode];
-        const srcP  = calcSKUParams(ctx.skuCode, ctx.sourceWh, Store.currentDate, Store.history);
-        const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
-
-        if (ctx.customQty > srcSt.on_hand) {
-          showToast(`Kho xuất ${ctx.sourceWh} chỉ có ${srcSt.on_hand} hàng vật lý!`, 'error');
-          return;
-        }
-        if ((srcEff - ctx.customQty) <= srcP.rop) {
-          showToast(`Lỗi an toàn: Kho xuất sẽ giảm dưới ROP (${srcEff - ctx.customQty} <= ${srcP.rop})!`, 'error');
+        // Cộng lại phần giữ chỗ của đề xuất AI hiện tại (nếu cùng kho nguồn) để không trừ 2 lần
+        const reserved = getReservedQtyOfProposal(pairKey);
+        const rel = (reserved && reserved.srcWh === ctx.sourceWh) ? reserved.qty : 0;
+        const safety = checkTransferSafety(ctx.skuCode, ctx.sourceWh, ctx.customQty, Store.currentDate, rel);
+        if (!safety.ok) {
+          showToast(safety.msg, 'error');
           return;
         }
 
@@ -513,6 +501,7 @@
         });
 
         delete Store.proposals[pairKey];
+        recalcCommittedStock();
         closeModal('transferModal');
         pushNotification('TRANSFER_PROPOSED', trId, `Đã tạo lệnh chuyển ${ctx.customQty} ${ctx.skuCode} từ ${ctx.sourceWh} sang ${ctx.toWh}. Đang chờ kho ${ctx.destWh.name} đồng ý tiếp nhận!`);
         logAction('PROPOSE_TRANSFER', trId, `Tạo đề xuất chuyển ${ctx.customQty} ${ctx.skuCode} (${ctx.sourceWh} -> ${ctx.toWh}), chờ kho nhận phê duyệt`, totalFreight);

@@ -57,8 +57,9 @@ print("Test 4: Event & seasonal banner dynamically syncs with simulation month (
 # LOW OVERSTOCK must not call approveProposal
 # OVERSTOCK opens openOverstockModal
 assert "openOverstockModal('${r.sku}', '${r.wh}')" in html
-# RFQ opens openRfqModal
-assert "openRfqModal('${r.sku}', '${r.wh}'" in html
+# Thiếu hàng (TRANSFER/RFQ) có nút So sánh + Xử lý đơn hàng; RFQ đi qua màn hình so sánh tích hợp
+assert "openTransferCompareModal('${r.sku}', '${r.wh}')" in html
+assert "Xử lý đơn hàng" in html
 print("Test 5: Modal trigger logic follows B4 specifications (PASSED)")
 
 # 7. Check 84-day simulation stability

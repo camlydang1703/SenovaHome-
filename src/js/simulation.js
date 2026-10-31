@@ -110,6 +110,8 @@
 
             // Tinh ton kha dung hien tai
             const eff = st.on_hand + st.in_transit - st.committed;
+            // Kho dang vuot MAX thi khong nhan them hang NCC dinh ky (chinh sach Min/Max)
+            if (eff > p.qmax) return;
 
             // Muc tieu ton = ROP + 45% F_next (trung tam dai An toan)
             const targetMid = p.rop + 0.45 * f_next;

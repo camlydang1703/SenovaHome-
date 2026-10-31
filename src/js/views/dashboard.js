@@ -92,7 +92,16 @@ function renderDashboardView() {
       key: 'cost',
       header: 'Chi phí vận chuyển',
       align: 'right',
-      render: r => r.freightCost > 0 ? `<strong style="color:var(--navy-accent);">${fmtVND(r.freightCost)}</strong>` : '—'
+      render: r => {
+        if (r.type === 'TRANSFER') {
+          const save = r.savingVsRfq > 0 ? `<div style="font-size:10.5px;color:var(--status-green);">Rẻ hơn RFQ ~${fmtVND(r.savingVsRfq)}</div>` : '';
+          return `<strong style="color:var(--navy-accent);">${fmtVND(r.freightCost)}</strong>${save}`;
+        }
+        if (r.type === 'RFQ') {
+          return `<span style="font-size:11px;color:var(--text-muted);">${r.noTransferReason || 'Mua mới từ NCC'}</span>`;
+        }
+        return r.freightCost > 0 ? `<strong style="color:var(--navy-accent);">${fmtVND(r.freightCost)}</strong>` : '—';
+      }
     },
     {
       key: 'status',
@@ -112,18 +121,19 @@ function renderDashboardView() {
       header: 'Thao tác',
       align: 'center',
       render: r => {
+        const compareBtn = `<button class="btn-table" onclick="openTransferCompareModal('${r.sku}', '${r.wh}')">So sánh</button>`;
         if (r.type === 'TRANSFER') {
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
-              <button class="btn-table" onclick="approveProposal('${r.key}')">Phê duyệt</button>
-
+              ${compareBtn}
+              <button class="btn-table" onclick="approveProposal('${r.key}')">Xử lý đơn hàng</button>
             </div>
           `;
         } else if (r.type === 'RFQ') {
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
-              <button class="btn-table" ${r.hasActiveRfq ? 'disabled' : ''} onclick="openRfqModal('${r.sku}', '${r.wh}', ${r.qty}, '${r.sup}')">Gửi RFQ</button>
-
+              ${compareBtn}
+              <button class="btn-table" ${r.hasActiveRfq ? 'disabled' : ''} onclick="approveProposal('${r.key}')">Xử lý đơn hàng</button>
             </div>
           `;
         } else {

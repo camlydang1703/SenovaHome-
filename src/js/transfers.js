@@ -64,6 +64,130 @@
       return baseLead;
     }
 
+
+    // ----------------------------------------------------------------------------
+    // REPLENISHMENT ENGINE: ĐIỀU CHUYỂN NỘI BỘ vs RFQ (độc lập DOM)
+    // ----------------------------------------------------------------------------
+    // Lượng hàng các lệnh "Chờ kho nhận đồng ý" sắp chuyển tới kho (chưa vào in_transit)
+    function getPendingInboundQty(whCode, skuCode) {
+      if (!Store.transfers) return 0;
+      return Store.transfers
+        .filter(t => t.status === 'Chờ kho nhận đồng ý' && t.dstWh === whCode && t.sku === skuCode)
+        .reduce((s, t) => s + t.qty, 0);
+    }
+
+    // Lượng xuất an toàn tối đa (kho xuất sau chuyển vẫn > ROP).
+    // releasedQty: phần giữ chỗ của chính lệnh đang xét (tránh trừ 2 lần).
+    function getTransferableQty(skuCode, srcWh, curDate, releasedQty) {
+      const rel = releasedQty || 0;
+      const st = Store.stock[srcWh][skuCode];
+      const p = calcSKUParams(skuCode, srcWh, curDate, Store.history);
+      const eff = st.on_hand + st.in_transit - st.committed + rel;
+      const physicalFree = st.on_hand - Math.max(0, st.committed - rel);
+      return Math.max(0, Math.min(physicalFree, Math.floor(eff - p.rop - 1)));
+    }
+
+    function checkTransferSafety(skuCode, srcWh, qty, curDate, releasedQty) {
+      const rel = releasedQty || 0;
+      const st = Store.stock[srcWh][skuCode];
+      const p = calcSKUParams(skuCode, srcWh, curDate, Store.history);
+      const effBefore = st.on_hand + st.in_transit - st.committed + rel;
+      const physicalFree = st.on_hand - Math.max(0, st.committed - rel);
+      const postEff = effBefore - qty;
+      if (qty <= 0) return { ok: false, msg: 'Số lượng chuyển phải > 0!', postEff, rop: p.rop };
+      if (qty > physicalFree) {
+        return { ok: false, msg: `Kho xuất ${srcWh} không đủ hàng vật lý khả dụng (${physicalFree} < ${qty})!`, postEff, rop: p.rop };
+      }
+      if (postEff <= p.rop) {
+        return { ok: false, msg: `Lỗi vi phạm an toàn: Kho xuất sẽ giảm dưới ROP (${postEff} <= ${p.rop})!`, postEff, rop: p.rop };
+      }
+      return { ok: true, msg: '', postEff, rop: p.rop };
+    }
+
+    function getReservedQtyOfProposal(proposalKey) {
+      const p = proposalKey && Store.proposals ? Store.proposals[proposalKey] : null;
+      if (p && p.type === 'TRANSFER' && p.status === 'Chờ duyệt' && p.srcWh) {
+        return { srcWh: p.srcWh, qty: p.qty };
+      }
+      return null;
+    }
+
+    // So sánh toàn bộ phương án bổ sung cho (SKU, kho thiếu):
+    //  - Điều chuyển từ từng kho khác: cước + rủi ro thiếu hàng trong thời gian chuyển − lợi ích giải phóng vốn kho dư
+    //  - RFQ NCC: phí đặt hàng + rủi ro thiếu hàng trong lead time NCC + chi phí giữ hàng dư ứ đọng trong mạng lưới
+    // Phương án điều chuyển chỉ hợp lệ khi kho xuất an toàn (> ROP) và cước <= 50% biên lợi nhuận gộp.
+    function evaluateReplenishmentOptions(skuCode, toWh, curDate, opts) {
+      const o = opts || {};
+      const sku = SKUS.find(s => s.code === skuCode);
+      const p = calcSKUParams(skuCode, toWh, curDate, Store.history);
+      const st = Store.stock[toWh][skuCode];
+      const eff = st.on_hand + st.in_transit - st.committed + getPendingInboundQty(toWh, skuCode);
+      const qNeed = Math.max(1, p.qmax - eff);
+      const reqQty = Math.max(1, o.qty || qNeed);
+      const reserved = getReservedQtyOfProposal(o.excludeKey || `${skuCode}-${toWh}`);
+
+      const margin = Math.max(0, sku.price - sku.cogs);
+      const dailyDemand = Math.max(0, (p.f_next || 0) / 7);
+      const dailyHolding = (PARAMS.holdingRate || 0.2) / 365;
+      const orderCost = PARAMS.orderCostFixed || 500000;
+      const shortageUnits = days => Math.max(0, Math.ceil(dailyDemand * days) - Math.max(0, eff));
+
+      const sources = WAREHOUSES.filter(w => w.code !== toWh).map(w => {
+        const sSt = Store.stock[w.code][skuCode];
+        const sP = calcSKUParams(skuCode, w.code, curDate, Store.history);
+        const rel = (reserved && reserved.srcWh === w.code) ? reserved.qty : 0;
+        const sEff = sSt.on_hand + sSt.in_transit - sSt.committed + rel;
+        const transferable = getTransferableQty(skuCode, w.code, curDate, rel);
+        const qty = Math.min(reqQty, transferable);
+        const days = getTransferDays(w.code, toWh, curDate);
+        const unitFreight = getUnitFreightRate(w.code, toWh, skuCode);
+        const freight = qty * unitFreight;
+        const excessOverMax = Math.max(0, sEff - sP.qmax);
+        const capitalBenefit = Math.round(Math.min(qty, excessOverMax) * sku.cogs * dailyHolding * 30);
+        const shortCost = shortageUnits(days) * margin;
+        const uncovered = Math.max(0, reqQty - qty);
+        const total = freight + shortCost - capitalBenefit;
+        let reason = '';
+        if (transferable < 1) reason = 'Không còn tồn dư an toàn (sẽ rơi dưới ROP)';
+        else if (freight > margin * qty * 0.5) reason = 'Cước vượt 50% biên lợi nhuận gộp';
+        return {
+          type: 'TRANSFER', srcWh: w.code, name: w.name,
+          on_hand: sSt.on_hand, eff: sEff, rop: sP.rop, qmax: sP.qmax,
+          status: getStatus(sEff, sP), transferable, qty, days, unitFreight, freight,
+          excessOverMax, capitalBenefit, shortCost, uncovered, total, eligible: !reason, reason,
+          releasedQty: rel
+        };
+      });
+
+      // RFQ: phải chi tiền mua mới (giá vốn NCC) + phí đặt hàng + rủi ro thiếu hàng trong lead time NCC
+      const supLead = Math.max(1, Math.round((p.L || ((sku.lead + (sku.delay || 0)) / 7)) * 7));
+      const rfqShort = shortageUnits(supLead) * margin;
+      const purchaseValue = reqQty * sku.cogs;
+      const rfqTotal = purchaseValue + orderCost + rfqShort;
+      const rfq = {
+        type: 'RFQ', sup: sku.sup, qty: reqQty, days: supLead,
+        purchaseValue, orderCost, shortCost: rfqShort,
+        total: rfqTotal, unitCost: rfqTotal / reqQty, eligible: true
+      };
+
+      // Chi phí bình quân để đáp ứng toàn bộ nhu cầu: phần thiếu còn lại tính theo đơn giá RFQ
+      sources.forEach(x => {
+        x.unitCost = x.qty > 0 ? x.total / x.qty : Infinity;
+        x.coverCost = x.total + x.uncovered * rfq.unitCost;
+      });
+      const eligibleSources = sources.filter(x => x.eligible).sort((a, b) => {
+        if (a.coverCost !== b.coverCost) return a.coverCost - b.coverCost;
+        return a.days - b.days;
+      });
+      const bestTransfer = eligibleSources[0] || null;
+      const best = (bestTransfer && bestTransfer.unitCost <= rfq.unitCost) ? bestTransfer : rfq;
+
+      return {
+        sku, toWh, params: p, eff, qNeed, reqQty, sources, rfq, bestTransfer, best,
+        savingVsRfq: best.type === 'TRANSFER' ? Math.max(0, Math.round(rfq.unitCost * best.qty - best.total)) : 0
+      };
+    }
+
     // UNIFIED EVENTS LIST
 
     function approveAllPendingTransfers() {
@@ -73,10 +197,9 @@
         const p = Store.proposals[k];
         if (p && p.type === 'TRANSFER' && p.status === 'Chờ duyệt') {
           const srcSt = Store.stock[p.srcWh][p.sku];
-          const srcP  = calcSKUParams(p.sku, p.srcWh, Store.currentDate, Store.history);
-          const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
+          const safety = checkTransferSafety(p.sku, p.srcWh, p.qty, Store.currentDate, p.qty);
 
-          if (p.qty <= srcSt.on_hand && (srcEff - p.qty) > srcP.rop) {
+          if (safety.ok) {
             srcSt.on_hand -= p.qty;
             srcSt.committed = Math.max(0, srcSt.committed - p.qty);
             Store.stock[p.dstWh][p.sku].in_transit += p.qty;
@@ -113,10 +236,10 @@
       if (!tr || tr.status !== 'Chờ kho nhận đồng ý') return;
 
       const srcSt = Store.stock[tr.srcWh][tr.sku];
-      const srcP  = calcSKUParams(tr.sku, tr.srcWh, Store.currentDate, Store.history);
-      const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
+      // Lệnh "Chờ kho nhận đồng ý" đã được giữ chỗ trong committed của kho xuất
+      const safety = checkTransferSafety(tr.sku, tr.srcWh, tr.qty, Store.currentDate, Math.min(tr.qty, srcSt.committed));
 
-      if (tr.qty > srcSt.on_hand || (srcEff - tr.qty) <= srcP.rop) {
+      if (!safety.ok) {
         showToast(`Kho xuất ${tr.srcWh} hiện không còn đủ tồn khả dụng an toàn!`, 'error');
         return;
       }

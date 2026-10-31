@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
 // Mock browser globals needed by modules
 global.window = {};
@@ -15,6 +16,7 @@ global.document = {
 
 // Load engine modules in order
 const modules = [
+  '../src/js/csv_data.js',
   '../src/js/config.js',
   '../src/js/rng.js',
   '../src/js/forecast.js',
@@ -27,7 +29,7 @@ const modules = [
 
 modules.forEach(m => {
   const code = fs.readFileSync(path.join(__dirname, m), 'utf8');
-  eval(code);
+  vm.runInThisContext(code, { filename: m });
 });
 
 console.log('--- SENNOVA IMS 84-DAY SIMULATION TEST ---');

@@ -61,145 +61,159 @@ function scanAndGenerateProposals(curDate) {
       });
 
       // 2. Quét tạo danh sách đề xuất
+      // 2a. Giải phóng giữ chỗ của các đề xuất điều chuyển cũ rồi sinh lại từ đầu,
+      //     để mỗi đề xuất mới luôn được tính trên tồn khả dụng thực tế (không trừ 2 lần).
+      Object.keys(Store.proposals).forEach(k => {
+        const old = Store.proposals[k];
+        if (old.type === 'TRANSFER' || old.type === 'OVERSTOCK') delete Store.proposals[k];
+      });
+      recalcCommittedStock();
+
+      const getDxId = pairKey => {
+        if (!Store.dxIds[pairKey]) Store.dxIds[pairKey] = padSeq('DX');
+        return Store.dxIds[pairKey];
+      };
+      const effOf = (skuCode, whCode) => {
+        const s = Store.stock[whCode][skuCode];
+        return s.on_hand + s.in_transit - s.committed + getPendingInboundQty(whCode, skuCode);
+      };
+      const plannedInbound = {}; // `${sku}-${wh}` -> qty từ các đề xuất vừa sinh trong lần quét này
+
+      // 2b. Kho THIẾU (LOW): xử lý kho nguy cấp nhất trước (eff/ROP thấp nhất)
+      const lowCells = [];
+      SKUS.forEach(sku => {
+        WAREHOUSES.forEach(wh => {
+          const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
+          const eff = effOf(sku.code, wh.code);
+          const pairKey = `${sku.code}-${wh.code}`;
+          getDxId(pairKey);
+          if (getStatus(eff, p) === 'LOW') {
+            lowCells.push({ sku, wh, p, ratio: eff / Math.max(1, p.rop) });
+          } else if (getStatus(eff, p) === 'OK') {
+            const cur = Store.proposals[pairKey];
+            if (cur && !cur.hasActiveRfq) delete Store.proposals[pairKey];
+          }
+        });
+      });
+      lowCells.sort((a, b) => a.ratio - b.ratio);
+
+      lowCells.forEach(({ sku, wh }) => {
+        const pairKey = `${sku.code}-${wh.code}`;
+        const dxId = getDxId(pairKey);
+        const activeRfq = Store.rfqs.find(r => r.sku === sku.code && r.wh === wh.code && r.status === 'Đã gửi NCC');
+        const ev = evaluateReplenishmentOptions(sku.code, wh.code, curDate);
+        const best = ev.best;
+
+        if (best.type === 'TRANSFER') {
+          Store.proposals[pairKey] = {
+            id: dxId,
+            date: curDate,
+            sku: sku.code,
+            wh: wh.code,
+            type: 'TRANSFER',
+            action: 'Điều chuyển nội bộ',
+            qty: best.qty,
+            srcWh: best.srcWh,
+            dstWh: wh.code,
+            leadDays: best.days,
+            arrivalDate: addDays(curDate, best.days),
+            freightCost: best.freight,
+            rfqCost: ev.rfq.total,
+            savingVsRfq: ev.savingVsRfq,
+            status: 'Chờ duyệt',
+            hasActiveRfq: false
+          };
+          // Giữ chỗ tại kho nguồn để các kho thiếu sau không đặt trùng
+          Store.stock[best.srcWh][sku.code].committed += best.qty;
+          plannedInbound[pairKey] = (plannedInbound[pairKey] || 0) + best.qty;
+        } else {
+          Store.proposals[pairKey] = {
+            id: dxId,
+            date: curDate,
+            sku: sku.code,
+            wh: wh.code,
+            type: 'RFQ',
+            action: 'Yêu cầu Báo giá (RFQ)',
+            qty: ev.qNeed,
+            sup: sku.sup,
+            leadDays: best.days,
+            arrivalDate: addDays(curDate, best.days),
+            freightCost: 0,
+            rfqCost: ev.rfq.total,
+            noTransferReason: ev.sources.every(s => s.transferable < 1)
+              ? 'Không kho nào còn tồn dư an toàn'
+              : (ev.bestTransfer ? 'Điều chuyển đắt hơn RFQ' : 'Cước điều chuyển vượt 50% biên LN'),
+            status: activeRfq ? 'Đang chờ NCC báo giá' : 'Chờ gửi RFQ',
+            hasActiveRfq: !!activeRfq,
+            rfqId: activeRfq ? activeRfq.id : null
+          };
+        }
+      });
+
+      // 2c. Kho DƯ (HIGH): san tải phần vượt MAX (đã trừ phần vừa cấp cho kho thiếu)
       SKUS.forEach(sku => {
         WAREHOUSES.forEach(wh => {
           const pairKey = `${sku.code}-${wh.code}`;
           const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
-          const st = Store.stock[wh.code][sku.code];
-          const eff = st.on_hand + st.in_transit - st.committed;
-          const status = getStatus(eff, p);
-
-          // Gán hoặc lấy DX ID cố định (Yêu cầu 0.3)
-          if (!Store.dxIds[pairKey]) {
-            Store.dxIds[pairKey] = padSeq('DX');
+          const eff = effOf(sku.code, wh.code);
+          if (getStatus(eff, p) !== 'HIGH') {
+            if (Store.proposals[pairKey] && Store.proposals[pairKey].type === 'OVERSTOCK') delete Store.proposals[pairKey];
+            return;
           }
-          const dxId = Store.dxIds[pairKey];
+          const excessQty = Math.min(eff - p.qmax, getTransferableQty(sku.code, wh.code, curDate));
+          if (excessQty < 1) return;
 
-          if (status === 'LOW') {
-            const needQty = Math.max(1, p.qmax - eff);
+          // Kho nhận: ưu tiên kho thiếu, sau đó kho còn chỗ dưới MAX, cước/đơn vị thấp + lead time ngắn
+          let best = null;
+          WAREHOUSES.forEach(otherWh => {
+            if (otherWh.code === wh.code) return;
+            const oP = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
+            const oEff = effOf(sku.code, otherWh.code) + (plannedInbound[`${sku.code}-${otherWh.code}`] || 0);
+            const room = Math.floor(oP.qmax - oEff);
+            if (room < 1) return;
+            const qty = Math.min(excessQty, room);
+            const unit = getUnitFreightRate(wh.code, otherWh.code, sku.code);
+            if (unit > (sku.price - sku.cogs) * 0.5) return; // cước phải <= 50% biên LN gộp
+            const tDays = getTransferDays(wh.code, otherWh.code, curDate);
+            const score = (oEff <= oP.rop ? 0 : 1e9) + unit * 10 + tDays * 1000 - qty;
+            if (!best || score < best.score) best = { dst: otherWh.code, qty, unit, tDays, score };
+          });
 
-            // Kiểm tra xem đã có RFQ nào đang chờ cho SKU và Kho này chưa
-            const activeRfq = Store.rfqs.find(r => r.sku === sku.code && r.wh === wh.code && r.status === 'Đã gửi NCC');
-
-            // Ưu tiên chuyển phần tồn dư an toàn (trên ROP) từ kho khác.
-            // Không bắt buộc đủ qty tới MAX — thiếu hàng một phần vẫn tạo lệnh nội bộ.
-            const gapToRop = Math.max(1, p.rop - eff + 1);
-            let donorWh = null;
-            let transferQty = 0;
-            let bestScore = -1;
-            WAREHOUSES.forEach(otherWh => {
-              if (otherWh.code === wh.code) return;
-              const otherSt = Store.stock[otherWh.code][sku.code];
-              const otherP  = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
-              const otherEff = otherSt.on_hand + otherSt.in_transit - otherSt.committed;
-              const transferable = Math.max(0, Math.min(
-                otherSt.on_hand,
-                Math.floor(otherEff - otherP.rop - 1)
-              ));
-              if (transferable < 1) return;
-              const qty = Math.min(needQty, transferable);
-              const tDays = getTransferDays(otherWh.code, wh.code) || 9;
-              const coversRop = qty >= Math.min(needQty, gapToRop);
-              const score = (coversRop ? 100000 : 0) + qty * 100 - tDays;
-              if (score > bestScore) {
-                bestScore = score;
-                donorWh = otherWh.code;
-                transferQty = qty;
-              }
-            });
-
-            if (donorWh && transferQty > 0) {
-              const transferDays = getTransferDays(donorWh, wh.code);
-              const unitRate = getUnitFreightRate(donorWh, wh.code, sku.code);
-              const freightCost = transferQty * unitRate;
-
-              Store.proposals[pairKey] = {
-                id: dxId,
-                date: curDate,
-                sku: sku.code,
-                wh: wh.code,
-                type: 'TRANSFER',
-                action: 'Điều chuyển nội bộ',
-                qty: transferQty,
-                srcWh: donorWh,
-                dstWh: wh.code,
-                leadDays: transferDays,
-                arrivalDate: addDays(curDate, transferDays),
-                freightCost: freightCost,
-                status: 'Chờ duyệt',
-                hasActiveRfq: false
-              };
-              // Giữ chỗ tồn tại kho nguồn để các kho thiếu sau không đặt trùng
-              if (Store.stock[donorWh] && Store.stock[donorWh][sku.code]) {
-                Store.stock[donorWh][sku.code].committed += transferQty;
-              }
-            } else {
-              // Không tìm được kho điều chuyển -> Đề xuất Yêu cầu Báo giá NCC
-              Store.proposals[pairKey] = {
-                id: dxId,
-                date: curDate,
-                sku: sku.code,
-                wh: wh.code,
-                type: 'RFQ',
-                action: 'Yêu cầu Báo giá (RFQ)',
-                qty: needQty,
-                sup: sku.sup,
-                leadDays: sku.lead,
-                arrivalDate: addDays(curDate, sku.lead),
-                freightCost: 0,
-                status: activeRfq ? 'Đang chờ NCC báo giá' : 'Chờ gửi RFQ',
-                hasActiveRfq: !!activeRfq,
-                rfqId: activeRfq ? activeRfq.id : null
-              };
-            }
-          } else if (status === 'HIGH') {
-            // Tồn dư vượt đỉnh MAX -> Đề xuất điều chuyển san tải sang kho cần hàng
-            const excessQty = st.on_hand - p.qmax;
-            // Ưu tiên chọn kho nhận:
-            // 1. Kho thiếu hụt (isLow = true)
-            // 2. Cùng thiếu hụt: ưu tiên chi phí vận chuyển thấp hơn + lead time nhanh hơn
-            let bestRecipient = null;
-            let bestRecipientScore = Infinity;
-            WAREHOUSES.forEach(otherWh => {
-              if (otherWh.code !== wh.code) {
-                const otherSt = Store.stock[otherWh.code][sku.code];
-                const otherP = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
-                const otherEff = otherSt.on_hand + otherSt.in_transit - otherSt.committed;
-                const isLow = otherEff <= otherP.rop;
-                const freight = calcFreightCost(wh.code, otherWh.code, sku.code, excessQty);
-                const tDays = getTransferDays(wh.code, otherWh.code);
-                const score = (isLow ? 0 : 100000000) + freight + (tDays * 10000);
-                if (score < bestRecipientScore) {
-                  bestRecipientScore = score;
-                  bestRecipient = otherWh.code;
-                }
-              }
-            });
-            const targetDstWh = bestRecipient || (wh.code === 'HCM' ? 'HN' : 'HCM');
-            const transferDays = getTransferDays(wh.code, targetDstWh);
-            const freightCost = calcFreightCost(wh.code, targetDstWh, sku.code, excessQty);
-
+          if (best) {
             Store.proposals[pairKey] = {
-              id: dxId,
+              id: getDxId(pairKey),
               date: curDate,
               sku: sku.code,
               wh: wh.code,
               srcWh: wh.code,
-              dstWh: targetDstWh,
+              dstWh: best.dst,
               type: 'OVERSTOCK',
               action: 'Điều chuyển san tải',
-              qty: excessQty,
-              leadDays: transferDays,
-              arrivalDate: addDays(curDate, transferDays),
-              freightCost: freightCost,
+              qty: best.qty,
+              leadDays: best.tDays,
+              arrivalDate: addDays(curDate, best.tDays),
+              freightCost: best.qty * best.unit,
               status: 'Cần giải phóng vốn',
               hasActiveRfq: false
             };
+            plannedInbound[`${sku.code}-${best.dst}`] = (plannedInbound[`${sku.code}-${best.dst}`] || 0) + best.qty;
           } else {
-            // Trạng thái OK: Nếu không còn nhu cầu thì xóa đề xuất cũ
-            if (Store.proposals[pairKey] && Store.proposals[pairKey].status !== 'Đang chờ NCC báo giá') {
-              delete Store.proposals[pairKey];
-            }
+            Store.proposals[pairKey] = {
+              id: getDxId(pairKey),
+              date: curDate,
+              sku: sku.code,
+              wh: wh.code,
+              srcWh: wh.code,
+              dstWh: null,
+              type: 'OVERSTOCK',
+              action: 'Xả tồn / Flash Sale (các kho đều đủ hàng)',
+              qty: excessQty,
+              leadDays: 0,
+              arrivalDate: curDate,
+              freightCost: 0,
+              status: 'Cần giải phóng vốn',
+              hasActiveRfq: false
+            };
           }
         });
       });
@@ -215,16 +229,10 @@ function scanAndGenerateProposals(curDate) {
 
       if (p.type === 'TRANSFER') {
         const srcSt = Store.stock[p.srcWh][p.sku];
-        const srcP  = calcSKUParams(p.sku, p.srcWh, Store.currentDate, Store.history);
-        const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
-
-        // Ràng buộc cứng điều chuyển
-        if (p.qty > srcSt.on_hand) {
-          showToast(`Kho xuất ${p.srcWh} không đủ hàng vật lý (${srcSt.on_hand} < ${p.qty})!`, 'error');
-          return;
-        }
-        if ((srcEff - p.qty) <= srcP.rop) {
-          showToast(`Lỗi vi phạm an toàn: Kho xuất sẽ giảm dưới ROP (${srcEff - p.qty} <= ${srcP.rop})!`, 'error');
+        // Ràng buộc cứng điều chuyển (cộng lại phần giữ chỗ của chính đề xuất này)
+        const safety = checkTransferSafety(p.sku, p.srcWh, p.qty, Store.currentDate, p.qty);
+        if (!safety.ok) {
+          showToast(safety.msg, 'error');
           return;
         }
 
@@ -259,8 +267,8 @@ function scanAndGenerateProposals(curDate) {
         renderAllViews();
 
       } else if (p.type === 'RFQ') {
-        // Mở RFQ Modal để người dùng xác nhận và gửi
-        openRfqModal(p.sku, p.wh, p.qty, p.sup);
+        // Mở màn hình so sánh tích hợp (điều chuyển vs RFQ) để xử lý đơn
+        openTransferCompareModal(p.sku, p.wh);
       } else if (p.type === 'OVERSTOCK') {
         openOverstockModal(p.sku, p.wh);
       }
