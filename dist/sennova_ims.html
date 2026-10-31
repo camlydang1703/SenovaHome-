@@ -2905,6 +2905,14 @@ function fmt(n) {
       const dayLost = Store.dailySales[dateStr] ? Store.dailySales[dateStr].lostSalesVal : 0;
       const dayRev  = Store.dailySales[dateStr] ? Store.dailySales[dateStr].revenue : 0;
 
+      // Accumulate per-warehouse demand for Service Level chart
+      const whDemand = {};
+      WAREHOUSES.forEach(wh => {
+        whDemand[wh.code] = SKUS.reduce((sum, sku) => {
+          return sum + (Store.currentWeekDemand[sku.code][wh.code] || 0);
+        }, 0);
+      });
+
       Store.daily[dateStr] = {
         date: dateStr,
         totalStock: totalStockVal,
@@ -2915,7 +2923,8 @@ function fmt(n) {
         lowCount: lowCount,
         okCount: okCount,
         highCount: highCount,
-        statusByWh: statusByWh
+        statusByWh: statusByWh,
+        whDemand: whDemand
       };
     }
 
@@ -4660,9 +4669,9 @@ function renderDashboardView() {
           ? Store.stock[wh.code][sku.code]
           : { on_hand: 0, in_transit: 0, committed: 0 };
         const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
-        const baseP = (Store.baseParams && Store.baseParams[sku.code] && Store.baseParams[sku.code][wh.code]) || p;
-        const driver = getDriverExplanation(sku.code, wh.code, Store.currentDate, p, baseP);
-        const ropRender = renderDualParam(baseP ? baseP.rop : p.rop, p.rop, 'ROP', driver);
+        // Matrix: chi hien MIN/MAX hien tai cua he thong (khong dual AI/baseline)
+        const ropRender = fmtNum(p.rop);
+        const qmaxRender = fmtNum(p.qmax);
         const eff = st.on_hand + st.in_transit - st.committed;
         const status = getStatus(eff, p);
 
@@ -4688,9 +4697,9 @@ function renderDashboardView() {
         const activeStyle = isCurrentActive ? 'border: 2px solid var(--navy-main);' : '';
 
         mHtml += `
-          <td class="${cellClass}" style="${activeStyle}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | ROP: ${p.rop} (Gốc: ${baseP ? baseP.rop : p.rop}) | MAX: ${p.qmax} | ${driver}">
+          <td class="${cellClass}" style="${activeStyle}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | MIN(ROP): ${p.rop} | MAX(Qmax): ${p.qmax}">
             <div class="cell-qty">${st.on_hand}${transitText}</div>
-            <div class="cell-sub">${tagText} (${ropRender})</div>
+            <div class="cell-sub">${tagText} (${ropRender} / ${qmaxRender})</div>
           </td>
         `;
       });
@@ -4834,8 +4843,8 @@ function renderInventoryView() {
       align: 'right',
       headerStyle: 'color:var(--status-red);',
       render: r => {
-        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
-        return renderDualParam(r.baseP ? r.baseP.rop : r.p.rop, r.p.rop, 'ROP', driver);
+        // Ma tran & bang ton kho: chi hien MIN hien tai cua he thong
+        return `<strong style="color:var(--status-red);">${fmtNum(r.p.rop)}</strong>`;
       }
     },
     {
@@ -4844,8 +4853,8 @@ function renderInventoryView() {
       align: 'right',
       headerStyle: 'color:var(--status-yellow);',
       render: r => {
-        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
-        return renderDualParam(r.baseP ? r.baseP.qmax : r.p.qmax, r.p.qmax, 'Qmax', driver);
+        // Ma tran & bang ton kho: chi hien MAX hien tai cua he thong
+        return `<strong style="color:var(--status-yellow);">${fmtNum(r.p.qmax)}</strong>`;
       }
     },
     {
@@ -5617,14 +5626,33 @@ function updateParamInteractiveCalc() {
       const ch = h - pad.t - pad.b;
       if (cw <= 10 || ch <= 10) return;
 
+      // Build cumulative demand per warehouse from Store.daily history
+      const dailyDates = Object.keys(Store.daily || {}).sort();
+      const whCumDemand = {};
+      WAREHOUSES.forEach(wh => { whCumDemand[wh.code] = 0; });
+      dailyDates.forEach(d => {
+        const snap = Store.daily[d];
+        if (snap && snap.whDemand) {
+          WAREHOUSES.forEach(wh => {
+            whCumDemand[wh.code] += snap.whDemand[wh.code] || 0;
+          });
+        }
+      });
+
       const whRates = WAREHOUSES.map(wh => {
         let totalLost = 0;
-        let totalSales = 0;
         SKUS.forEach(s => {
           totalLost += Store.lostSales[wh.code][s.code] || 0;
-          totalSales += Store.currentWeekDemand[s.code][wh.code] || (s.base * wh.w);
         });
-        const sl = Math.max(88, Math.min(99.4, 100 - (totalLost / (totalSales + totalLost + 1)) * 100));
+        // Use accumulated daily demand if available, else estimate
+        const totalSales = whCumDemand[wh.code] > 0
+          ? whCumDemand[wh.code]
+          : SKUS.reduce((acc, s) => acc + (Store.currentWeekDemand[s.code][wh.code] || (s.base * wh.w)), 0);
+        // Compute realistic SL from actual lost vs total demand; clamp 80-100
+        const rawSl = totalLost + totalSales > 0
+          ? 100 - (totalLost / (totalSales + totalLost)) * 100
+          : 99.0;
+        const sl = Math.max(80, Math.min(100, rawSl));
         return { wh: wh.code, rate: parseFloat(sl.toFixed(1)) };
       });
 
@@ -5645,30 +5673,14 @@ function updateParamInteractiveCalc() {
         ctx.fillText(val + '%', pad.l - 6, y + 3);
       }
 
-      // Benchmark Target Line (95%)
-      const targetY = pad.t + ch - ((95 - 80) / 20) * ch;
-      ctx.strokeStyle = '#EF4444';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(pad.l, targetY);
-      ctx.lineTo(pad.l + cw, targetY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.fillStyle = '#EF4444';
-      ctx.font = '10px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('Mục tiêu SLA: 95%', pad.l + cw - 95, targetY - 4);
-
-      // Bars for Warehouses
+      // Draw Bars FIRST (so benchmark line goes on top)
       const barCount = whRates.length;
       const barW = Math.min(42, (cw / barCount) * 0.55);
       const gap = cw / barCount;
 
       whRates.forEach((item, i) => {
         const x = pad.l + i * gap + (gap - barW) / 2;
-        const barH = ((item.rate - 80) / 20) * ch;
+        const barH = Math.max(0, ((item.rate - 80) / 20) * ch);
         const y = pad.t + ch - barH;
 
         ctx.fillStyle = item.rate >= 95 ? '#059669' : '#F59E0B';
@@ -5687,6 +5699,22 @@ function updateParamInteractiveCalc() {
         ctx.font = '10.5px Inter, sans-serif';
         ctx.fillText(item.wh, x + barW / 2, h - 8);
       });
+
+      // Benchmark Target Line (95%) — drawn AFTER bars so it shows on top
+      const targetY = pad.t + ch - ((95 - 80) / 20) * ch;
+      ctx.strokeStyle = '#EF4444';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, targetY);
+      ctx.lineTo(pad.l + cw, targetY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#EF4444';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Mục tiêu SLA: 95%', pad.l + 6, targetY - 5);
     }
 
     // Chart C: Diễn biến Giá trị Tồn kho & Vốn Ứ đọng

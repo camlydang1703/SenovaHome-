@@ -231,9 +231,9 @@ function renderDashboardView() {
           ? Store.stock[wh.code][sku.code]
           : { on_hand: 0, in_transit: 0, committed: 0 };
         const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
-        const baseP = (Store.baseParams && Store.baseParams[sku.code] && Store.baseParams[sku.code][wh.code]) || p;
-        const driver = getDriverExplanation(sku.code, wh.code, Store.currentDate, p, baseP);
-        const ropRender = renderDualParam(baseP ? baseP.rop : p.rop, p.rop, 'ROP', driver);
+        // Matrix: chi hien MIN/MAX hien tai cua he thong (khong dual AI/baseline)
+        const ropRender = fmtNum(p.rop);
+        const qmaxRender = fmtNum(p.qmax);
         const eff = st.on_hand + st.in_transit - st.committed;
         const status = getStatus(eff, p);
 
@@ -259,9 +259,9 @@ function renderDashboardView() {
         const activeStyle = isCurrentActive ? 'border: 2px solid var(--navy-main);' : '';
 
         mHtml += `
-          <td class="${cellClass}" style="${activeStyle}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | ROP: ${p.rop} (Gốc: ${baseP ? baseP.rop : p.rop}) | MAX: ${p.qmax} | ${driver}">
+          <td class="${cellClass}" style="${activeStyle}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | MIN(ROP): ${p.rop} | MAX(Qmax): ${p.qmax}">
             <div class="cell-qty">${st.on_hand}${transitText}</div>
-            <div class="cell-sub">${tagText} (${ropRender})</div>
+            <div class="cell-sub">${tagText} (${ropRender} / ${qmaxRender})</div>
           </td>
         `;
       });

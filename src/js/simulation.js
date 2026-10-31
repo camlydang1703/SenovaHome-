@@ -44,6 +44,14 @@
       const dayLost = Store.dailySales[dateStr] ? Store.dailySales[dateStr].lostSalesVal : 0;
       const dayRev  = Store.dailySales[dateStr] ? Store.dailySales[dateStr].revenue : 0;
 
+      // Accumulate per-warehouse demand for Service Level chart
+      const whDemand = {};
+      WAREHOUSES.forEach(wh => {
+        whDemand[wh.code] = SKUS.reduce((sum, sku) => {
+          return sum + (Store.currentWeekDemand[sku.code][wh.code] || 0);
+        }, 0);
+      });
+
       Store.daily[dateStr] = {
         date: dateStr,
         totalStock: totalStockVal,
@@ -54,7 +62,8 @@
         lowCount: lowCount,
         okCount: okCount,
         highCount: highCount,
-        statusByWh: statusByWh
+        statusByWh: statusByWh,
+        whDemand: whDemand
       };
     }
 

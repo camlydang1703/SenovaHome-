@@ -108,8 +108,8 @@ function renderInventoryView() {
       align: 'right',
       headerStyle: 'color:var(--status-red);',
       render: r => {
-        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
-        return renderDualParam(r.baseP ? r.baseP.rop : r.p.rop, r.p.rop, 'ROP', driver);
+        // Ma tran & bang ton kho: chi hien MIN hien tai cua he thong
+        return `<strong style="color:var(--status-red);">${fmtNum(r.p.rop)}</strong>`;
       }
     },
     {
@@ -118,8 +118,8 @@ function renderInventoryView() {
       align: 'right',
       headerStyle: 'color:var(--status-yellow);',
       render: r => {
-        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
-        return renderDualParam(r.baseP ? r.baseP.qmax : r.p.qmax, r.p.qmax, 'Qmax', driver);
+        // Ma tran & bang ton kho: chi hien MAX hien tai cua he thong
+        return `<strong style="color:var(--status-yellow);">${fmtNum(r.p.qmax)}</strong>`;
       }
     },
     {

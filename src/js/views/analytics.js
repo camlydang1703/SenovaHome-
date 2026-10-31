@@ -168,14 +168,33 @@
       const ch = h - pad.t - pad.b;
       if (cw <= 10 || ch <= 10) return;
 
+      // Build cumulative demand per warehouse from Store.daily history
+      const dailyDates = Object.keys(Store.daily || {}).sort();
+      const whCumDemand = {};
+      WAREHOUSES.forEach(wh => { whCumDemand[wh.code] = 0; });
+      dailyDates.forEach(d => {
+        const snap = Store.daily[d];
+        if (snap && snap.whDemand) {
+          WAREHOUSES.forEach(wh => {
+            whCumDemand[wh.code] += snap.whDemand[wh.code] || 0;
+          });
+        }
+      });
+
       const whRates = WAREHOUSES.map(wh => {
         let totalLost = 0;
-        let totalSales = 0;
         SKUS.forEach(s => {
           totalLost += Store.lostSales[wh.code][s.code] || 0;
-          totalSales += Store.currentWeekDemand[s.code][wh.code] || (s.base * wh.w);
         });
-        const sl = Math.max(88, Math.min(99.4, 100 - (totalLost / (totalSales + totalLost + 1)) * 100));
+        // Use accumulated daily demand if available, else estimate
+        const totalSales = whCumDemand[wh.code] > 0
+          ? whCumDemand[wh.code]
+          : SKUS.reduce((acc, s) => acc + (Store.currentWeekDemand[s.code][wh.code] || (s.base * wh.w)), 0);
+        // Compute realistic SL from actual lost vs total demand; clamp 80-100
+        const rawSl = totalLost + totalSales > 0
+          ? 100 - (totalLost / (totalSales + totalLost)) * 100
+          : 99.0;
+        const sl = Math.max(80, Math.min(100, rawSl));
         return { wh: wh.code, rate: parseFloat(sl.toFixed(1)) };
       });
 
@@ -196,30 +215,14 @@
         ctx.fillText(val + '%', pad.l - 6, y + 3);
       }
 
-      // Benchmark Target Line (95%)
-      const targetY = pad.t + ch - ((95 - 80) / 20) * ch;
-      ctx.strokeStyle = '#EF4444';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(pad.l, targetY);
-      ctx.lineTo(pad.l + cw, targetY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.fillStyle = '#EF4444';
-      ctx.font = '10px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('Mục tiêu SLA: 95%', pad.l + cw - 95, targetY - 4);
-
-      // Bars for Warehouses
+      // Draw Bars FIRST (so benchmark line goes on top)
       const barCount = whRates.length;
       const barW = Math.min(42, (cw / barCount) * 0.55);
       const gap = cw / barCount;
 
       whRates.forEach((item, i) => {
         const x = pad.l + i * gap + (gap - barW) / 2;
-        const barH = ((item.rate - 80) / 20) * ch;
+        const barH = Math.max(0, ((item.rate - 80) / 20) * ch);
         const y = pad.t + ch - barH;
 
         ctx.fillStyle = item.rate >= 95 ? '#059669' : '#F59E0B';
@@ -238,6 +241,22 @@
         ctx.font = '10.5px Inter, sans-serif';
         ctx.fillText(item.wh, x + barW / 2, h - 8);
       });
+
+      // Benchmark Target Line (95%) — drawn AFTER bars so it shows on top
+      const targetY = pad.t + ch - ((95 - 80) / 20) * ch;
+      ctx.strokeStyle = '#EF4444';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, targetY);
+      ctx.lineTo(pad.l + cw, targetY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#EF4444';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Mục tiêu SLA: 95%', pad.l + 6, targetY - 5);
     }
 
     // Chart C: Diễn biến Giá trị Tồn kho & Vốn Ứ đọng
