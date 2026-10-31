@@ -1,0 +1,12 @@
+product_code,product_name,category,unit,cogs,selling_price,supplier_code
+TLM-045,Ton lanh mau xanh 0.45mm,Ton thep,tam,150000,185000,SUP-SENVIET
+TLM-040,Ton lanh mau xanh 0.40mm,Ton thep,tam,134000,165000,SUP-SENVIET
+TMK-035,Ton ma kem 0.35mm,Ton thep,tam,106000,130000,SUP-SENVIET
+OTK-049,Ong thep ma kem phi 49,Ong thep,cay,270000,320000,SUP-VIETSTEEL
+OTK-060,Ong thep ma kem phi 60,Ong thep,cay,345000,410000,SUP-VIETSTEEL
+PPR-025,Ong PPR phi 25 dai 4m,Ong nhua,cay,36000,48000,SUP-LOTUS
+GCH-6060,Gach men 60x60,Gach ngoi,thung,205000,260000,SUP-DAIPHAT
+SON-18L,Son nuoc ngoai that 18L,Son & TBVS,thung,1150000,1450000,SUP-MINHAN
+GCH-DEC,Gach trang tri 30x60,Gach ngoi,thung,170000,220000,SUP-DAIPHAT
+TBV-LAV,Chau lavabo,Son & TBVS,bo,650000,850000,SUP-MINHAN
+TBV-VOI,Voi sen cao cap,Son & TBVS,bo,480000,650000,SUP-MINHAN

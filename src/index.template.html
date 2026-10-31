@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SenNova Home IMS - Hệ thống Quản trị & Điều phối Tồn kho Tự động</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+/* <!-- STYLES --> */
+  </style>
+</head>
+<body>
+<!-- APP HEADER -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        SenNova Home IMS
+        <span class="brand-tag">Min/Max Động ERP</span>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <span style="font-size:11.5px;font-weight:600;color:var(--text-muted);">Mô phỏng:</span>
+      <input type="date" id="simDatePicker" class="time-input" min="2026-08-01" max="2026-10-23" value="2026-08-01" onchange="onManualDateChange(this.value)">
+      <button class="btn-small" onclick="stepDays(1)" title="Tiến 1 ngày">Ngày sau ▶</button>
+
+      <div style="width:1px;height:18px;background:var(--border-color);margin:0 4px;"></div>
+
+      <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--navy-main);cursor:pointer;">
+        <input type="checkbox" id="autoPilotToggle" onchange="toggleAutoPilot(this.checked)">
+        Autopilot Chuyển kho
+      </label>
+    </div>
+
+    <div class="header-right">
+      <button class="btn-small" style="background:#475569;" onclick="openSelfTestModal()">
+        🧪 Tự kiểm tra hệ thống
+      </button>
+
+      <div style="position:relative;">
+        <button class="bell-btn" onclick="toggleBellPopover()" title="Thông báo hệ thống">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
+        </button>
+
+        <div class="bell-popover" id="bellPopover">
+          <div class="bell-popover-head">
+            <span id="bellHeadText">0 thông báo chưa đọc</span>
+            <button class="btn-small" style="height:22px;padding:0 6px;font-size:10.5px;background:#64748B;" onclick="markAllNotificationsRead()">Đọc tất cả</button>
+          </div>
+          <div class="bell-popover-list" id="bellList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- WAREHOUSE SELECTOR BAR (C1) -->
+  <div class="warehouse-bar" id="warehouseBar">
+    <div class="wh-bar-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+      <span>Chọn Kho làm việc:</span>
+    </div>
+    <div class="wh-segmented-control" id="whSegmentedControl">
+      <!-- 5 buttons dynamically rendered with dynamic MIN/MAX badges -->
+    </div>
+  </div>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="nav-tabs-bar">
+    <button class="tab-btn active" id="tab-dashboard" onclick="switchNavTab('dashboard')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      Dashboard Điều hành
+      <span class="tab-badge danger" id="badge-recs-count" style="display:none;">0</span>
+    </button>
+    <button class="tab-btn" id="tab-inventory" onclick="switchNavTab('inventory')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+      Ma trận Tồn kho
+    </button>
+    <button class="tab-btn" id="tab-transfers" onclick="switchNavTab('transfers')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+      Lệnh Chuyển kho
+      <span class="tab-badge" id="badge-trf-count" style="display:none;">0</span>
+    </button>
+    <button class="tab-btn" id="tab-rfq" onclick="switchNavTab('rfq')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      Yêu cầu Báo giá (RFQ)
+      <span class="tab-badge" id="badge-rfq-count" style="display:none;">0</span>
+    </button>
+    <button class="tab-btn" id="tab-movement" onclick="switchNavTab('movement')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+      Nhập / Xuất kho nhanh
+    </button>
+    <button class="tab-btn" id="tab-params" onclick="switchNavTab('params')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Tham số & Công thức AI
+    </button>
+    <button class="tab-btn" id="tab-analytics" onclick="switchNavTab('analytics')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+      Báo cáo Phân tích
+    </button>
+  </nav>
+
+  <!-- MAIN BODY -->
+  <main class="main-body">
+
+    <!-- VIEW 1: DASHBOARD -->
+    <section class="view-panel active" id="view-dashboard">
+      <!-- EVENT BANNER -->
+      <div class="card-panel" style="border-left:4px solid var(--navy-main);margin-bottom:16px;">
+        <div style="padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="eventBadgeWrap"><span class="dot-pill neutral">Điều kiện chuẩn</span></div>
+            <div>
+              <strong id="eventTitle" style="color:var(--navy-main);font-size:13px;">Tháng 8: Chỉ số mùa vụ Sm = 0.85</strong>
+              <div id="eventDesc" style="font-size:11.5px;color:var(--text-muted);">Chuỗi cung ứng vận hành bình thường.</div>
+            </div>
+          </div>
+          <div id="eventImpact" style="font-size:11.5px;font-weight:600;color:var(--text-sub);">Hệ số cầu: 1.00 | Không trễ chuyến</div>
+        </div>
+      </div>
+
+      <!-- KPI METRICS -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-title">Ô Kho Dưới MIN (ROP)</div>
+          <div class="kpi-val" id="kpi-under-min" style="color:var(--status-red);">0</div>
+          <div class="kpi-sub">Nguy cơ thiếu hàng cục bộ</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Ô Kho Vượt MAX (Qmax)</div>
+          <div class="kpi-val" id="kpi-over-max" style="color:var(--status-yellow);">0</div>
+          <div class="kpi-sub">Tồn kho ứ đọng trên trần</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Vốn Ứ Đọng Vượt MAX</div>
+          <div class="kpi-val" id="kpi-trapped-cap">0 tr đ</div>
+          <div class="kpi-sub">Giá trị vốn cần giải phóng</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Tiết Kiệm Chi Phí Nhờ Chuyển Kho</div>
+          <div class="kpi-val" id="kpi-cost-diff" style="color:var(--status-green);">0 tr đ</div>
+          <div class="kpi-sub">So với phương án mua gấp</div>
+        </div>
+      </div>
+
+      <!-- PROPOSALS QUEUE -->
+      <div class="card-panel">
+        <div class="card-head">
+          <div>
+            <span class="card-title">Hàng Đợi Đề Xuất Điều Phối Tồn Kho Tức Thời</span>
+            <span style="font-size:11.5px;color:var(--text-muted);margin-left:8px;" id="recQueueSub">Sắp xếp theo số ngày còn bán tăng dần</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-small" id="btnApproveAll" onclick="approveAllPendingTransfers()">
+              ✓ Duyệt tất cả lệnh chuyển kho
+            </button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl" id="proposalTable">
+            <thead id="proposalThead"></thead>
+            <tbody id="proposalTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- OUTBOUND PROPOSALS (C2) -->
+        <div class="card-head" style="margin-top:20px;border-top:1px solid var(--border-subtle);padding-top:16px;">
+          <div class="card-title" id="outboundQueueTitle">
+            Hàng đợi Điều chuyển Xuất đi từ Kho
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);">
+            Các đề xuất điều chuyển lấy hàng từ kho này để chi viện cho kho khác trong mạng lưới
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl" id="outboundTable">
+            <thead id="outboundThead"></thead>
+            <tbody id="outboundTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 5x11 INVENTORY MATRIX -->
+      <div class="card-panel">
+        <div class="card-head">
+          <span class="card-title">Ma trận Tồn kho Điều hành (5 Kho Vùng x 11 SKU)</span>
+          <div style="display:flex;gap:12px;font-size:11.5px;color:var(--text-muted);">
+            <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--status-red-bg);border:1px solid #FECACA;border-radius:2px;"></span> Dưới MIN</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#F8FAFC;border:1px solid var(--border-subtle);border-radius:2px;"></span> Bình thường</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--status-yellow-bg);border:1px solid #FDE68A;border-radius:2px;"></span> Vượt MAX</span>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th style="min-width:180px;">Sản phẩm (SKU)</th>
+                <th style="text-align:center;">Kho HCM</th>
+                <th style="text-align:center;">Kho Bình Dương</th>
+                <th style="text-align:center;">Kho Đà Nẵng</th>
+                <th style="text-align:center;">Kho Đà Nẵng City</th>
+                <th style="text-align:center;">Kho Hà Nội</th>
+              </tr>
+            </thead>
+            <tbody id="matrixTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SYSTEM LOG ACCORDION -->
+      <div class="card-panel" style="margin-bottom:0;">
+        <div class="card-head" style="cursor:pointer;" onclick="toggleLogAccordion()">
+          <span class="card-title">Nhật ký Hoạt động Hệ thống (System Event Log)</span>
+          <span style="font-size:11.5px;color:var(--text-muted);" id="logToggleText">Mở nhật ký ▾</span>
+        </div>
+        <div class="log-accordion-body" id="systemLogList">
+          <!-- Logs prepended here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: INVENTORY DETAIL -->
+    <section class="view-panel" id="view-inventory">
+      <div class="card-panel">
+        <div class="card-head">
+          <div class="card-title">Chi tiết Quản trị Tồn kho Toàn Mạng lưới</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select class="time-input" id="invWhFilter" onchange="renderInventoryView()">
+              <option value="ALL">Tất cả kho (5 kho)</option>
+              <option value="HCM">Kho HCM</option>
+              <option value="BD">Kho Bình Dương</option>
+              <option value="DN">Kho Đà Nẵng</option>
+              <option value="DN_CITY">Kho Đà Nẵng City</option>
+              <option value="HN">Kho Hà Nội</option>
+            </select>
+            <select class="time-input" id="invCatFilter" onchange="renderInventoryView()">
+              <option value="ALL">Tất cả ngành hàng</option>
+              <option value="Tôn thép">Tôn thép</option>
+              <option value="Ống thép">Ống thép</option>
+              <option value="Ống nhựa">Ống nhựa</option>
+              <option value="Gạch ngói">Gạch ngói</option>
+              <option value="Sơn & TBVS">Sơn & TBVS</option>
+            </select>
+            <select class="time-input" id="invStatusFilter" onchange="renderInventoryView()">
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="LOW">Dưới MIN (Cần bổ sung)</option>
+              <option value="OK">Bình thường (An toàn)</option>
+              <option value="HIGH">Vượt MAX (Tồn dư)</option>
+            </select>
+            <input type="text" id="invSearch" class="time-input" placeholder="Tìm theo mã SKU..." oninput="renderInventoryView()">
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl" id="inventoryTable">
+            <thead id="inventoryThead"></thead>
+            <tbody id="inventoryTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: TRANSFERS -->
+    <section class="view-panel" id="view-transfers">
+      <div class="card-panel">
+        <div class="card-head">
+          <div>
+            <span class="card-title">Sổ Lệnh Chuyển kho Nội bộ (Internal Transfers)</span>
+            <span style="font-size:11.5px;color:var(--text-muted);margin-left:8px;">Các lệnh điều phối nội bộ giữa các kho vùng</span>
+          </div>
+          <button class="btn-small" onclick="openManualTransferModal()">
+            + Tạo lệnh chuyển thủ công
+          </button>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl" id="transferTable">
+            <thead id="transferThead">
+              <tr>
+                <th>Mã lệnh</th>
+                <th>Ngày tạo</th>
+                <th>SKU</th>
+                <th>Từ kho</th>
+                <th>Đến kho</th>
+                <th class="num-col">Số lượng</th>
+                <th class="num-col">Cước vận chuyển</th>
+                <th>Ngày đến dự kiến</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="transferTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: RFQ -->
+    <section class="view-panel" id="view-rfq">
+      <div class="card-panel">
+        <div class="card-head">
+          <div>
+            <span class="card-title">Sổ Yêu cầu Báo giá (RFQ) Nhà cung cấp & Đại lý</span>
+            <span style="font-size:11.5px;color:var(--text-muted);margin-left:8px;">Quản lý chào giá từ các đối tác trước khi mua</span>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl" id="rfqTable">
+            <thead id="rfqThead">
+              <tr>
+                <th>Mã chứng từ</th>
+                <th>Ngày gửi</th>
+                <th>SKU</th>
+                <th>Kho nhận</th>
+                <th>Nhà cung cấp đã gửi</th>
+                <th class="num-col">Số lượng yêu cầu</th>
+                <th class="num-col">Đơn giá ước tính</th>
+                <th>Ngày hết hạn</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="rfqTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: FAST MOVEMENT -->
+    <section class="view-panel" id="view-movement">
+      <div class="card-panel" style="max-width:640px;margin:0 auto;">
+        <div class="card-head">
+          <span class="card-title">Nhập / Xuất kho nhanh theo Ngày</span>
+        </div>
+        <div style="padding:18px 20px;">
+          <div class="form-row">
+            <label class="form-lbl">Kho hàng:</label>
+            <select class="form-ctrl" id="mvWh" onchange="updateMovementStockDisplay()">
+              <option value="HCM">Kho HCM</option>
+              <option value="BD">Kho Bình Dương</option>
+              <option value="DN">Kho Đà Nẵng</option>
+              <option value="DN_CITY">Kho Đà Nẵng City</option>
+              <option value="HN">Kho Hà Nội</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Sản phẩm (SKU):</label>
+            <select class="form-ctrl" id="mvSku" onchange="updateMovementStockDisplay()">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Loại thao tác:</label>
+            <select class="form-ctrl" id="mvType">
+              <option value="IN">Nhập kho nhanh (+ On-hand)</option>
+              <option value="OUT">Xuất kho nhanh (- On-hand)</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Số lượng:</label>
+            <input type="number" class="form-ctrl" id="mvQty" min="1" placeholder="Nhập số lượng thực tế...">
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Ghi chú nghiệp vụ:</label>
+            <input type="text" class="form-ctrl" id="mvNote" placeholder="Lý do xuất bán lẻ, kiểm kê bù trừ...">
+          </div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin:10px 0 16px 140px;" id="mvStockHelp">
+            Tồn vật lý hiện tại: 0
+          </div>
+          <div style="display:flex;justify-content:flex-end;">
+            <button class="btn-large" onclick="submitQuickMovement()">Xác nhận Nhập / Xuất kho</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 6: PARAMS & AI FORMULA -->
+    <section class="view-panel" id="view-params">
+      <!-- 5 FORMULA CARDS -->
+      <div class="formula-cards-grid">
+        <div class="formula-card">
+          <div class="formula-card-title">📊 1. Nhu cầu nền</div>
+          <div class="formula-card-desc">Trung bình 4 tuần gần nhất (sau khi đã khử mùa vụ D / Sm) để loại trừ sai số thời điểm.</div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-card-title">🔮 2. Dự báo tuần tới</div>
+          <div class="formula-card-desc"><code>F = D_SMA4 × Sm</code><br>Nhu cầu nền nhân hệ số mùa vụ tháng hiện tại.</div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-card-title">⏱️ 3. Nhu cầu chờ hàng</div>
+          <div class="formula-card-desc"><code>D_lead = F × Lead_time</code><br>Lượng tiêu thụ dự kiến trong toàn bộ thời gian chờ hàng về.</div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-card-title">🛡️ 4. Tồn an toàn (SS)</div>
+          <div class="formula-card-desc"><code>SS = 1.65 × σ × √L</code><br>Đảm bảo mức phục vụ Service Level đạt 95% chống biến động cầu.</div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-card-title">📏 5. MIN và MAX</div>
+          <div class="formula-card-desc"><code>MIN (ROP) = D_lead + SS</code><br><code>MAX (Qmax) = MIN + F</code> (chu kỳ bổ sung 1 tuần).</div>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE CALCULATION BOX -->
+      <div class="interactive-calc-box">
+        <div class="interactive-calc-head">
+          <strong style="color:var(--navy-main);font-size:13px;">Minh họa Tính toán Từng bước bằng Số liệu Thực tế Ngày Mô phỏng</strong>
+          <div style="display:flex;gap:8px;">
+            <select class="time-input" id="paramSkuSelect" onchange="updateParamInteractiveCalc()">
+              <!-- SKU list -->
+            </select>
+            <select class="time-input" id="paramWhSelect" onchange="updateParamInteractiveCalc()">
+              <option value="HCM">Kho HCM</option>
+              <option value="BD">Kho Bình Dương</option>
+              <option value="DN">Kho Đà Nẵng</option>
+              <option value="DN_CITY">Kho Đà Nẵng City</option>
+              <option value="HN">Kho Hà Nội</option>
+            </select>
+          </div>
+        </div>
+        <div id="paramStepCalc" style="font-size:12px;line-height:1.7;color:var(--text-main);background:#FFFFFF;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+          <!-- Dynamic computation output -->
+        </div>
+      </div>
+
+      <!-- PARAMETERS TABLE -->
+      <div class="card-panel">
+        <div class="card-head">
+          <div class="card-title">Bảng Tham số Tính toán Động Toàn Chuỗi (55 Ô SKU x Kho)</div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl" id="paramsTable">
+            <thead id="paramsThead">
+              <tr>
+                <th>Mã SKU</th>
+                <th>Tên sản phẩm</th>
+                <th class="num-col">Nhu cầu tuần nền</th>
+                <th class="num-col">Tỷ trọng vùng</th>
+                <th class="num-col">D_SMA4 (sau khử mùa)</th>
+                <th class="num-col">Hệ số Sm</th>
+                <th class="num-col">Dự báo tuần tới (F)</th>
+                <th class="num-col">Lead time (tuần)</th>
+                <th class="num-col">Sigma sai số</th>
+                <th class="num-col">Tồn an toàn (SS)</th>
+                <th class="num-col" style="color:var(--status-red);">Mức đặt lại MIN (ROP)</th>
+                <th class="num-col" style="color:var(--status-yellow);">Tồn tối đa MAX (Qmax)</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="paramsTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:12px 16px;background:#FAFAF8;border-top:1px solid var(--border-color);font-size:11.5px;color:var(--text-muted);line-height:1.6;">
+          <strong>Ghi chú kỹ thuật:</strong><br>
+          • Tổng hệ số mùa vụ SI trung bình = 0.979 (giữ nguyên theo báo cáo gốc, không chuẩn hóa lại).<br>
+          • Dữ liệu là mô phỏng có can thiệp. Hàng về định kỳ và bước cân bằng 3 nhóm được áp dụng để đảm bảo tính đa dạng. Hạt giống tất định (FNV-1a hash) đảm bảo tái hiện được.
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 7: ANALYTICS -->
+    <section class="view-panel" id="view-analytics">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <strong style="font-size:14px;color:var(--navy-main);">Báo cáo Đánh giá Hiệu năng & Xu hướng Tồn kho</strong>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Xem theo SKU:</span>
+          <select class="time-input" id="chartSkuFilter" onchange="renderAnalyticsView()">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <!-- CHART A -->
+        <div class="card-panel" style="margin-bottom:0;">
+          <div class="card-head">
+            <span class="card-title">Biểu đồ A: Dự báo Nhu cầu vs Tiêu thụ Thực tế theo Tuần</span>
+          </div>
+          <div style="padding:16px;position:relative;">
+            <canvas id="chartDemandForecast" style="width:100%;height:220px;display:block;"></canvas>
+            <div id="tooltipChartA" style="display:none;position:absolute;background:rgba(15,23,42,0.9);color:white;padding:6px 10px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;"></div>
+          </div>
+        </div>
+
+        <!-- CHART B -->
+        <div class="card-panel" style="margin-bottom:0;">
+          <div class="card-head">
+            <span class="card-title">Biểu đồ B: Tỷ lệ Đáp ứng Dịch vụ (Service Level %) theo Kho</span>
+          </div>
+          <div style="padding:16px;position:relative;">
+            <canvas id="chartServiceLevel" style="width:100%;height:220px;display:block;"></canvas>
+            <div id="tooltipChartB" style="display:none;position:absolute;background:rgba(15,23,42,0.9);color:white;padding:6px 10px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHART C -->
+      <div class="card-panel">
+        <div class="card-head">
+          <span class="card-title">Biểu đồ C: Diễn biến Tổng Giá trị Tồn kho & Vốn Ứ đọng Vượt MAX (Mô phỏng Tích lũy)</span>
+        </div>
+        <div style="padding:16px;position:relative;">
+          <canvas id="chartStockTrajectory" style="width:100%;height:240px;display:block;"></canvas>
+          <div id="tooltipChartC" style="display:none;position:absolute;background:rgba(15,23,42,0.9);color:white;padding:6px 10px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================================ -->
+  <!-- MODALS -->
+  <!-- ============================================================================ -->
+
+  <!-- 1. INTEGRATED REPLENISHMENT MODAL -->
+  <div class="modal-overlay" id="transferModal">
+    <div class="modal-box extra-wide">
+      <div class="modal-head">
+        <span id="transferModalTitle">Màn hình Điều hành & Xử lý Thiếu hàng Tích hợp</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('transferModal')">✕</button>
+      </div>
+      <div class="modal-body" id="transferModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('transferModal')">Đóng</button>
+        <button class="btn-large" id="btnApproveModalDecision" onclick="confirmModalDecision()">Xác nhận Phê duyệt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MANUAL TRANSFER MODAL -->
+  <div class="modal-overlay" id="manualTransferModal">
+    <div class="modal-box" style="max-width:540px;">
+      <div class="modal-head">
+        <span>Tạo Lệnh Chuyển kho Nội bộ Thủ công</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('manualTransferModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label class="form-lbl">Sản phẩm (SKU):</label>
+          <select class="form-ctrl" id="trfSku" onchange="validateManualTransfer()">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-lbl">Kho xuất (Nguồn):</label>
+          <select class="form-ctrl" id="trfFromWh" onchange="validateManualTransfer()">
+            <option value="HCM">Kho HCM</option>
+            <option value="BD" selected>Kho Bình Dương</option>
+            <option value="DN">Kho Đà Nẵng</option>
+            <option value="DN_CITY">Kho Đà Nẵng City</option>
+            <option value="HN">Kho Hà Nội</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-lbl">Kho nhận (Đích):</label>
+          <select class="form-ctrl" id="trfToWh" onchange="validateManualTransfer()">
+            <option value="HCM" selected>Kho HCM</option>
+            <option value="BD">Kho Bình Dương</option>
+            <option value="DN">Kho Đà Nẵng</option>
+            <option value="DN_CITY">Kho Đà Nẵng City</option>
+            <option value="HN">Kho Hà Nội</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-lbl">Số lượng chuyển:</label>
+          <input type="number" class="form-ctrl" id="trfQty" min="1" value="10" oninput="validateManualTransfer()">
+        </div>
+        <div class="form-row">
+          <label class="form-lbl">Ngày xuất lệnh:</label>
+          <input type="text" class="form-ctrl" id="trfDate" readonly style="background:#F1F5F9;">
+        </div>
+        <div id="manualTransferFeedback" style="font-size:11.5px;padding:8px 10px;border-radius:4px;margin-top:10px;">
+          <!-- Real-time hard constraint feedback -->
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('manualTransferModal')">Hủy bỏ</button>
+        <button class="btn-large" id="btnConfirmManualTransfer" onclick="executeManualTransfer()">Tạo Lệnh Chuyển</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. RFQ MODAL -->
+  <div class="modal-overlay" id="rfqModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <span id="rfqModalTitle">Yêu cầu Báo giá Nhà cung cấp (RFQ)</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('rfqModal')">✕</button>
+      </div>
+      <div class="modal-body" id="rfqModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('rfqModal')">Đóng</button>
+        <button class="btn-large" id="btnSendRfq" onclick="sendRfqOrder()">Gửi RFQ tới NCC đã chọn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. OVERSTOCK RESOLUTION MODAL (2A / 2B) -->
+  <div class="modal-overlay" id="overstockModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <span id="overstockModalTitle">Chiến lược Thoát hàng Tồn dư Vượt MAX (2A & 2B)</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('overstockModal')">✕</button>
+      </div>
+      <div class="modal-body" id="overstockModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('overstockModal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. SELF-TEST MODAL -->
+  <div class="modal-overlay" id="selfTestModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <span>Bảng Tự kiểm tra & Nghiệm thu Hệ thống (12 Tiêu chí)</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('selfTestModal')">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px;">
+        <div id="selfTestSummary" style="margin-bottom:12px;font-size:13px;font-weight:700;"></div>
+        <div id="selfTestResults">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large" onclick="closeModal('selfTestModal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SKU DETAIL -->
+  <div class="modal-overlay" id="skuDetailModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <span id="skuDetailTitle">Chi tiết SKU</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('skuDetailModal')">✕</button>
+      </div>
+      <div class="modal-body" id="skuDetailBody" style="padding:16px 20px;"></div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('skuDetailModal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST TRAY -->
+  <div id="toastTray"></div>
+  <script>
+/* <!-- SCRIPTS --> */
+  </script>
+</body>
+</html>
