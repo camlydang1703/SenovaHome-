@@ -37,9 +37,11 @@
           <div class="form-row">
             <label class="form-lbl">Nhà cung cấp gửi yêu cầu:</label>
             <select class="form-ctrl" id="rfqModalSup">
-              ${Object.keys(SUPPLIERS).map(s =>
-                `<option value="${s}" ${s === sup ? 'selected' : ''}>${s} - ${SUPPLIERS[s].name}</option>`
-              ).join('')}
+              ${Object.keys(SUPPLIERS)
+                .filter(s => !sku.cat || SUPPLIERS[s].cat === sku.cat)
+                .map(s =>
+                  `<option value="${s}" ${s === sup ? 'selected' : ''}>${s} - ${SUPPLIERS[s].name} (${SUPPLIERS[s].cat})</option>`
+                ).join('')}
             </select>
           </div>
           <div class="form-row">

@@ -161,8 +161,8 @@
           </div>
         </div>
         <div class="table-container">
-          <table class="data-tbl">
-            <thead>
+          <table class="data-tbl" id="proposalTable">
+            <thead id="proposalThead">
               <tr>
                 <th>Mã ĐX</th>
                 <th>Phương thức</th>
@@ -175,6 +175,7 @@
                 <th>Thao tác</th>
               </tr>
             </thead>
+            <thead id="proposalThead"></thead>
             <tbody id="proposalTbody">
               <!-- Rendered dynamically -->
             </tbody>
@@ -255,8 +256,8 @@
           </div>
         </div>
         <div class="table-container">
-          <table class="data-tbl">
-            <thead>
+          <table class="data-tbl" id="inventoryTable">
+            <thead id="inventoryThead">
               <tr>
                 <th>Mã SKU</th>
                 <th>Tên sản phẩm</th>
@@ -292,8 +293,8 @@
           </button>
         </div>
         <div class="table-container">
-          <table class="data-tbl">
-            <thead>
+          <table class="data-tbl" id="transferTable">
+            <thead id="transferThead">
               <tr>
                 <th>Mã lệnh</th>
                 <th>Ngày tạo</th>
@@ -325,10 +326,10 @@
           </div>
         </div>
         <div class="table-container">
-          <table class="data-tbl">
-            <thead>
+          <table class="data-tbl" id="rfqTable">
+            <thead id="rfqThead">
               <tr>
-                <th>Mã RFQ</th>
+                <th>Mã chứng từ</th>
                 <th>Ngày gửi</th>
                 <th>SKU</th>
                 <th>Kho nhận</th>
@@ -450,11 +451,11 @@
           <div class="card-title">Bảng Tham số Tính toán Động Toàn Chuỗi (55 Ô SKU x Kho)</div>
         </div>
         <div class="table-container">
-          <table class="data-tbl">
-            <thead>
+          <table class="data-tbl" id="paramsTable">
+            <thead id="paramsThead">
               <tr>
-                <th>SKU</th>
-                <th>Kho</th>
+                <th>Mã SKU</th>
+                <th>Tên sản phẩm</th>
                 <th class="num-col">Nhu cầu tuần nền</th>
                 <th class="num-col">Tỷ trọng vùng</th>
                 <th class="num-col">D_SMA4 (sau khử mùa)</th>

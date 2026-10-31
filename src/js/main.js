@@ -87,13 +87,26 @@
       const evtDesc  = document.getElementById('eventDesc');
       const evtImpact = document.getElementById('eventImpact');
 
-      if (activeEvt && evtBadge) {
-        evtBadge.style.display = 'block';
-        if (evtTitle) evtTitle.textContent = `${activeEvt.icon} Sự kiện đang diễn ra: ${activeEvt.title}`;
+      const curM = getMonthFromDate(Store.currentDate);
+      const curSm = SI[curM] || 1.0;
+
+      if (activeEvt) {
+        if (evtBadge) {
+          evtBadge.style.display = 'block';
+          evtBadge.innerHTML = `<span class="dot-pill low">${activeEvt.badge || 'Sự kiện đặc biệt'}</span>`;
+        }
+        const delay = (activeEvt.delayAdd || (activeEvt.applyEvent ? (activeEvt.applyEvent('TLM-045','HCM').delayAdd || activeEvt.applyEvent('TLM-045','DN').delayAdd) : 0) || 0);
+        if (evtTitle) evtTitle.textContent = `${activeEvt.icon || '⚠️'} ${activeEvt.title}`;
         if (evtDesc)  evtDesc.textContent = `${activeEvt.desc} (Thời gian: ${fmtDateVN(activeEvt.start)} - ${fmtDateVN(activeEvt.end)})`;
-        if (evtImpact) evtImpact.textContent = `Tác động: Hệ số nhu cầu x${activeEvt.demandMult} | Độ trễ giao hàng NCC: +${(activeEvt.delayAdd || (activeEvt.applyEvent ? activeEvt.applyEvent('TLM-045','HCM').delayAdd : 0) || 0)} ngày`;
-      } else if (evtBadge) {
-        evtBadge.style.display = 'none';
+        if (evtImpact) evtImpact.textContent = `Tác động: Hệ số cầu x${activeEvt.demandMult} | Độ trễ NCC: +${delay} ngày`;
+      } else {
+        if (evtBadge) {
+          evtBadge.style.display = 'block';
+          evtBadge.innerHTML = `<span class="dot-pill neutral">Điều kiện chuẩn</span>`;
+        }
+        if (evtTitle) evtTitle.textContent = `Tháng ${curM}: Chỉ số mùa vụ Sm = ${curSm}`;
+        if (evtDesc)  evtDesc.textContent = `Chuỗi cung ứng vận hành bình thường theo mùa vụ tháng ${curM}.`;
+        if (evtImpact) evtImpact.textContent = `Hệ số cầu: 1.00 | Không trễ chuyến`;
       }
 
       // 4. KPIs

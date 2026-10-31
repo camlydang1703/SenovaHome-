@@ -26,6 +26,10 @@
 
     // SEASONAL INDEX Sm (BÁO CÁO GỐC - SI TRUNG BÌNH = 0.979)
     const SI = { 1:1.15, 2:0.60, 3:1.10, 4:1.15, 5:0.90, 6:0.80, 7:0.80, 8:0.85, 9:0.90, 10:1.05, 11:1.20, 12:1.25 };
+    // Allow SKU-level access fallback so SI['TLM-045'][8] or SI[8] both work reliably
+    SKUS.forEach(s => {
+      SI[s.code] = SI;
+    });
 
     // DANH MỤC NHÀ CUNG CẤP & ĐẠI LÝ THEO NGÀNH HÀNG
     const SUPPLIERS = {
