@@ -46,6 +46,16 @@ function fmt(n) {
     }
 
     function padSeq(prefix, num) {
+      if (num === undefined || num === null) {
+        if (typeof Store !== 'undefined') {
+          Store.seq = Store.seq || {};
+          const k = prefix.toLowerCase();
+          Store.seq[k] = (Store.seq[k] || 0) + 1;
+          num = Store.seq[k];
+        } else {
+          num = 1;
+        }
+      }
       return prefix + '-' + String(num).padStart(4, '0');
     }
 

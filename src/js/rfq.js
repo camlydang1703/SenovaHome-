@@ -105,6 +105,13 @@
         `Yêu cầu báo giá ${qty} ${activeRfqDraft.sku} tới NCC ${sup} cho kho ${activeRfqDraft.wh}. Hạn báo giá: ${fmtDateVN(validUntil)}`
       );
       showToast(`Đã gửi thành công Yêu cầu Báo giá ${rfqId}`, 'success');
+
+      if (typeof switchWarehouse === 'function' && Store.ui && Store.ui.activeWh !== activeRfqDraft.wh) {
+        switchWarehouse(activeRfqDraft.wh);
+      }
+      if (typeof switchNavTab === 'function') {
+        switchNavTab('rfq');
+      }
       renderAllViews();
     }
 

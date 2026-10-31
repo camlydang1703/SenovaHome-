@@ -466,7 +466,7 @@
       align-items: center;
       justify-content: center;
     }
-    .modal-overlay.show { display: flex; }
+    .modal-overlay.show, .modal-overlay.active { display: flex; }
     .modal-box {
       background: #FFFFFF;
       border-radius: var(--radius-lg);

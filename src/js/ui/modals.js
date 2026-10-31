@@ -53,6 +53,34 @@
       const driver = getDriverExplanation(skuCode, whCode, Store.currentDate, p, baseP);
       const dualQmax = renderDualParam(baseP ? baseP.qmax : p.qmax, p.qmax, 'Qmax', driver);
 
+      // Phân tích các kho nhận tiềm năng trong mạng lưới
+      const candidateWhs = WAREHOUSES.filter(w => w.code !== whCode).map(w => {
+        const destP = calcSKUParams(skuCode, w.code, Store.currentDate, Store.history);
+        const destSt = Store.stock[w.code][skuCode];
+        const destEff = destSt.on_hand + destSt.in_transit - destSt.committed;
+        const tDays = getTransferDays(whCode, w.code);
+        const unitRate = getUnitFreightRate(whCode, w.code, skuCode);
+        const freight = excess * unitRate;
+        const isLow = destEff <= destP.rop;
+        const capacity = Math.max(0, destP.qmax - destEff);
+        const ratio = destP.rop > 0 ? (destEff / destP.rop) : 1;
+        return {
+          code: w.code,
+          name: w.name,
+          p: destP,
+          st: destSt,
+          eff: destEff,
+          tDays: tDays,
+          unitRate: unitRate,
+          freight: freight,
+          isLow: isLow,
+          capacity: capacity,
+          ratio: ratio
+        };
+      }).sort((a, b) => a.ratio - b.ratio);
+
+      const bestTarget = candidateWhs[0];
+
       const title = document.getElementById('overstockModalTitle');
       if (title) title.textContent = `Chiến lược Thoát hàng Tồn dư Vượt MAX: ${sku.code} tại ${wh.name}`;
 
@@ -70,23 +98,70 @@
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px;">
             <!-- PHƯƠNG ÁN 2A: ĐIỀU CHUYỂN TOÀN MẠNG LƯỚI -->
-            <div style="border:1px solid var(--border-color);border-radius:8px;padding:14px;background:#FFFFFF;display:flex;flex-direction:column;justify-content:space-between;">
+            <div style="border:2px solid var(--navy-accent);border-radius:8px;padding:14px;background:#FFFFFF;display:flex;flex-direction:column;justify-content:space-between;">
               <div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                  <span class="status-pill status-pill-high" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;">Phương án 2A</span>
-                  <strong style="font-size:13px;color:var(--navy-main);">Điều chuyển san tải nội bộ</strong>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="status-pill status-pill-high" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;">Phương án 2A</span>
+                    <strong style="font-size:13px;color:var(--navy-main);">Điều chuyển san tải nội bộ</strong>
+                  </div>
+                  <span class="status-pill status-pill-ok" style="font-size:11px;">Khuyến nghị ưu tiên</span>
                 </div>
-                <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px 0;line-height:1.5;">
-                  Chuyển số hàng tồn dư sang các kho trong mạng lưới đang có tồn dưới MIN hoặc có tỷ lệ tiêu thụ cao hơn. Giữ nguyên giá bán niêm yết.
+                <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px 0;line-height:1.4;">
+                  Hệ thống phân tích mạng lưới và xếp hạng các kho nhận theo mức độ cấp thiết (ưu tiên kho đang dưới MIN / thiếu hụt):
                 </p>
-                <div style="font-size:11.5px;color:var(--text-main);background:#F8FAFC;padding:8px;border-radius:4px;margin-bottom:12px;">
-                  Kho có nhu cầu cao: <strong>Kho Hà Nội (HN)</strong> hoặc <strong>Kho TP. Hồ Chí Minh (HCM)</strong>.
+
+                <!-- DANH SÁCH CÁC KHO CÓ THỂ NHẬN HÀNG -->
+                <div style="border:1px solid var(--border-subtle);border-radius:6px;overflow:hidden;margin-bottom:12px;">
+                  <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
+                    <thead>
+                      <tr style="background:var(--bg-subtle);border-bottom:1px solid var(--border-subtle);text-align:left;">
+                        <th style="padding:6px 8px;">Chọn kho nhận</th>
+                        <th style="padding:6px 8px;text-align:right;">Tồn / MIN</th>
+                        <th style="padding:6px 8px;">Tình trạng</th>
+                        <th style="padding:6px 8px;text-align:right;">Thời gian</th>
+                        <th style="padding:6px 8px;text-align:right;">Ước tính cước</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${candidateWhs.map((cw, idx) => `
+                        <tr style="border-bottom:1px solid var(--border-subtle);${idx === 0 ? 'background:#F0FDF4;' : ''}">
+                          <td style="padding:6px 8px;">
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;">
+                              <input type="radio" name="overstockWhSelect" value="${cw.code}" ${idx === 0 ? 'checked' : ''} onchange="document.getElementById('overstockTargetWh').value='${cw.code}'">
+                              ${cw.name}
+                              ${idx === 0 ? '<span style="font-size:10px;background:#15803D;color:#fff;padding:1px 5px;border-radius:3px;">Tối ưu</span>' : ''}
+                            </label>
+                          </td>
+                          <td style="padding:6px 8px;text-align:right;">
+                            ${cw.eff} / ${cw.p.rop}
+                          </td>
+                          <td style="padding:6px 8px;">
+                            ${cw.isLow 
+                              ? '<span style="color:var(--status-red);font-weight:700;">Dưới MIN (Cần hàng)</span>' 
+                              : (cw.capacity > 0 ? '<span style="color:var(--status-green);">Còn sức chứa</span>' : '<span style="color:var(--status-yellow);">Gần trần MAX</span>')}
+                          </td>
+                          <td style="padding:6px 8px;text-align:right;">${cw.tDays} ngày</td>
+                          <td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--navy-accent);">${fmtVND(cw.freight)}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+
+                <input type="hidden" id="overstockTargetWh" value="${bestTarget.code}">
+
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;background:#F8FAFC;padding:8px 10px;border-radius:6px;">
+                  <label style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng san tải:</label>
+                  <input type="number" id="overstockQtyInput" value="${excess}" min="1" max="${excess}" style="width:80px;padding:3px 6px;border:1px solid var(--border-subtle);border-radius:4px;font-size:12px;font-weight:700;">
+                  <span style="font-size:11.5px;color:var(--text-muted);">${sku.unit} (khuyến nghị san toàn bộ ${excess} ${sku.unit} tồn dư)</span>
                 </div>
               </div>
+
               <button class="btn-large" onclick="executeBatch2ATransfer('${sku.code}', '${wh.code}')">
-                Thực thi San tải 2A (${excess} ${sku.unit})
+                Thực thi San tải 2A sang kho đã chọn
               </button>
             </div>
 
@@ -131,17 +206,13 @@
         return;
       }
 
-      // Tìm các kho nhận đang có tồn thấp nhất
-      const destWhs = WAREHOUSES.filter(w => w.code !== srcWhCode);
-      const targetWh = destWhs.sort((a, b) => {
-        const pA = calcSKUParams(skuCode, a.code, Store.currentDate, Store.history);
-        const pB = calcSKUParams(skuCode, b.code, Store.currentDate, Store.history);
-        const effA = Store.stock[a.code][skuCode].on_hand + Store.stock[a.code][skuCode].in_transit;
-        const effB = Store.stock[b.code][skuCode].on_hand + Store.stock[b.code][skuCode].in_transit;
-        return (effA / pA.rop) - (effB / pB.rop);
-      })[0];
+      const targetWhInput = document.getElementById('overstockTargetWh');
+      const targetWhCode = targetWhInput ? targetWhInput.value : null;
+      const targetWh = (targetWhCode && WAREHOUSES.find(w => w.code === targetWhCode)) || WAREHOUSES.filter(w => w.code !== srcWhCode)[0];
 
-      const qty = excess;
+      const qtyInput = document.getElementById('overstockQtyInput');
+      const qty = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || excess) : excess;
+
       const tDays = getTransferDays(srcWhCode, targetWh.code);
       const unitRate = getUnitFreightRate(srcWhCode, targetWh.code, skuCode);
       const freight = qty * unitRate;
@@ -169,7 +240,11 @@
       closeModal('overstockModal');
       pushNotification('TRANSFER_APPROVED', trId, `Thực thi san tải 2A: ${qty} ${skuCode} (${srcWhCode} -> ${targetWh.code})`);
       logAction('SAN_TAI_2A', trId, `Điều chuyển san tải tồn dư ${qty} ${skuCode} sang kho ${targetWh.name}`, freight);
-      showToast(`Đã lập lệnh điều chuyển san tải ${trId}`, 'success');
+      showToast(`Đã lập lệnh điều chuyển san tải ${trId} sang ${targetWh.name}`, 'success');
+
+      if (typeof switchNavTab === 'function') {
+        switchNavTab('transfers');
+      }
       renderAllViews();
     }
 
@@ -285,7 +360,7 @@
       const dualQmax = renderDualParam(baseP ? baseP.qmax : ctx.params.qmax, ctx.params.qmax, 'Qmax', driver);
 
       body.innerHTML = `
-        <div style="background:#F8FAFC;border:1px solid var(--border-color);padding:12px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div style="background:#F8FAFC;border:1px solid var(--border-color);padding:12px;border-radius:6px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <div>
             <span style="font-size:12px;color:var(--text-muted);">Tồn kho khả dụng hiện tại:</span>
             <strong style="font-size:13px;color:var(--text-main);"> ${ctx.eff} ${ctx.sku.unit}</strong>
@@ -300,7 +375,17 @@
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng bổ sung:</span>
             <input type="number" class="time-input" id="modalCustomQty" value="${ctx.customQty}" min="1" style="width:90px;" oninput="onModalCustomQtyChange(this.value)">
+            <span style="font-size:11.5px;color:var(--text-muted);">${ctx.sku.unit}</span>
           </div>
+        </div>
+
+        <!-- PHÂN TÍCH VÀ KHUYẾN NGHỊ ĐIỀU HÀNH -->
+        <div style="background:${srcSafe ? '#ECFDF5' : '#FEF3C7'};border:1px solid ${srcSafe ? '#A7F3D0' : '#FDE68A'};border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:${srcSafe ? '#065F46' : '#92400E'};line-height:1.5;">
+          <strong>💡 Phân tích Chi phí & Khuyến nghị Tối ưu:</strong><br>
+          ${srcSafe 
+            ? `• <strong>Khuyến nghị Phương án A (Điều chuyển nội bộ)</strong>: Kho ${WAREHOUSES.find(w => w.code === ctx.sourceWh)?.name || ctx.sourceWh} đủ thặng dư an toàn. Chi phí vận chuyển chỉ <strong>${fmtVND(totalFreight)}</strong> (so với giá mua NCC <strong>${fmtVND(supCost)}</strong>), hàng về nhanh trong <strong>${tDays} ngày</strong> (nhanh hơn đặt NCC ${Math.max(0, supLead - tDays)} ngày).`
+            : `• <strong>Khuyến nghị Phương án B (Yêu cầu Báo giá NCC)</strong>: Kho nội bộ đang không đủ tồn thặng dư an toàn (nếu xuất sẽ rơi dưới ROP). Đề xuất gửi RFQ tới NCC để bảo toàn nguồn cung mạng lưới.`
+          }
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -433,6 +518,12 @@
         pushNotification('TRANSFER_APPROVED', trId, `Phê duyệt điều chuyển ${ctx.customQty} ${ctx.skuCode} (${ctx.sourceWh} -> ${ctx.toWh})`);
         logAction('APPROVE_TRANSFER', trId, `Phê duyệt điều chuyển ${ctx.customQty} ${ctx.skuCode} (${ctx.sourceWh} -> ${ctx.toWh})`, totalFreight);
         showToast(`Đã duyệt thành công lệnh điều chuyển ${trId}`, 'success');
+        if (typeof switchWarehouse === 'function' && Store.ui && Store.ui.activeWh !== ctx.toWh) {
+          switchWarehouse(ctx.toWh);
+        }
+        if (typeof switchNavTab === 'function') {
+          switchNavTab('transfers');
+        }
         renderAllViews();
 
       } else {
@@ -462,6 +553,12 @@
         pushNotification('RFQ_SENT', rfqId, `Đã gửi Yêu cầu Báo giá ${rfqId} (${ctx.skuCode} - ${ctx.customQty}) tới NCC ${ctx.supplier}.`);
         logAction('SEND_RFQ', rfqId, `Yêu cầu báo giá ${ctx.customQty} ${ctx.skuCode} tới NCC ${ctx.supplier} cho kho ${ctx.toWh}`);
         showToast(`Đã gửi Yêu cầu Báo giá ${rfqId} tới NCC ${ctx.supplier}`, 'success');
+        if (typeof switchWarehouse === 'function' && Store.ui && Store.ui.activeWh !== ctx.toWh) {
+          switchWarehouse(ctx.toWh);
+        }
+        if (typeof switchNavTab === 'function') {
+          switchNavTab('rfq');
+        }
         renderAllViews();
       }
     }
@@ -849,169 +946,10 @@
     }
 
     // ============================================================
-    // openReplenishModal – Modal 2 option: RFQ vs Chuyển kho (LOW status)
+    // openReplenishModal – Chuyển tiếp tới màn hình So sánh Bổ sung Tích hợp
     // ============================================================
-    let _replenishCtx = null;
-
     function openReplenishModal(skuCode, whCode) {
-      const sku  = SKUS.find(s => s.code === skuCode) || SKUS[0];
-      const wh   = WAREHOUSES.find(w => w.code === whCode) || WAREHOUSES[0];
-      const p    = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
-      const st   = (Store.stock[whCode] && Store.stock[whCode][skuCode]) || { on_hand:0, in_transit:0, committed:0 };
-      const eff  = st.on_hand + st.in_transit - st.committed;
-      const qNeed = Math.max(1, p.qmax - eff);
-
-      // Tìm kho nguồn tốt nhất
-      let bestSrc = null, maxSurplus = -Infinity;
-      WAREHOUSES.forEach(w => {
-        if (w.code !== whCode) {
-          const sP  = calcSKUParams(skuCode, w.code, Store.currentDate, Store.history);
-          const sSt = Store.stock[w.code] && Store.stock[w.code][skuCode] ? Store.stock[w.code][skuCode] : { on_hand:0, in_transit:0, committed:0 };
-          const sEff = sSt.on_hand + sSt.in_transit - sSt.committed;
-          const surplus = sEff - sP.rop;
-          if (surplus > maxSurplus) { maxSurplus = surplus; bestSrc = w.code; }
-        }
-      });
-      if (!bestSrc) bestSrc = WAREHOUSES.find(w => w.code !== whCode)?.code || whCode;
-
-      const supObj = SUPPLIERS.find(s => s.code === sku.sup);
-      const estTransferDays = 2;
-      const estRfqDays = supObj ? supObj.lead_days || 7 : 7;
-
-      _replenishCtx = { skuCode, whCode, sku, wh, p, st, eff, qNeed, sourceWh: bestSrc, supplier: sku.sup, selectedMode: maxSurplus > 10 ? 'TRANSFER' : 'RFQ', qty: qNeed };
-
-      document.getElementById('replenishModalTitle').textContent = `Bổ sung: ${sku.code} – ${sku.name} | ${wh.name}`;
-      _renderReplenishModal(estTransferDays, estRfqDays, maxSurplus);
-      openModal('replenishModal');
-    }
-
-    function _renderReplenishModal(estTransferDays, estRfqDays, maxSurplus) {
-      const ctx = _replenishCtx;
-      if (!ctx) return;
-      const body = document.getElementById('replenishModalBody');
-      if (!body) return;
-
-      const transferOptions = WAREHOUSES.filter(w => w.code !== ctx.whCode).map(w => {
-        const sSt = Store.stock[w.code] && Store.stock[w.code][ctx.skuCode] ? Store.stock[w.code][ctx.skuCode] : { on_hand:0, in_transit:0, committed:0 };
-        const sEff = sSt.on_hand + sSt.in_transit - sSt.committed;
-        const sP = calcSKUParams(ctx.skuCode, w.code, Store.currentDate, Store.history);
-        const surp = sEff - sP.rop;
-        return `<option value="${w.code}" ${w.code===ctx.sourceWh?'selected':''} ${surp<=0?'style="color:gray;"':''}>${w.name} (dư ${surp>0?'+':''}${Math.round(surp)} sp)</option>`;
-      }).join('');
-
-      const supOptions = SUPPLIERS.filter(s => s.skus && s.skus.includes(ctx.skuCode)).map(s =>
-        `<option value="${s.code}" ${s.code===ctx.supplier?'selected':''}>${s.name} (~${s.lead_days||7} ngày)</option>`
-      ).join('') || `<option value="${ctx.sku.sup}">${ctx.sku.sup}</option>`;
-
-      body.innerHTML = `
-        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:6px;padding:12px;margin-bottom:14px;font-size:12.5px;">
-          <strong>${ctx.sku.code} – ${ctx.sku.name}</strong> tại <strong>${ctx.wh.name}</strong>
-          | Tồn khả dụng: <strong style="color:var(--status-red);">${fmtNum(ctx.eff)} sp</strong>
-          | ROP: ${ctx.p.rop} sp | Cần bổ sung: <strong>${fmtNum(ctx.qNeed)} sp</strong>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <!-- OPTION A: CHUYỂN KHO -->
-          <div style="border:2px solid ${ctx.selectedMode==='TRANSFER'?'var(--navy-main)':'var(--border-subtle)'};border-radius:8px;padding:14px;cursor:pointer;" onclick="_selectReplenishMode('TRANSFER')" id="repOpt_TRANSFER">
-            <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--navy-main);">
-              <input type="radio" name="repMode" value="TRANSFER" ${ctx.selectedMode==='TRANSFER'?'checked':''} style="margin-right:6px;">
-              🏭 Phương án A: Chuyển kho nội bộ
-            </div>
-            <table style="font-size:12px;width:100%;border-collapse:collapse;">
-              <tr><td style="color:var(--text-muted);padding:3px 0;">Kho nguồn</td>
-                <td><select id="repSrcWh" onchange="_replenishCtx.sourceWh=this.value" style="font-size:11.5px;padding:2px;">${transferOptions}</select></td>
-              </tr>
-              <tr><td style="color:var(--text-muted);padding:3px 0;">Dự kiến về</td><td>~${estTransferDays} ngày</td></tr>
-              <tr><td style="color:var(--text-muted);padding:3px 0;">Chi phí vận chuyển</td><td>~${fmtNum(Math.ceil(ctx.qty * 2500))} đ</td></tr>
-              <tr><td style="color:var(--text-muted);padding:3px 0;">Phù hợp khi</td><td style="color:var(--status-green);">Kho khác dư tồn${maxSurplus>10?' ✓':' (ít dư)'}</td></tr>
-            </table>
-          </div>
-
-          <!-- OPTION B: RFQ -->
-          <div style="border:2px solid ${ctx.selectedMode==='RFQ'?'var(--navy-main)':'var(--border-subtle)'};border-radius:8px;padding:14px;cursor:pointer;" onclick="_selectReplenishMode('RFQ')" id="repOpt_RFQ">
-            <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--navy-main);">
-              <input type="radio" name="repMode" value="RFQ" ${ctx.selectedMode==='RFQ'?'checked':''} style="margin-right:6px;">
-              📋 Phương án B: Gửi RFQ cho NCC
-            </div>
-            <table style="font-size:12px;width:100%;border-collapse:collapse;">
-              <tr><td style="color:var(--text-muted);padding:3px 0;">Nhà cung cấp</td>
-                <td><select id="repSupplier" onchange="_replenishCtx.supplier=this.value" style="font-size:11.5px;padding:2px;">${supOptions}</select></td>
-              </tr>
-              <tr><td style="color:var(--text-muted);padding:3px 0;">Dự kiến về</td><td>~${estRfqDays} ngày</td></tr>
-              <tr><td style="color:var(--text-muted);padding:3px 0;">Chi phí</td><td>Theo giá NCC</td></tr>
-              <tr><td style="color:var(--text-muted);padding:3px 0;">Phù hợp khi</td><td style="color:var(--status-yellow);">Tất cả kho đều thiếu</td></tr>
-            </table>
-          </div>
-        </div>
-
-        <div style="margin-top:16px;display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-subtle);border-radius:6px;">
-          <label style="font-size:12.5px;font-weight:600;white-space:nowrap;">Số lượng cần bổ sung:</label>
-          <input type="number" id="repQtyInput" value="${ctx.qty}" min="1" max="9999" style="width:90px;padding:4px 8px;border:1px solid var(--border-subtle);border-radius:4px;font-size:13px;font-weight:700;"
-            onchange="_replenishCtx.qty=Math.max(1,+this.value)">
-          <span style="font-size:12px;color:var(--text-muted);">sp &nbsp;(tối ưu gợi ý: ${fmtNum(ctx.qNeed)} sp để đạt MAX = ${ctx.p.qmax} sp)</span>
-        </div>
-      `;
-    }
-
-    function _selectReplenishMode(mode) {
-      if (!_replenishCtx) return;
-      _replenishCtx.selectedMode = mode;
-      document.querySelectorAll('[id^="repOpt_"]').forEach(el => {
-        el.style.borderColor = el.id === 'repOpt_'+mode ? 'var(--navy-main)' : 'var(--border-subtle)';
-      });
-      const radio = document.querySelector(`input[name="repMode"][value="${mode}"]`);
-      if (radio) radio.checked = true;
-    }
-
-    function confirmReplenish() {
-      const ctx = _replenishCtx;
-      if (!ctx) return;
-
-      // Sync latest user inputs
-      const qtyEl = document.getElementById('repQtyInput');
-      if (qtyEl) ctx.qty = Math.max(1, parseInt(qtyEl.value, 10) || ctx.qNeed);
-      const srcEl = document.getElementById('repSrcWh');
-      if (srcEl) ctx.sourceWh = srcEl.value;
-      const supEl = document.getElementById('repSupplier');
-      if (supEl) ctx.supplier = supEl.value;
-
-      if (ctx.selectedMode === 'TRANSFER') {
-        // Tạo lệnh chuyển kho
-        const srcWh = WAREHOUSES.find(w => w.code === ctx.sourceWh);
-        const srcSt = Store.stock[ctx.sourceWh] && Store.stock[ctx.sourceWh][ctx.skuCode] ? Store.stock[ctx.sourceWh][ctx.skuCode] : { on_hand:0, in_transit:0, committed:0 };
-        const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
-        const srcP = calcSKUParams(ctx.skuCode, ctx.sourceWh, Store.currentDate, Store.history);
-        const avail = Math.max(0, srcEff - srcP.rop);
-        if (avail < 1) {
-          showToast(`⚠️ Kho ${srcWh ? srcWh.name : ctx.sourceWh} không đủ dư tồn để chuyển.`, 'warning');
-          return;
-        }
-        const actualQty = Math.min(ctx.qty, avail);
-        // Dùng API transfers.js nếu có
-        if (typeof initiateTransfer === 'function') {
-          initiateTransfer(ctx.skuCode, ctx.sourceWh, ctx.whCode, actualQty);
-        } else {
-          // Thêm thẳng vào Store.transfers
-          const trid = 'TR-' + Date.now();
-          const arrDate = new Date(Store.currentDate.getTime() + 2 * 86400000);
-          Store.transfers = Store.transfers || [];
-          Store.transfers.push({ id: trid, sku: ctx.skuCode, from: ctx.sourceWh, to: ctx.whCode, qty: actualQty, status: 'Đang vận chuyển', dispatchDate: Store.currentDate.toISOString().slice(0,10), arrivalDate: arrDate.toISOString().slice(0,10) });
-          Store.stock[ctx.sourceWh][ctx.skuCode].on_hand = Math.max(0, srcSt.on_hand - actualQty);
-          Store.stock[ctx.whCode][ctx.skuCode].in_transit = (Store.stock[ctx.whCode][ctx.skuCode].in_transit || 0) + actualQty;
-          pushNotification({ type: 'TRANSFER_CREATED', wh: ctx.whCode, sku: ctx.skuCode, msg: `Lệnh chuyển ${fmtNum(actualQty)} sp ${ctx.skuCode} từ ${ctx.sourceWh} → ${ctx.whCode} đã tạo.` });
-        }
-        showToast(`✅ Đã tạo lệnh chuyển ${fmtNum(actualQty)} sp ${ctx.skuCode} từ ${ctx.sourceWh} → ${ctx.whCode}.`, 'success');
-        closeModal('replenishModal');
-        if (typeof renderAllViews === 'function') renderAllViews();
-      } else {
-        // RFQ: mở modal RFQ
-        closeModal('replenishModal');
-        if (typeof openRfqModal === 'function') {
-          openRfqModal(ctx.skuCode, ctx.whCode, ctx.qty, ctx.supplier);
-        } else {
-          showToast('Chức năng RFQ đang khởi tạo. Vui lòng thử lại.', 'warning');
-        }
-      }
+      return openTransferCompareModal(skuCode, whCode);
     }
 
     // ----------------------------------------------------------------------------
