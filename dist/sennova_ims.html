@@ -1725,6 +1725,21 @@
         }
       },
       {
+        id: 'EVT-INFRA-HCM-BD',
+        start: '2026-08-25',
+        end: '2026-08-31',
+        badge: 'Hạ tầng Vành đai 3 +40%',
+        badgeClass: 'danger',
+        title: 'Khởi công Vành đai 3 & Cao tốc: Cầu Ống thép & Tôn thép tăng +40%',
+        desc: 'Đẩy mạnh thi công hạ tầng giao thông trọng điểm khu vực TP.HCM & Bình Dương.',
+        demandMult: 1.40,
+        applyEvent: (sku, wh) => {
+          const isSouth = (wh === 'HCM' || wh === 'BD');
+          const isTarget = (sku.startsWith('OTK') || sku.startsWith('TLM') || sku === 'TMK-035');
+          return { demandMult: (isSouth && isTarget) ? 1.40 : 1.0, delayAdd: 0 };
+        }
+      },
+      {
         id: 'EVT-CENTRAL-STORM',
         start: '2026-09-01',
         end: '2026-09-08',
@@ -1736,6 +1751,64 @@
         applyEvent: (sku, wh) => {
           const isCentral = (wh === 'DN' || wh === 'DN_CITY');
           return { demandMult: 1.0, delayAdd: isCentral ? 5 : 0 };
+        }
+      },
+      {
+        id: 'EVT-URBAN-DN',
+        start: '2026-09-11',
+        end: '2026-09-18',
+        badge: 'Đô thị Đà Nẵng +35%',
+        badgeClass: 'warning',
+        title: 'Cải tạo hạ tầng cấp thoát nước Đà Nẵng: Cầu Ống nhựa & Gạch tăng +35%',
+        desc: 'Thành phố khởi công gói thầu chỉnh trang đô thị và nâng cấp mạng lưới cấp thoát nước.',
+        demandMult: 1.35,
+        applyEvent: (sku, wh) => {
+          const isCentral = (wh === 'DN' || wh === 'DN_CITY');
+          const isTarget = (sku === 'PPR-025' || sku.startsWith('GCH'));
+          return { demandMult: (isCentral && isTarget) ? 1.35 : 1.0, delayAdd: 0 };
+        }
+      },
+      {
+        id: 'EVT-HOAPHAT-PROMO',
+        start: '2026-09-21',
+        end: '2026-09-28',
+        badge: 'Khuyến mãi Hòa Phát +30%',
+        badgeClass: 'warning',
+        title: 'Đại lý Thép Hòa Phát (Hà Nội) chiết khấu quý 3: Cầu Ống thép tăng +30%',
+        desc: 'Chính sách trợ giá từ nhà sản xuất kích thích các đại lý khu vực phía Bắc tăng cường gom hàng.',
+        demandMult: 1.30,
+        applyEvent: (sku, wh) => {
+          const isNorth = (wh === 'HN');
+          const isSteel = sku.startsWith('OTK');
+          return { demandMult: (isNorth && isSteel) ? 1.30 : 1.0, delayAdd: 0 };
+        }
+      },
+      {
+        id: 'EVT-FINISH-SEASON',
+        start: '2026-10-01',
+        end: '2026-10-14',
+        badge: 'Mùa hoàn thiện +35%',
+        badgeClass: 'danger',
+        title: 'Cao điểm hoàn thiện công trình cuối năm: Cầu Gạch, Sơn & TBVS tăng +35%',
+        desc: 'Các dự án dân dụng đồng loạt bước vào giai đoạn ốp lát, sơn phủ và lắp đặt thiết bị vệ sinh.',
+        demandMult: 1.35,
+        applyEvent: (sku, wh) => {
+          const isFinishing = (sku.startsWith('GCH') || sku.startsWith('SON') || sku.startsWith('TBV'));
+          return { demandMult: isFinishing ? 1.35 : 1.0, delayAdd: 0 };
+        }
+      },
+      {
+        id: 'EVT-ROUTE-MAINT',
+        start: '2026-10-15',
+        end: '2026-10-22',
+        badge: 'Bảo trì QL1A +2 ngày',
+        badgeClass: 'warning',
+        title: 'Đại tu mặt đường QL1A Bình Dương - TP.HCM: Trễ chuyển kho nội bộ +2 ngày',
+        desc: 'Phân luồng giao thông thi công thảm nhựa khiến thời gian chuyển hàng giữa kho HCM và Bình Dương kéo dài.',
+        demandMult: 1.0,
+        applyEvent: (sku, wh) => {
+          const isSouth = (wh === 'HCM' || wh === 'BD');
+          return { demandMult: 1.0, delayAdd: isSouth ? 2 : 0 };
         }
       }
     ];
