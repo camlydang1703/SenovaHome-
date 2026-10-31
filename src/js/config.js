@@ -131,6 +131,7 @@
 
       // Seeded history 12 weeks: history[sku][wh] = [{ demand, sm, deseason }]
       history: {},
+      baseParams: {},
 
       // Stock structure: stock[wh][sku] = { on_hand, in_transit, committed }
       stock: {},

@@ -867,6 +867,84 @@
       color: #FFFFFF;
     }
 
+    /* PHASE D: DUAL MIN/MAX & LOOKAHEAD WARNING WINDOW */
+    .dual-param {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: help;
+      padding: 1px 4px;
+      border-radius: var(--radius-sm);
+      transition: background 0.15s;
+    }
+    .dual-param:hover {
+      background: #F1F5F9;
+    }
+    .dual-base {
+      text-decoration: line-through;
+      color: #94A3B8;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .dual-ai {
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .dual-diff {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+    .diff-up {
+      color: var(--status-red);
+    }
+    .diff-down {
+      color: var(--status-yellow);
+    }
+    .diff-same {
+      color: var(--status-green);
+    }
+
+    .risk-badge {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+    }
+    .risk-tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 10.5px;
+      line-height: 1.2;
+    }
+    .risk-tag-stockout {
+      background: #7F1D1D;
+      color: #FFFFFF;
+      border: 1px solid #991B1B;
+    }
+    .risk-tag-low {
+      background: #FEE2E2;
+      color: #991B1B;
+      border: 1px solid #FCA5A5;
+    }
+    .risk-tag-high {
+      background: #FEF3C7;
+      color: #92400E;
+      border: 1px solid #FCD34D;
+    }
+    .risk-tag-safe {
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+    }
+    .risk-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
   </style>
 </head>
 <body>
@@ -891,16 +969,6 @@
         <input type="checkbox" id="autoPilotToggle" onchange="toggleAutoPilot(this.checked)">
         Autopilot Chuyển kho
       </label>
-
-      <div style="width:1px;height:18px;background:var(--border-color);margin:0 4px;"></div>
-
-      <select class="time-input" id="scenarioSelect" onchange="triggerDemoScenario(this.value)" style="padding:4px 8px;">
-        <option value="">⚡ Chọn Kịch bản Demo nhanh...</option>
-        <option value="sc1">Kịch bản 1: Điều phối Chuyển kho giữa 2 kho</option>
-        <option value="sc2">Kịch bản 2: Thiếu nguồn chuyển → Tạo RFQ</option>
-        <option value="sc3">Kịch bản 3: Tồn dư vượt MAX → Điều chuyển 2A</option>
-        <option value="sc4">Kịch bản 4: Toàn mạng lưới dư → Khuyến mãi 2B</option>
-      </select>
     </div>
 
     <div class="header-right">
@@ -1131,21 +1199,7 @@
         </div>
         <div class="table-container">
           <table class="data-tbl" id="inventoryTable">
-            <thead id="inventoryThead">
-              <tr>
-                <th>Mã SKU</th>
-                <th>Tên sản phẩm</th>
-                <th>Kho</th>
-                <th class="num-col">Tồn vật lý</th>
-                <th class="num-col">Đang về</th>
-                <th class="num-col">Tồn khả dụng (I)</th>
-                <th class="num-col" style="color:var(--status-red);">MIN (ROP)</th>
-                <th class="num-col" style="color:var(--status-yellow);">MAX (Qmax)</th>
-                <th class="num-col">Còn bán</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
+            <thead id="inventoryThead"></thead>
             <tbody id="inventoryTbody">
               <!-- Rendered dynamically -->
             </tbody>
@@ -1669,6 +1723,7 @@
 
       // Seeded history 12 weeks: history[sku][wh] = [{ demand, sm, deseason }]
       history: {},
+      baseParams: {},
 
       // Stock structure: stock[wh][sku] = { on_hand, in_transit, committed }
       stock: {},
@@ -1820,13 +1875,15 @@ function fmt(n) {
           Store.history[sku.code][wh.code] = weeks;
         });
       });
+      return Store.history;
     }
 
     // PARAMETER CALCULATION PER SKU x WAREHOUSE (YÊU CẦU 0.4, 0.7)
-    function calcSKUParams(skuCode, whCode, dateStr) {
+    function calcSKUParams(skuCode, whCode, dateStr, historyOverride) {
       const sku = SKUS.find(s => s.code === skuCode);
       const wh = WAREHOUSES.find(w => w.code === whCode);
-      const weeks = Store.history[skuCode][whCode];
+      const hist = historyOverride || Store.history;
+      const weeks = (hist && hist[skuCode] && hist[skuCode][whCode]) ? hist[skuCode][whCode] : [];
 
       // D_SMA4 = Average of last 4 weeks of DESEASONALIZED demand
       const last4 = weeks.slice(-4);
@@ -1883,6 +1940,120 @@ function fmt(n) {
         rop: rop,
         qmax: qmax,
         totalEventDelay: totalEventDelay
+      };
+    }
+
+    // ----------------------------------------------------------------------------
+    // PHASE D: AI DUAL MIN/MAX & LOOKAHEAD EXPLANATION HELPERS
+    // ----------------------------------------------------------------------------
+    function getDriverExplanation(skuCode, whCode, curDate, p, baseP) {
+      const curM = getMonthFromDate(curDate);
+      const sm = SI[curM] || 1.0;
+      const reasons = [];
+
+      // 1. Mùa vụ
+      reasons.push(`Mùa vụ T${curM} (Sm = ${sm})`);
+
+      // 2. Sự kiện vận hành
+      const activeEvt = EVENTS.find(e => curDate >= e.start && curDate <= e.end);
+      if (activeEvt) {
+        const res = activeEvt.applyEvent ? activeEvt.applyEvent(skuCode, whCode) : null;
+        const delay = (res && res.delayAdd) || activeEvt.delayAdd || 0;
+        if (delay > 0) {
+          reasons.push(`${activeEvt.title} (+${delay} ngày delay NCC)`);
+        } else {
+          reasons.push(`${activeEvt.title} (Hệ số cầu x${activeEvt.demandMult})`);
+        }
+      }
+
+      // 3. Biến động tiêu thụ gần đây
+      if (baseP && p) {
+        const diffD = p.f_next - baseP.f_next;
+        if (Math.abs(diffD) > 1) {
+          const pct = Math.round((diffD / (baseP.f_next || 1)) * 100);
+          reasons.push(`Nhu cầu SMA4 ${pct >= 0 ? 'tăng' : 'giảm'} ${Math.abs(pct)}%`);
+        }
+      }
+
+      const isInc = baseP ? (p.rop >= baseP.rop) : true;
+      return (isInc ? 'Tăng do: ' : 'Giảm do: ') + reasons.join(' + ');
+    }
+
+    function renderDualParam(baseVal, aiVal, label = 'ROP', driverText = '') {
+      if (baseVal === undefined || baseVal === null) {
+        return `<span class="dual-ai">${fmtNum(aiVal)}</span>`;
+      }
+      const diff = aiVal - baseVal;
+      const pct = baseVal > 0 ? Math.round((diff / baseVal) * 100) : 0;
+      const tooltip = driverText ? `title="${driverText}"` : '';
+
+      if (diff === 0) {
+        return `<span class="dual-param" ${tooltip}><span class="dual-ai">${fmtNum(aiVal)}</span></span>`;
+      }
+
+      const isUp = diff > 0;
+      const arrow = isUp ? '↑' : '↓';
+      const sign = isUp ? '+' : '';
+      const diffClass = isUp ? 'diff-up' : 'diff-down';
+
+      return `
+        <span class="dual-param" ${tooltip}>
+          <span class="dual-base">${fmtNum(baseVal)}</span>
+          <span class="dual-ai ${diffClass}">${fmtNum(aiVal)}</span>
+          <span class="dual-diff ${diffClass}">(${arrow}${sign}${pct}%)</span>
+        </span>
+      `;
+    }
+
+    function calcLookaheadWarning(st, p, curDate, skuCode, whCode) {
+      const dailyRate = Math.max(0.1, p.f_next / 7.0);
+
+      // Check upcoming inbound transfers arriving within 7 days
+      let arriving7 = 0;
+      if (Store.transfers) {
+        Store.transfers.forEach(tr => {
+          if (tr.status === 'Đang chuyển' && tr.dstWh === whCode && tr.sku === skuCode) {
+            const daysLeft = diffDays(curDate, tr.arrivalDate);
+            if (daysLeft >= 0 && daysLeft <= 7) {
+              arriving7 += tr.qty;
+            }
+          }
+        });
+      }
+
+      const eff = st.on_hand + st.in_transit - st.committed;
+      const proj7OnHand = Math.round(st.on_hand + arriving7 - (dailyRate * 7));
+      const daysUntilRop = Math.round((st.on_hand - p.rop) / dailyRate);
+
+      if (proj7OnHand <= 0) {
+        return {
+          tag: 'STOCKOUT',
+          label: 'Nguy cơ đứt hàng',
+          tagClass: 'risk-tag risk-tag-stockout',
+          subText: daysUntilRop <= 0 ? 'Đã hết hàng' : `Đứt hàng ngày +${Math.max(1, Math.round(st.on_hand / dailyRate))}`
+        };
+      }
+      if (proj7OnHand <= p.rop) {
+        return {
+          tag: 'WARN_LOW',
+          label: 'Nguy cơ thiếu hàng',
+          tagClass: 'risk-tag risk-tag-low',
+          subText: daysUntilRop <= 0 ? 'Đã dưới MIN' : `Thủng MIN ngày +${daysUntilRop}`
+        };
+      }
+      if (proj7OnHand > p.qmax) {
+        return {
+          tag: 'WARN_HIGH',
+          label: 'Nguy cơ ứ đọng',
+          tagClass: 'risk-tag risk-tag-high',
+          subText: `Dư +${proj7OnHand - p.qmax} sp`
+        };
+      }
+      return {
+        tag: 'SAFE',
+        label: 'An toàn 7N',
+        tagClass: 'risk-tag risk-tag-safe',
+        subText: `Tồn dự phóng: ~${proj7OnHand}`
       };
     }
 
@@ -3181,6 +3352,9 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
       const p   = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
       const st  = Store.stock[whCode][skuCode];
       const excess = Math.max(0, st.on_hand - p.qmax);
+      const baseP = (Store.baseParams && Store.baseParams[skuCode] && Store.baseParams[skuCode][whCode]) || p;
+      const driver = getDriverExplanation(skuCode, whCode, Store.currentDate, p, baseP);
+      const dualQmax = renderDualParam(baseP ? baseP.qmax : p.qmax, p.qmax, 'Qmax', driver);
 
       const title = document.getElementById('overstockModalTitle');
       if (title) title.textContent = `Chiến lược Thoát hàng Tồn dư Vượt MAX: ${sku.code} tại ${wh.name}`;
@@ -3193,7 +3367,8 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
               ⚠️ Cảnh báo Tồn trữ: ${sku.name} (${sku.code})
             </div>
             <div style="font-size:12px;color:#78350F;line-height:1.5;">
-              Tồn kho hiện tại: <strong>${st.on_hand}</strong> ${sku.unit} | Ngưỡng MAX: <strong>${p.qmax}</strong> | Tồn dư vượt đỉnh: <strong style="color:var(--status-red);">${excess}</strong> ${sku.unit}<br>
+              Tồn kho hiện tại: <strong>${st.on_hand}</strong> ${sku.unit} | Ngưỡng MAX: ${dualQmax} | Tồn dư vượt đỉnh: <strong style="color:var(--status-red);">${excess}</strong> ${sku.unit}<br>
+              <div style="font-size:11px;color:#B45309;margin-top:2px;">💡 <em>${driver}</em></div>
               Vốn bị chiếm dụng ước tính: <strong>${fmtVND(excess * sku.cogs)}</strong>. Chọn một trong hai phương án bên dưới để giải phóng vốn:
             </div>
           </div>
@@ -3407,6 +3582,11 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
       const supLead = ctx.sku.lead;
       const supCost = ctx.customQty * ctx.sku.cogs;
 
+      const baseP = (Store.baseParams && Store.baseParams[ctx.skuCode] && Store.baseParams[ctx.skuCode][ctx.toWh]) || ctx.params;
+      const driver = getDriverExplanation(ctx.skuCode, ctx.toWh, Store.currentDate, ctx.params, baseP);
+      const dualRop = renderDualParam(baseP ? baseP.rop : ctx.params.rop, ctx.params.rop, 'ROP', driver);
+      const dualQmax = renderDualParam(baseP ? baseP.qmax : ctx.params.qmax, ctx.params.qmax, 'Qmax', driver);
+
       body.innerHTML = `
         <div style="background:#F8FAFC;border:1px solid var(--border-color);padding:12px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <div>
@@ -3414,10 +3594,11 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
             <strong style="font-size:13px;color:var(--text-main);"> ${ctx.eff} ${ctx.sku.unit}</strong>
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
             <span style="font-size:12px;color:var(--text-muted);">Ngưỡng MIN (ROP):</span>
-            <strong style="font-size:13px;color:var(--status-red);"> ${ctx.params.rop}</strong>
+            ${dualRop}
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
             <span style="font-size:12px;color:var(--text-muted);">Trần MAX:</span>
-            <strong style="font-size:13px;color:var(--status-yellow);"> ${ctx.params.qmax}</strong>
+            ${dualQmax}
+            <div style="font-size:11px;color:var(--navy-main);margin-top:4px;">💡 <em>${driver}</em></div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng bổ sung:</span>
@@ -4133,6 +4314,9 @@ function renderDashboardView() {
           ? Store.stock[wh.code][sku.code]
           : { on_hand: 0, in_transit: 0, committed: 0 };
         const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+        const baseP = (Store.baseParams && Store.baseParams[sku.code] && Store.baseParams[sku.code][wh.code]) || p;
+        const driver = getDriverExplanation(sku.code, wh.code, Store.currentDate, p, baseP);
+        const ropRender = renderDualParam(baseP ? baseP.rop : p.rop, p.rop, 'ROP', driver);
         const eff = st.on_hand + st.in_transit - st.committed;
         const status = getStatus(eff, p);
 
@@ -4158,9 +4342,9 @@ function renderDashboardView() {
         const activeStyle = isCurrentActive ? 'border: 2px solid var(--navy-main);' : '';
 
         mHtml += `
-          <td class="${cellClass}" style="${activeStyle}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | ROP: ${p.rop} | MAX: ${p.qmax}">
+          <td class="${cellClass}" style="${activeStyle}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | ROP: ${p.rop} (Gốc: ${baseP ? baseP.rop : p.rop}) | MAX: ${p.qmax} | ${driver}">
             <div class="cell-qty">${st.on_hand}${transitText}</div>
-            <div class="cell-sub">${tagText} (ROP ${p.rop})</div>
+            <div class="cell-sub">${tagText} (${ropRender})</div>
           </td>
         `;
       });
@@ -4246,12 +4430,16 @@ function renderInventoryView() {
       }
 
       const activeRfq = Store.rfqs.find(r => r.sku === sku.code && r.wh === wh.code && r.status === 'Đã gửi NCC');
+      const baseP = (Store.baseParams && Store.baseParams[sku.code] && Store.baseParams[sku.code][wh.code]) || p;
+      const warn7 = calcLookaheadWarning(st, p, Store.currentDate, sku.code, wh.code);
 
       rows.push({
         sku,
         wh,
         st,
         p,
+        baseP,
+        warn7,
         eff,
         status,
         activeRfq
@@ -4299,14 +4487,31 @@ function renderInventoryView() {
       header: 'MIN (ROP)',
       align: 'right',
       headerStyle: 'color:var(--status-red);',
-      render: r => `<span style="color:var(--status-red);font-weight:600;">${fmtNum(r.p.rop)}</span>`
+      render: r => {
+        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
+        return renderDualParam(r.baseP ? r.baseP.rop : r.p.rop, r.p.rop, 'ROP', driver);
+      }
     },
     {
       key: 'qmax',
       header: 'MAX (Qmax)',
       align: 'right',
       headerStyle: 'color:var(--status-yellow);',
-      render: r => `<span style="color:var(--status-yellow);font-weight:600;">${fmtNum(r.p.qmax)}</span>`
+      render: r => {
+        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
+        return renderDualParam(r.baseP ? r.baseP.qmax : r.p.qmax, r.p.qmax, 'Qmax', driver);
+      }
+    },
+    {
+      key: 'warn7',
+      header: 'Cảnh báo 7N',
+      align: 'center',
+      render: r => `
+        <div class="risk-badge">
+          <span class="${r.warn7.tagClass}">${r.warn7.label}</span>
+          <span class="risk-sub">${r.warn7.subText}</span>
+        </div>
+      `
     },
     {
       key: 'dos',
@@ -4695,6 +4900,7 @@ function renderParamsView() {
 
     const wh = whObj;
     const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+    const baseP = (Store.baseParams && Store.baseParams[sku.code] && Store.baseParams[sku.code][wh.code]) || p;
     const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
       ? Store.stock[wh.code][sku.code]
       : { on_hand: 0, in_transit: 0, committed: 0 };
@@ -4705,6 +4911,7 @@ function renderParamsView() {
       sku,
       wh,
       p,
+      baseP,
       st,
       eff,
       sm,
@@ -4776,14 +4983,20 @@ function renderParamsView() {
       header: 'MIN (ROP)',
       align: 'right',
       headerStyle: 'color:var(--status-red);',
-      render: r => `<span style="font-weight:700;color:var(--status-red);">${r.p.rop}</span>`
+      render: r => {
+        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
+        return renderDualParam(r.baseP ? r.baseP.rop : r.p.rop, r.p.rop, 'ROP', driver);
+      }
     },
     {
       key: 'qmax',
       header: 'MAX (Qmax)',
       align: 'right',
       headerStyle: 'color:var(--status-yellow);',
-      render: r => `<span style="font-weight:700;color:var(--status-yellow);">${r.p.qmax}</span>`
+      render: r => {
+        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
+        return renderDualParam(r.baseP ? r.baseP.qmax : r.p.qmax, r.p.qmax, 'Qmax', driver);
+      }
     },
     {
       key: 'status',
@@ -5511,6 +5724,7 @@ window.addEventListener('DOMContentLoaded', () => {
       day0Params[sku.code][wh.code] = calcSKUParams(sku.code, wh.code, Store.startDate, Store.history);
     });
   });
+  Store.baseParams = day0Params;
 
   // 3. Build Initial Stock with FNV-1a diversity and required overrides
   Store.stock = buildInitialStock();

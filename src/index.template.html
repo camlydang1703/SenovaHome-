@@ -33,16 +33,6 @@
         <input type="checkbox" id="autoPilotToggle" onchange="toggleAutoPilot(this.checked)">
         Autopilot Chuyển kho
       </label>
-
-      <div style="width:1px;height:18px;background:var(--border-color);margin:0 4px;"></div>
-
-      <select class="time-input" id="scenarioSelect" onchange="triggerDemoScenario(this.value)" style="padding:4px 8px;">
-        <option value="">⚡ Chọn Kịch bản Demo nhanh...</option>
-        <option value="sc1">Kịch bản 1: Điều phối Chuyển kho giữa 2 kho</option>
-        <option value="sc2">Kịch bản 2: Thiếu nguồn chuyển → Tạo RFQ</option>
-        <option value="sc3">Kịch bản 3: Tồn dư vượt MAX → Điều chuyển 2A</option>
-        <option value="sc4">Kịch bản 4: Toàn mạng lưới dư → Khuyến mãi 2B</option>
-      </select>
     </div>
 
     <div class="header-right">
@@ -273,21 +263,7 @@
         </div>
         <div class="table-container">
           <table class="data-tbl" id="inventoryTable">
-            <thead id="inventoryThead">
-              <tr>
-                <th>Mã SKU</th>
-                <th>Tên sản phẩm</th>
-                <th>Kho</th>
-                <th class="num-col">Tồn vật lý</th>
-                <th class="num-col">Đang về</th>
-                <th class="num-col">Tồn khả dụng (I)</th>
-                <th class="num-col" style="color:var(--status-red);">MIN (ROP)</th>
-                <th class="num-col" style="color:var(--status-yellow);">MAX (Qmax)</th>
-                <th class="num-col">Còn bán</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
+            <thead id="inventoryThead"></thead>
             <tbody id="inventoryTbody">
               <!-- Rendered dynamically -->
             </tbody>

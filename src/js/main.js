@@ -292,6 +292,7 @@ window.addEventListener('DOMContentLoaded', () => {
       day0Params[sku.code][wh.code] = calcSKUParams(sku.code, wh.code, Store.startDate, Store.history);
     });
   });
+  Store.baseParams = day0Params;
 
   // 3. Build Initial Stock with FNV-1a diversity and required overrides
   Store.stock = buildInitialStock();

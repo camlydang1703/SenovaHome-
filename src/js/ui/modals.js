@@ -49,6 +49,9 @@
       const p   = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
       const st  = Store.stock[whCode][skuCode];
       const excess = Math.max(0, st.on_hand - p.qmax);
+      const baseP = (Store.baseParams && Store.baseParams[skuCode] && Store.baseParams[skuCode][whCode]) || p;
+      const driver = getDriverExplanation(skuCode, whCode, Store.currentDate, p, baseP);
+      const dualQmax = renderDualParam(baseP ? baseP.qmax : p.qmax, p.qmax, 'Qmax', driver);
 
       const title = document.getElementById('overstockModalTitle');
       if (title) title.textContent = `Chiến lược Thoát hàng Tồn dư Vượt MAX: ${sku.code} tại ${wh.name}`;
@@ -61,7 +64,8 @@
               ⚠️ Cảnh báo Tồn trữ: ${sku.name} (${sku.code})
             </div>
             <div style="font-size:12px;color:#78350F;line-height:1.5;">
-              Tồn kho hiện tại: <strong>${st.on_hand}</strong> ${sku.unit} | Ngưỡng MAX: <strong>${p.qmax}</strong> | Tồn dư vượt đỉnh: <strong style="color:var(--status-red);">${excess}</strong> ${sku.unit}<br>
+              Tồn kho hiện tại: <strong>${st.on_hand}</strong> ${sku.unit} | Ngưỡng MAX: ${dualQmax} | Tồn dư vượt đỉnh: <strong style="color:var(--status-red);">${excess}</strong> ${sku.unit}<br>
+              <div style="font-size:11px;color:#B45309;margin-top:2px;">💡 <em>${driver}</em></div>
               Vốn bị chiếm dụng ước tính: <strong>${fmtVND(excess * sku.cogs)}</strong>. Chọn một trong hai phương án bên dưới để giải phóng vốn:
             </div>
           </div>
@@ -275,6 +279,11 @@
       const supLead = ctx.sku.lead;
       const supCost = ctx.customQty * ctx.sku.cogs;
 
+      const baseP = (Store.baseParams && Store.baseParams[ctx.skuCode] && Store.baseParams[ctx.skuCode][ctx.toWh]) || ctx.params;
+      const driver = getDriverExplanation(ctx.skuCode, ctx.toWh, Store.currentDate, ctx.params, baseP);
+      const dualRop = renderDualParam(baseP ? baseP.rop : ctx.params.rop, ctx.params.rop, 'ROP', driver);
+      const dualQmax = renderDualParam(baseP ? baseP.qmax : ctx.params.qmax, ctx.params.qmax, 'Qmax', driver);
+
       body.innerHTML = `
         <div style="background:#F8FAFC;border:1px solid var(--border-color);padding:12px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <div>
@@ -282,10 +291,11 @@
             <strong style="font-size:13px;color:var(--text-main);"> ${ctx.eff} ${ctx.sku.unit}</strong>
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
             <span style="font-size:12px;color:var(--text-muted);">Ngưỡng MIN (ROP):</span>
-            <strong style="font-size:13px;color:var(--status-red);"> ${ctx.params.rop}</strong>
+            ${dualRop}
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
             <span style="font-size:12px;color:var(--text-muted);">Trần MAX:</span>
-            <strong style="font-size:13px;color:var(--status-yellow);"> ${ctx.params.qmax}</strong>
+            ${dualQmax}
+            <div style="font-size:11px;color:var(--navy-main);margin-top:4px;">💡 <em>${driver}</em></div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng bổ sung:</span>

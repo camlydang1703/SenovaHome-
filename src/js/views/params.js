@@ -40,6 +40,7 @@ function renderParamsView() {
 
     const wh = whObj;
     const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+    const baseP = (Store.baseParams && Store.baseParams[sku.code] && Store.baseParams[sku.code][wh.code]) || p;
     const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
       ? Store.stock[wh.code][sku.code]
       : { on_hand: 0, in_transit: 0, committed: 0 };
@@ -50,6 +51,7 @@ function renderParamsView() {
       sku,
       wh,
       p,
+      baseP,
       st,
       eff,
       sm,
@@ -121,14 +123,20 @@ function renderParamsView() {
       header: 'MIN (ROP)',
       align: 'right',
       headerStyle: 'color:var(--status-red);',
-      render: r => `<span style="font-weight:700;color:var(--status-red);">${r.p.rop}</span>`
+      render: r => {
+        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
+        return renderDualParam(r.baseP ? r.baseP.rop : r.p.rop, r.p.rop, 'ROP', driver);
+      }
     },
     {
       key: 'qmax',
       header: 'MAX (Qmax)',
       align: 'right',
       headerStyle: 'color:var(--status-yellow);',
-      render: r => `<span style="font-weight:700;color:var(--status-yellow);">${r.p.qmax}</span>`
+      render: r => {
+        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
+        return renderDualParam(r.baseP ? r.baseP.qmax : r.p.qmax, r.p.qmax, 'Qmax', driver);
+      }
     },
     {
       key: 'status',

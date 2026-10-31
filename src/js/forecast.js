@@ -80,13 +80,15 @@ function fmt(n) {
           Store.history[sku.code][wh.code] = weeks;
         });
       });
+      return Store.history;
     }
 
     // PARAMETER CALCULATION PER SKU x WAREHOUSE (YÊU CẦU 0.4, 0.7)
-    function calcSKUParams(skuCode, whCode, dateStr) {
+    function calcSKUParams(skuCode, whCode, dateStr, historyOverride) {
       const sku = SKUS.find(s => s.code === skuCode);
       const wh = WAREHOUSES.find(w => w.code === whCode);
-      const weeks = Store.history[skuCode][whCode];
+      const hist = historyOverride || Store.history;
+      const weeks = (hist && hist[skuCode] && hist[skuCode][whCode]) ? hist[skuCode][whCode] : [];
 
       // D_SMA4 = Average of last 4 weeks of DESEASONALIZED demand
       const last4 = weeks.slice(-4);
@@ -143,6 +145,120 @@ function fmt(n) {
         rop: rop,
         qmax: qmax,
         totalEventDelay: totalEventDelay
+      };
+    }
+
+    // ----------------------------------------------------------------------------
+    // PHASE D: AI DUAL MIN/MAX & LOOKAHEAD EXPLANATION HELPERS
+    // ----------------------------------------------------------------------------
+    function getDriverExplanation(skuCode, whCode, curDate, p, baseP) {
+      const curM = getMonthFromDate(curDate);
+      const sm = SI[curM] || 1.0;
+      const reasons = [];
+
+      // 1. Mùa vụ
+      reasons.push(`Mùa vụ T${curM} (Sm = ${sm})`);
+
+      // 2. Sự kiện vận hành
+      const activeEvt = EVENTS.find(e => curDate >= e.start && curDate <= e.end);
+      if (activeEvt) {
+        const res = activeEvt.applyEvent ? activeEvt.applyEvent(skuCode, whCode) : null;
+        const delay = (res && res.delayAdd) || activeEvt.delayAdd || 0;
+        if (delay > 0) {
+          reasons.push(`${activeEvt.title} (+${delay} ngày delay NCC)`);
+        } else {
+          reasons.push(`${activeEvt.title} (Hệ số cầu x${activeEvt.demandMult})`);
+        }
+      }
+
+      // 3. Biến động tiêu thụ gần đây
+      if (baseP && p) {
+        const diffD = p.f_next - baseP.f_next;
+        if (Math.abs(diffD) > 1) {
+          const pct = Math.round((diffD / (baseP.f_next || 1)) * 100);
+          reasons.push(`Nhu cầu SMA4 ${pct >= 0 ? 'tăng' : 'giảm'} ${Math.abs(pct)}%`);
+        }
+      }
+
+      const isInc = baseP ? (p.rop >= baseP.rop) : true;
+      return (isInc ? 'Tăng do: ' : 'Giảm do: ') + reasons.join(' + ');
+    }
+
+    function renderDualParam(baseVal, aiVal, label = 'ROP', driverText = '') {
+      if (baseVal === undefined || baseVal === null) {
+        return `<span class="dual-ai">${fmtNum(aiVal)}</span>`;
+      }
+      const diff = aiVal - baseVal;
+      const pct = baseVal > 0 ? Math.round((diff / baseVal) * 100) : 0;
+      const tooltip = driverText ? `title="${driverText}"` : '';
+
+      if (diff === 0) {
+        return `<span class="dual-param" ${tooltip}><span class="dual-ai">${fmtNum(aiVal)}</span></span>`;
+      }
+
+      const isUp = diff > 0;
+      const arrow = isUp ? '↑' : '↓';
+      const sign = isUp ? '+' : '';
+      const diffClass = isUp ? 'diff-up' : 'diff-down';
+
+      return `
+        <span class="dual-param" ${tooltip}>
+          <span class="dual-base">${fmtNum(baseVal)}</span>
+          <span class="dual-ai ${diffClass}">${fmtNum(aiVal)}</span>
+          <span class="dual-diff ${diffClass}">(${arrow}${sign}${pct}%)</span>
+        </span>
+      `;
+    }
+
+    function calcLookaheadWarning(st, p, curDate, skuCode, whCode) {
+      const dailyRate = Math.max(0.1, p.f_next / 7.0);
+
+      // Check upcoming inbound transfers arriving within 7 days
+      let arriving7 = 0;
+      if (Store.transfers) {
+        Store.transfers.forEach(tr => {
+          if (tr.status === 'Đang chuyển' && tr.dstWh === whCode && tr.sku === skuCode) {
+            const daysLeft = diffDays(curDate, tr.arrivalDate);
+            if (daysLeft >= 0 && daysLeft <= 7) {
+              arriving7 += tr.qty;
+            }
+          }
+        });
+      }
+
+      const eff = st.on_hand + st.in_transit - st.committed;
+      const proj7OnHand = Math.round(st.on_hand + arriving7 - (dailyRate * 7));
+      const daysUntilRop = Math.round((st.on_hand - p.rop) / dailyRate);
+
+      if (proj7OnHand <= 0) {
+        return {
+          tag: 'STOCKOUT',
+          label: 'Nguy cơ đứt hàng',
+          tagClass: 'risk-tag risk-tag-stockout',
+          subText: daysUntilRop <= 0 ? 'Đã hết hàng' : `Đứt hàng ngày +${Math.max(1, Math.round(st.on_hand / dailyRate))}`
+        };
+      }
+      if (proj7OnHand <= p.rop) {
+        return {
+          tag: 'WARN_LOW',
+          label: 'Nguy cơ thiếu hàng',
+          tagClass: 'risk-tag risk-tag-low',
+          subText: daysUntilRop <= 0 ? 'Đã dưới MIN' : `Thủng MIN ngày +${daysUntilRop}`
+        };
+      }
+      if (proj7OnHand > p.qmax) {
+        return {
+          tag: 'WARN_HIGH',
+          label: 'Nguy cơ ứ đọng',
+          tagClass: 'risk-tag risk-tag-high',
+          subText: `Dư +${proj7OnHand - p.qmax} sp`
+        };
+      }
+      return {
+        tag: 'SAFE',
+        label: 'An toàn 7N',
+        tagClass: 'risk-tag risk-tag-safe',
+        subText: `Tồn dự phóng: ~${proj7OnHand}`
       };
     }
 

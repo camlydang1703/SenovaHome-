@@ -50,12 +50,16 @@ function renderInventoryView() {
       }
 
       const activeRfq = Store.rfqs.find(r => r.sku === sku.code && r.wh === wh.code && r.status === 'Đã gửi NCC');
+      const baseP = (Store.baseParams && Store.baseParams[sku.code] && Store.baseParams[sku.code][wh.code]) || p;
+      const warn7 = calcLookaheadWarning(st, p, Store.currentDate, sku.code, wh.code);
 
       rows.push({
         sku,
         wh,
         st,
         p,
+        baseP,
+        warn7,
         eff,
         status,
         activeRfq
@@ -103,14 +107,31 @@ function renderInventoryView() {
       header: 'MIN (ROP)',
       align: 'right',
       headerStyle: 'color:var(--status-red);',
-      render: r => `<span style="color:var(--status-red);font-weight:600;">${fmtNum(r.p.rop)}</span>`
+      render: r => {
+        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
+        return renderDualParam(r.baseP ? r.baseP.rop : r.p.rop, r.p.rop, 'ROP', driver);
+      }
     },
     {
       key: 'qmax',
       header: 'MAX (Qmax)',
       align: 'right',
       headerStyle: 'color:var(--status-yellow);',
-      render: r => `<span style="color:var(--status-yellow);font-weight:600;">${fmtNum(r.p.qmax)}</span>`
+      render: r => {
+        const driver = getDriverExplanation(r.sku.code, r.wh.code, Store.currentDate, r.p, r.baseP);
+        return renderDualParam(r.baseP ? r.baseP.qmax : r.p.qmax, r.p.qmax, 'Qmax', driver);
+      }
+    },
+    {
+      key: 'warn7',
+      header: 'Cảnh báo 7N',
+      align: 'center',
+      render: r => `
+        <div class="risk-badge">
+          <span class="${r.warn7.tagClass}">${r.warn7.label}</span>
+          <span class="risk-sub">${r.warn7.subText}</span>
+        </div>
+      `
     },
     {
       key: 'dos',
