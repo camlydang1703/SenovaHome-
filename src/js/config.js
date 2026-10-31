@@ -166,7 +166,13 @@
     const EVENTS = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.events && CSV_DATABASE.events.length > 0)
       ? CSV_DATABASE.events.map(ev => ({
           ...ev,
-          badge: ev.demand_mult !== 1.0 ? Cầu x : (ev.delay_days > 0 ? Trễ +N : (ev.fill_rate < 1.0 ? Giao % : Giá x)),
+          badge: ev.demand_mult !== 1.0
+            ? `Cầu x${ev.demand_mult}`
+            : (ev.delay_days > 0
+                ? `Trễ +${ev.delay_days}`
+                : (ev.fill_rate < 1.0
+                    ? `Giao ${Math.round(ev.fill_rate * 100)}%`
+                    : `Giá x${ev.price_mult}`)),
           applyEvent: (sku, wh) => {
             const skuObj = SKUS.find(s => s.code === sku) || {};
             const matchWh = isEventMatchingWarehouse(ev.scope_wh, wh);

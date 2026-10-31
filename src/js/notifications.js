@@ -160,13 +160,45 @@
 
     // ----------------------------------------------------------------------------
     // 2.2 ACTION LOGGING & SYSTEM AUDIT LOG (Yêu cầu 3.1 & 3.4b, c)
+    // Nhật ký chỉ ghi thao tác quản trị tồn kho (điều chuyển, RFQ, nhập/xuất nhanh)
+    // và đồng bộ data/ledger.csv qua server.py.
     // ----------------------------------------------------------------------------
+    const MANAGER_LOG_TYPES = {
+      PROPOSE_TRANSFER: 1,
+      APPROVE_TRANSFER: 1,
+      MANUAL_TRANSFER: 1,
+      TRANSFER_ACCEPTED: 1,
+      TRANSFER_REJECTED: 1,
+      TRANSFER_EARLY_RECEIVE: 1,
+      TRANSFER_ARRIVED: 1,
+      SAN_TAI_2A: 1,
+      SEND_RFQ: 1,
+      CANCEL_RFQ: 1,
+      QUICK_IN: 1,
+      QUICK_OUT: 1
+    };
+
+    function apiUrl(path) {
+      try {
+        if (typeof location !== 'undefined' && String(location.port) === '8000') return path;
+      } catch (e) {}
+      return 'http://localhost:8000' + path;
+    }
+
+    function extractSkuFromText(text) {
+      if (!text) return '';
+      const m = String(text).match(/\b([A-Z]{2,4}-[A-Z0-9]{3,})\b/);
+      return m ? m[1] : '';
+    }
+
     function logAction(type, target, details, cost = 0, whCode = null, extra = {}) {
       // SYSTEM_INIT chỉ ghi console theo đúng quy tắc Phase 3
       if (type === 'SYSTEM_INIT') {
         console.log(`[SYSTEM_INIT] ${details}`);
         return;
       }
+
+      if (!MANAGER_LOG_TYPES[type]) return;
 
       let targetWh = whCode || extra.wh || null;
       let srcWh = extra.srcWh || null;
@@ -210,6 +242,7 @@
         targetWh = (Store.ui && Store.ui.activeWh) || 'HCM';
       }
 
+      const sku = extra.sku || extractSkuFromText(details) || extractSkuFromText(target);
       const act = {
         id: padSeq('ACT'),
         date: Store.currentDate,
@@ -220,7 +253,8 @@
         cost: cost,
         wh: targetWh,
         srcWh: srcWh,
-        dstWh: dstWh
+        dstWh: dstWh,
+        sku: sku
       };
 
       Store.actions.unshift(act);
@@ -228,18 +262,172 @@
       // Cập nhật DOM nếu đang ở dashboard
       renderSystemLog((Store.ui && Store.ui.activeWh) || 'HCM');
 
-      // Đồng bộ backend server (ghi ledger.csv & decisions.csv)
-      fetch('http://localhost:8000/api/action', {
+      persistLedgerAction(act);
+    }
+
+    function persistLedgerAction(act) {
+      if (typeof fetch !== 'function') return;
+      const lines = [];
+      const note = `[${act.time}] ${act.details}`;
+      if (act.srcWh && act.dstWh) {
+        lines.push({
+          warehouse_code: act.srcWh,
+          sku: act.sku || '',
+          delta_on_hand: 0,
+          delta_in_transit: 0,
+          delta_on_order: 0,
+          note: note
+        });
+        lines.push({
+          warehouse_code: act.dstWh,
+          sku: act.sku || '',
+          delta_on_hand: 0,
+          delta_in_transit: 0,
+          delta_on_order: 0,
+          note: note
+        });
+      } else {
+        lines.push({
+          warehouse_code: act.wh,
+          sku: act.sku || '',
+          delta_on_hand: 0,
+          delta_in_transit: 0,
+          delta_on_order: act.type === 'SEND_RFQ' ? 1 : 0,
+          note: note
+        });
+      }
+      fetch(apiUrl('/api/action'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(act)
-      }).then(() => {
-        Store.serverStatus = 'online';
+        body: JSON.stringify({
+          entry_id: act.id,
+          date: act.date,
+          doc_type: act.type,
+          doc_id: act.target,
+          lines: lines
+        })
+      }).then(res => {
+        Store.serverStatus = res.ok ? 'online' : 'offline';
         updateServerStatusIndicator();
-      }).catch(err => {
+      }).catch(() => {
         Store.serverStatus = 'offline';
         updateServerStatusIndicator();
       });
+    }
+
+    function parseCsvText(text) {
+      const rows = [];
+      let row = [];
+      let cur = '';
+      let inQ = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQ) {
+          if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; }
+          else if (c === '"') inQ = false;
+          else cur += c;
+        } else if (c === '"') {
+          inQ = true;
+        } else if (c === ',') {
+          row.push(cur); cur = '';
+        } else if (c === '\n' || c === '\r') {
+          if (c === '\r' && text[i + 1] === '\n') i++;
+          row.push(cur); cur = '';
+          if (row.some(v => v !== '')) rows.push(row);
+          row = [];
+        } else {
+          cur += c;
+        }
+      }
+      if (cur !== '' || row.length) {
+        row.push(cur);
+        if (row.some(v => v !== '')) rows.push(row);
+      }
+      return rows;
+    }
+
+    function ledgerRowsToActions(csvText) {
+      const table = parseCsvText(csvText);
+      if (!table.length) return [];
+      const header = table[0];
+      const idx = {};
+      header.forEach((h, i) => { idx[h] = i; });
+      const groups = {};
+      table.slice(1).forEach(cols => {
+        const rec = {
+          entry_id: cols[idx.entry_id] || '',
+          date: cols[idx.date] || '',
+          doc_type: cols[idx.doc_type] || '',
+          doc_id: cols[idx.doc_id] || '',
+          warehouse_code: cols[idx.warehouse_code] || '',
+          sku: cols[idx.sku] || '',
+          note: cols[idx.note] || ''
+        };
+        if (!MANAGER_LOG_TYPES[rec.doc_type]) return;
+        const key = rec.date + '|' + rec.doc_type + '|' + rec.doc_id;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(rec);
+      });
+      const actions = Object.keys(groups).map(key => {
+        const list = groups[key];
+        const first = list[0];
+        let srcWh = null;
+        let dstWh = null;
+        if (list.length >= 2) {
+          srcWh = list[0].warehouse_code;
+          dstWh = list[1].warehouse_code;
+        }
+        const timeMatch = (first.note || '').match(/^\[(\d{2}:\d{2}:\d{2})\]\s*/);
+        const time = timeMatch ? timeMatch[1] : '';
+        const details = timeMatch ? first.note.slice(timeMatch[0].length) : (first.note || '');
+        const routeMatch = details.match(/\(([A-Z_]+)\s*->\s*([A-Z_]+)\)/);
+        if (routeMatch) {
+          srcWh = routeMatch[1];
+          dstWh = routeMatch[2];
+        }
+        return {
+          id: first.entry_id || first.doc_id,
+          date: first.date,
+          time: time,
+          type: first.doc_type,
+          target: first.doc_id,
+          details: details,
+          cost: 0,
+          wh: first.warehouse_code,
+          srcWh: srcWh,
+          dstWh: dstWh,
+          sku: first.sku
+        };
+      });
+      actions.sort((a, b) => (a.date + a.time) < (b.date + b.time) ? 1 : -1);
+      return actions;
+    }
+
+    function pingLedgerServer() {
+      if (typeof fetch !== 'function') return;
+      fetch(apiUrl('/api/get_csv?file=ledger.csv'))
+        .then(res => {
+          Store.serverStatus = res.ok ? 'online' : 'offline';
+          updateServerStatusIndicator();
+          if (!res.ok) throw new Error('offline');
+          return res.text();
+        })
+        .then(text => {
+          const loaded = ledgerRowsToActions(text);
+          if (loaded.length) {
+            const existing = {};
+            Store.actions.forEach(a => { existing[a.id] = 1; });
+            loaded.reverse().forEach(a => {
+              if (!existing[a.id]) Store.actions.push(a);
+            });
+            Store.actions.sort((a, b) => (a.date + a.time) < (b.date + b.time) ? 1 : -1);
+          }
+          renderSystemLog((Store.ui && Store.ui.activeWh) || 'HCM');
+        })
+        .catch(() => {
+          Store.serverStatus = 'offline';
+          updateServerStatusIndicator();
+        });
     }
 
     function updateServerStatusIndicator() {
@@ -260,22 +448,18 @@
       const whNameEl = document.getElementById('logWhName');
       if (whNameEl) whNameEl.textContent = whObj.name;
 
-      // Lọc các bản ghi liên quan đến activeWh:
-      // wh === activeWh HOẶC srcWh === activeWh HOẶC dstWh === activeWh
+      // Chỉ thao tác quản trị tồn kho, lọc theo kho đang chọn
       const whActions = Store.actions.filter(a =>
-        a.wh === activeWh || a.srcWh === activeWh || a.dstWh === activeWh
+        MANAGER_LOG_TYPES[a.type] &&
+        (a.wh === activeWh || a.srcWh === activeWh || a.dstWh === activeWh)
       );
 
-      // Bộ lọc loại nếu có
       const filterType = (Store.ui && Store.ui.logFilter) ? Store.ui.logFilter : 'ALL';
       let filtered = whActions;
       if (filterType !== 'ALL') {
         filtered = whActions.filter(a => {
           if (filterType === 'TRANSFER') return a.type.includes('TRANSFER') || a.type === 'SAN_TAI_2A';
           if (filterType === 'RFQ') return a.type.includes('RFQ');
-          if (filterType === 'INBOUND_NCC') return a.type === 'INBOUND_NCC';
-          if (filterType === 'EVENT') return a.type === 'EVENT';
-          if (filterType === 'EXCEPTION') return a.type.includes('EXCEPTION');
           if (filterType === 'QUICK') return a.type.includes('QUICK') || a.type.includes('STOCK_');
           return a.type === filterType;
         });

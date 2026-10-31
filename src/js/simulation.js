@@ -142,13 +142,7 @@
         });
       });
 
-      // Log 1 lan tong hop cho moi kho co hang ve dinh ky
-      WAREHOUSES.forEach(wh => {
-        const d = whDayInbound[wh.code];
-        if (d && d.total > 0) {
-          logAction('INBOUND_NCC', wh.code, `Hàng về định kỳ từ NCC tại ${wh.name}: ${d.skus.join(', ')} (tổng ${d.total} sp)`, d.cost);
-        }
-      });
+      // Hàng về định kỳ NCC không ghi nhật ký quản trị tồn kho (chỉ phản ánh qua tồn).
     }
 
     // ----------------------------------------------------------------------------
@@ -218,19 +212,7 @@
         lostSalesVal: dayTotalLost
       };
 
-      // Ghi nhật ký xuất bán tổng kết ngày cho từng kho có phát sinh
-      WAREHOUSES.forEach(wh => {
-        let whRev = 0;
-        let whUnits = 0;
-        SKUS.forEach(sku => {
-          const soldUnits = Store.currentWeekDemand[sku.code][wh.code] || 0;
-          whUnits += soldUnits;
-        });
-        // Log action nếu có doanh số phát sinh
-        if (dayTotalRev > 0) {
-          logAction('SALES_DAILY', wh.code, `Tổng kết bán hàng ngày ${fmtDateVN(curDate)} tại ${wh.name}: doanh thu chuỗi ${fmtVND(dayTotalRev)}`, 0, wh.code);
-        }
-      });
+      // Không ghi SALES_DAILY vào nhật ký: người quản lý kho không import dữ liệu bán hàng.
     }
 
     // ----------------------------------------------------------------------------
@@ -294,7 +276,6 @@
             const addQty = Math.max(1, Math.round(pick.p.qmax * 1.25 - pick.eff));
             pick.st.on_hand += addQty;
             executedEventInWh = true;
-            logAction('EXCEPTION_INBOUND', pick.sku.code, `[Ngoại lệ] Lô hàng giao dư từ NCC ${pick.sku.sup} tại ${wh.name}: +${addQty} (Vượt trần tạm thời)`, addQty * pick.sku.cogs, wh.code);
             pushNotification('EXCEPTION_EVENT', pick.sku.code, `Chứng từ nhập kho ngoại lệ: NCC giao dư +${addQty} ${pick.sku.code} tại ${wh.name}`, wh.code);
           }
         }
@@ -313,7 +294,6 @@
               executedEventInWh = true;
               const rev = subQty * pick.sku.price;
               if (Store.dailySales[curDate]) Store.dailySales[curDate].revenue += rev;
-              logAction('EXCEPTION_OUTBOUND', pick.sku.code, `[Ngoại lệ] Đơn hàng dự án lớn đột xuất tại ${wh.name}: Xuất ngay ${subQty} ${pick.sku.code}`, rev, wh.code);
               pushNotification('EXCEPTION_EVENT', pick.sku.code, `Chứng từ xuất kho ngoại lệ: Dự án lớn mua gấp ${subQty} ${pick.sku.code} tại ${wh.name}`, wh.code);
             }
           }
@@ -364,7 +344,6 @@
             if (!Store.eventLifecycleTrack[key]) {
               Store.eventLifecycleTrack[key] = true;
               pushNotification('EVENT_ADVISORY', ev.id, `[Dự báo sự kiện] ${ev.title}: ${impact}. Bắt đầu từ ${fmtDateVN(ev.start)} tại ${wh.name}.`, wh.code);
-              logAction('EVENT', ev.id, `Dự báo sự kiện: ${ev.title} (${impact}) từ ${fmtDateVN(ev.start)}`, 0, wh.code);
             }
           }
 
@@ -374,7 +353,6 @@
             if (!Store.eventLifecycleTrack[key]) {
               Store.eventLifecycleTrack[key] = true;
               pushNotification('EVENT_START', ev.id, `[Sự kiện bắt đầu] ${ev.title}: ${impact}. Hiệu lực đến ${fmtDateVN(ev.end)} tại ${wh.name}.`, wh.code);
-              logAction('EVENT', ev.id, `Sự kiện bắt đầu: ${ev.title} - ${impact}`, 0, wh.code);
             }
           }
 
@@ -385,7 +363,6 @@
             if (!Store.eventLifecycleTrack[key]) {
               Store.eventLifecycleTrack[key] = true;
               pushNotification('EVENT_END', ev.id, `[Sự kiện kết thúc] ${ev.title} đã hết hiệu lực. Chuỗi cung ứng tại ${wh.name} trở lại bình thường.`, wh.code);
-              logAction('EVENT', ev.id, `Sự kiện kết thúc: ${ev.title}`, 0, wh.code);
             }
           }
         });

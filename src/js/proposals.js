@@ -81,30 +81,37 @@ function scanAndGenerateProposals(curDate) {
             // Kiểm tra xem đã có RFQ nào đang chờ cho SKU và Kho này chưa
             const activeRfq = Store.rfqs.find(r => r.sku === sku.code && r.wh === wh.code && r.status === 'Đã gửi NCC');
 
-            // Tìm kho nguồn có thể điều chuyển thỏa mãn ràng buộc cứng:
-            // I_donor - needQty > ROP_donor và needQty <= on_hand_donor
+            // Ưu tiên chuyển phần tồn dư an toàn (trên ROP) từ kho khác.
+            // Không bắt buộc đủ qty tới MAX — thiếu hàng một phần vẫn tạo lệnh nội bộ.
+            const gapToRop = Math.max(1, p.rop - eff + 1);
             let donorWh = null;
-            let donorSurplus = 0;
+            let transferQty = 0;
+            let bestScore = -1;
             WAREHOUSES.forEach(otherWh => {
-              if (otherWh.code !== wh.code) {
-                const otherSt = Store.stock[otherWh.code][sku.code];
-                const otherP  = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
-                const otherEff = otherSt.on_hand + otherSt.in_transit - otherSt.committed;
-
-                if (otherSt.on_hand >= needQty && (otherEff - needQty) > otherP.rop) {
-                  const surplus = otherEff - otherP.rop;
-                  if (surplus > donorSurplus) {
-                    donorSurplus = surplus;
-                    donorWh = otherWh.code;
-                  }
-                }
+              if (otherWh.code === wh.code) return;
+              const otherSt = Store.stock[otherWh.code][sku.code];
+              const otherP  = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
+              const otherEff = otherSt.on_hand + otherSt.in_transit - otherSt.committed;
+              const transferable = Math.max(0, Math.min(
+                otherSt.on_hand,
+                Math.floor(otherEff - otherP.rop - 1)
+              ));
+              if (transferable < 1) return;
+              const qty = Math.min(needQty, transferable);
+              const tDays = getTransferDays(otherWh.code, wh.code) || 9;
+              const coversRop = qty >= Math.min(needQty, gapToRop);
+              const score = (coversRop ? 100000 : 0) + qty * 100 - tDays;
+              if (score > bestScore) {
+                bestScore = score;
+                donorWh = otherWh.code;
+                transferQty = qty;
               }
             });
 
-            if (donorWh) {
+            if (donorWh && transferQty > 0) {
               const transferDays = getTransferDays(donorWh, wh.code);
               const unitRate = getUnitFreightRate(donorWh, wh.code, sku.code);
-              const freightCost = needQty * unitRate;
+              const freightCost = transferQty * unitRate;
 
               Store.proposals[pairKey] = {
                 id: dxId,
@@ -113,7 +120,7 @@ function scanAndGenerateProposals(curDate) {
                 wh: wh.code,
                 type: 'TRANSFER',
                 action: 'Điều chuyển nội bộ',
-                qty: needQty,
+                qty: transferQty,
                 srcWh: donorWh,
                 dstWh: wh.code,
                 leadDays: transferDays,
@@ -124,7 +131,7 @@ function scanAndGenerateProposals(curDate) {
               };
               // Giữ chỗ tồn tại kho nguồn để các kho thiếu sau không đặt trùng
               if (Store.stock[donorWh] && Store.stock[donorWh][sku.code]) {
-                Store.stock[donorWh][sku.code].committed += needQty;
+                Store.stock[donorWh][sku.code].committed += transferQty;
               }
             } else {
               // Không tìm được kho điều chuyển -> Đề xuất Yêu cầu Báo giá NCC

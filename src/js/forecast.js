@@ -174,11 +174,11 @@ function fmt(n) {
         const impact = getCellEventImpact(skuCode, whCode, curDate);
         impact.events.forEach(ev => {
           if (ev.delay_days > 0 && (ev.delay_scope === 'SUPPLY' || ev.delay_scope === 'BOTH')) {
-            reasons.push(${ev.title} (+N delay NCC));
+            reasons.push(`${ev.title} (+${ev.delay_days} delay NCC)`);
           } else if (ev.demand_mult !== 1.0) {
-            reasons.push(${ev.title} (Hệ số cầu x));
+            reasons.push(`${ev.title} (Hệ số cầu x${ev.demand_mult})`);
           } else if (ev.fill_rate < 1.0) {
-            reasons.push(${ev.title} (Giao %));
+            reasons.push(`${ev.title} (Giao ${Math.round(ev.fill_rate * 100)}%)`);
           }
         });
       }

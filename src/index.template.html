@@ -229,13 +229,9 @@
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
             <select id="logTypeFilter" class="time-input" style="padding:2px 8px;font-size:11.5px;" onclick="event.stopPropagation()" onchange="onLogFilterChange(this.value)">
-              <option value="ALL">Tất cả loại (50 dòng mới nhất)</option>
+              <option value="ALL">Thao tác tồn kho (50 dòng mới nhất)</option>
               <option value="TRANSFER">Điều chuyển kho</option>
               <option value="RFQ">Yêu cầu Báo giá (RFQ)</option>
-              <option value="INBOUND_NCC">Hàng về định kỳ từ NCC</option>
-              <option value="EVENT">Sự kiện tác động</option>
-              <option value="EXCEPTION">Ngoại lệ chứng từ</option>
-              <option value="SALES_DAILY">Xuất bán hàng ngày</option>
               <option value="QUICK">Nhập / Xuất nhanh</option>
             </select>
             <span style="font-size:11.5px;color:var(--text-muted);" id="logToggleText">Thu gọn nhật ký ▴</span>

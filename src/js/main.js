@@ -198,6 +198,7 @@ function renderAllViews() {
   // 5. Render active view
   renderDashboardView();
   renderInventoryView();
+  renderSystemLog(activeWh);
   switchNavTab(Store.activeTab);
 }
 
@@ -339,6 +340,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 7. Initial Log Entry
   logAction('SYSTEM_INIT', 'ALL', 'Khởi tạo hệ thống SenNova Home IMS v3 thành công với 5 kho x 11 SKU.');
+
+  // 7b. Kết nối ledger.csv (server.py) và nạp nhật ký quản trị tồn kho
+  pingLedgerServer();
 
   // 8. Bind Global Modal Click Outside to Close
   document.querySelectorAll('.modal-overlay').forEach(overlay => {

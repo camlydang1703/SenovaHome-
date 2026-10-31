@@ -1899,7 +1899,13 @@ const CSV_DATABASE = {
     const EVENTS = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.events && CSV_DATABASE.events.length > 0)
       ? CSV_DATABASE.events.map(ev => ({
           ...ev,
-          badge: ev.demand_mult !== 1.0 ? Cầu x : (ev.delay_days > 0 ? Trễ +N : (ev.fill_rate < 1.0 ? Giao % : Giá x)),
+          badge: ev.demand_mult !== 1.0
+            ? `Cầu x${ev.demand_mult}`
+            : (ev.delay_days > 0
+                ? `Trễ +${ev.delay_days}`
+                : (ev.fill_rate < 1.0
+                    ? `Giao ${Math.round(ev.fill_rate * 100)}%`
+                    : `Giá x${ev.price_mult}`)),
           applyEvent: (sku, wh) => {
             const skuObj = SKUS.find(s => s.code === sku) || {};
             const matchWh = isEventMatchingWarehouse(ev.scope_wh, wh);
@@ -2189,11 +2195,11 @@ function fmt(n) {
         const impact = getCellEventImpact(skuCode, whCode, curDate);
         impact.events.forEach(ev => {
           if (ev.delay_days > 0 && (ev.delay_scope === 'SUPPLY' || ev.delay_scope === 'BOTH')) {
-            reasons.push(${ev.title} (+N delay NCC));
+            reasons.push(`${ev.title} (+${ev.delay_days} delay NCC)`);
           } else if (ev.demand_mult !== 1.0) {
-            reasons.push(${ev.title} (Hệ số cầu x));
+            reasons.push(`${ev.title} (Hệ số cầu x${ev.demand_mult})`);
           } else if (ev.fill_rate < 1.0) {
-            reasons.push(${ev.title} (Giao %));
+            reasons.push(`${ev.title} (Giao ${Math.round(ev.fill_rate * 100)}%)`);
           }
         });
       }

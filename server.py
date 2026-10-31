@@ -1,6 +1,7 @@
 import http.server
 import socketserver
 import os
+import csv
 import json
 import urllib.parse
 import urllib.request
@@ -44,6 +45,14 @@ class EnterpriseDataHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
         
+        if parsed.path == '/api/health':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "ok", "ledger": "data/ledger.csv"}).encode('utf-8'))
+            return
+
         # Fallback to standard file serving
         return super().do_GET()
 
@@ -71,6 +80,51 @@ class EnterpriseDataHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "success", "file": filename}).encode('utf-8'))
+            except Exception as e:
+                self.send_error(500, str(e))
+            return
+
+        # API 1b: Append manager inventory actions to ledger.csv
+        if parsed.path == '/api/action':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                payload = json.loads(body)
+                ledger_path = os.path.join(DATA_DIR, 'ledger.csv')
+                fields = ['entry_id', 'date', 'doc_type', 'doc_id', 'warehouse_code', 'sku',
+                          'delta_on_hand', 'delta_in_transit', 'delta_on_order', 'note']
+                write_header = (not os.path.exists(ledger_path)) or os.path.getsize(ledger_path) == 0
+                lines = payload.get('lines') or [{
+                    'warehouse_code': payload.get('wh') or payload.get('warehouse_code') or '',
+                    'sku': payload.get('sku', ''),
+                    'delta_on_hand': payload.get('delta_on_hand', 0),
+                    'delta_in_transit': payload.get('delta_in_transit', 0),
+                    'delta_on_order': payload.get('delta_on_order', 0),
+                    'note': payload.get('details') or payload.get('note') or ''
+                }]
+                base_id = payload.get('entry_id') or payload.get('id') or 'ACT'
+                with open(ledger_path, 'a', encoding='utf-8', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=fields, extrasaction='ignore')
+                    if write_header:
+                        writer.writeheader()
+                    for i, line in enumerate(lines):
+                        writer.writerow({
+                            'entry_id': line.get('entry_id') or (base_id if i == 0 else f'{base_id}-{i+1}'),
+                            'date': payload.get('date', ''),
+                            'doc_type': payload.get('doc_type') or payload.get('type') or '',
+                            'doc_id': payload.get('doc_id') or payload.get('target') or '',
+                            'warehouse_code': line.get('warehouse_code', ''),
+                            'sku': line.get('sku', ''),
+                            'delta_on_hand': line.get('delta_on_hand', 0),
+                            'delta_in_transit': line.get('delta_in_transit', 0),
+                            'delta_on_order': line.get('delta_on_order', 0),
+                            'note': line.get('note', '')
+                        })
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok", "file": "ledger.csv", "rows": len(lines)}).encode('utf-8'))
             except Exception as e:
                 self.send_error(500, str(e))
             return
