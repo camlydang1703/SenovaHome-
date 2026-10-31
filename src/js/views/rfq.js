@@ -96,6 +96,7 @@ function renderRfqView() {
     tbodyId: 'rfqTbody',
     columns: columns,
     rows: whRfqs,
+    rowAttrs: r => highlightRowAttrs(r.id),
     emptyMsg: `Chưa có Yêu cầu Báo giá (RFQ) nào được ghi nhận tại ${whObj.name}.`
   });
 }

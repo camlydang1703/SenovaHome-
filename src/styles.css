@@ -1030,3 +1030,7 @@
     .event-row:hover {
       background: #F8FAFC;
     }
+
+/* Dòng được mở từ thông báo */
+.row-highlight td { background: #FEF9C3 !important; animation: rowFlash 1.2s ease-in-out 3; }
+@keyframes rowFlash { 50% { background: #FDE68A !important; } }

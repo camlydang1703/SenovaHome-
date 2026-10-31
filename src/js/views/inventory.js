@@ -176,6 +176,7 @@ function renderInventoryView() {
     tbodyId: 'inventoryTbody',
     columns: columns,
     rows: rows,
+    rowAttrs: r => highlightRowAttrs(r.sku.code),
     emptyMsg: `Không tìm thấy sản phẩm nào khớp bộ lọc tại ${whObj.name}.`
   });
 }

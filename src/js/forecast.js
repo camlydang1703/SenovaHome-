@@ -135,8 +135,9 @@ function fmt(n) {
         const forecast = prev4Deseason * weeks[i].sm;
         errors.push(weeks[i].demand - forecast);
       }
-      const meanErr = errors.reduce((a, b) => a + b, 0) / errors.length;
-      const variance = errors.reduce((sum, e) => sum + Math.pow(e - meanErr, 2), 0) / errors.length;
+      const nErr = Math.max(1, errors.length); // tránh NaN khi lịch sử < 5 tuần
+      const meanErr = errors.reduce((a, b) => a + b, 0) / nErr;
+      const variance = errors.reduce((sum, e) => sum + Math.pow(e - meanErr, 2), 0) / nErr;
       const rawSigma = Math.sqrt(variance);
       const sigma_error = Math.max(rawSigma, 0.08 * f_next);
 

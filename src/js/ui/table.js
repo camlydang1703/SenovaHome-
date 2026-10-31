@@ -14,7 +14,13 @@
  * @param {Array<Object>} options.rows - Array of data rows
  * @param {string} [options.emptyMsg] - Message to display when rows is empty
  */
-function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Không tìm thấy dữ liệu phù hợp.' }) {
+// Dòng được mở từ thông báo: tô sáng ~10 giây
+function highlightRowAttrs(key) {
+  const h = (typeof Store !== 'undefined' && Store.ui) ? Store.ui.highlight : null;
+  return (h && key && h.ref === key && Date.now() - h.ts < 10000) ? 'id="hl-row" class="row-highlight"' : '';
+}
+
+function renderTable({ tableId, theadId, tbodyId, columns, rows, rowAttrs, emptyMsg = 'Không tìm thấy dữ liệu phù hợp.' }) {
   let theadEl = theadId ? document.getElementById(theadId) : null;
   let tbodyEl = tbodyId ? document.getElementById(tbodyId) : null;
 
@@ -59,7 +65,8 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
 
   let tbodyHtml = '';
   rows.forEach((row, rowIdx) => {
-    tbodyHtml += '<tr>';
+    const ra = rowAttrs ? rowAttrs(row) : '';
+    tbodyHtml += ra ? `<tr ${ra}>` : '<tr>';
     columns.forEach(col => {
       let tdAttrs = [];
       if (col.align === 'right' || col.align === 'num') {

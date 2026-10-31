@@ -363,7 +363,7 @@
         <div style="padding:18px 20px;">
           <div class="form-row">
             <label class="form-lbl">Kho hàng:</label>
-            <select class="form-ctrl" id="mvWh" onchange="updateMovementStockDisplay()">
+            <select class="form-ctrl" id="mvWh" onchange="updateMovementForm()">
               <option value="HCM">Kho HCM</option>
               <option value="BD">Kho Bình Dương</option>
               <option value="DN">Kho Đà Nẵng</option>
@@ -373,16 +373,27 @@
           </div>
           <div class="form-row">
             <label class="form-lbl">Sản phẩm (SKU):</label>
-            <select class="form-ctrl" id="mvSku" onchange="updateMovementStockDisplay()">
+            <select class="form-ctrl" id="mvSku" onchange="updateMovementForm()">
               <!-- Populated dynamically -->
             </select>
           </div>
           <div class="form-row">
             <label class="form-lbl">Loại thao tác:</label>
-            <select class="form-ctrl" id="mvType">
-              <option value="IN">Nhập kho nhanh (+ On-hand)</option>
-              <option value="OUT">Xuất kho nhanh (- On-hand)</option>
+            <select class="form-ctrl" id="mvType" onchange="updateMovementForm()">
+              <optgroup label="Nhập kho (+ tồn thực tế)">
+                <option value="IN_SUPPLIER">Nhập hàng từ nhà cung cấp</option>
+                <option value="IN_SHIPMENT">Nhận lô hàng đang về (NCC / kho khác)</option>
+              </optgroup>
+              <optgroup label="Xuất kho (- tồn thực tế)">
+                <option value="OUT_SALE">Xuất bán hàng</option>
+                <option value="OUT_TRANSFER">Xuất chuyển sang kho khác</option>
+                <option value="OUT_DAMAGE">Xuất hủy / hàng lỗi / trả NCC</option>
+              </optgroup>
             </select>
+          </div>
+          <div class="form-row">
+            <label class="form-lbl" id="mvPartyLbl">Nơi nhập:</label>
+            <select class="form-ctrl" id="mvParty" onchange="onMovementPartyChange()"></select>
           </div>
           <div class="form-row">
             <label class="form-lbl">Số lượng:</label>
@@ -398,6 +409,14 @@
           <div style="display:flex;justify-content:flex-end;">
             <button class="btn-large" onclick="submitQuickMovement()">Xác nhận Nhập / Xuất kho</button>
           </div>
+        </div>
+      </div>
+          <div class="card-panel" style="max-width:1100px;margin:16px auto 0;">
+        <div class="card-head">
+          <span class="card-title" id="mvHistTitle">Lịch sử phiếu nhập / xuất kho</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="mvHistTable"><thead id="mvHistThead"></thead><tbody id="mvHistTbody"></tbody></table>
         </div>
       </div>
     </section>

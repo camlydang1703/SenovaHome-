@@ -31,11 +31,20 @@
       return { lead: 3, base: 1100000, unit: 25000 };
     }
 
-    function calcFreightCost(fromWh, toWh, skuCode, qty) {
+    // Đã có chuyến xe nội bộ cùng tuyến xuất trong ngày -> hàng ghép chuyến, không tính lại phí chuyến
+    function hasTripOnRoute(fromWh, toWh, dateStr) {
+      if (!dateStr || typeof Store === 'undefined' || !Store.transfers) return false;
+      return Store.transfers.some(t => t.kind !== 'SUPPLIER' && t.srcWh === fromWh && t.dstWh === toWh &&
+        (t.shipDate || t.date) === dateStr && t.status !== 'Bị từ chối');
+    }
+
+    // Cước = phí chuyến (freight_rate_base, 1 lần/tuyến/ngày) + đơn giá/đv (unit_rate_base x hệ số hàng) x SL
+    function calcFreightCost(fromWh, toWh, skuCode, qty, dateStr) {
       if (fromWh === toWh || qty <= 0) return 0;
       const route = getRouteData(fromWh, toWh);
       const iMult = ITEM_FREIGHT_MULT[skuCode] || 1.0;
-      return route.base + Math.round(qty * route.unit * iMult);
+      const tripFee = hasTripOnRoute(fromWh, toWh, dateStr) ? 0 : route.base;
+      return tripFee + Math.round(qty * route.unit * iMult);
     }
 
     function getUnitFreightRate(fromWh, toWh, skuCode) {
@@ -128,37 +137,52 @@
       st.in_transit = Math.max(0, st.in_transit - tr.qty);
       tr.status = 'Đã nhận';
       tr.receivedDate = Store.currentDate;
+      tr.receiveTiming = getReceiveTiming(tr, Store.currentDate).label;
       const isSup = tr.kind === 'SUPPLIER';
       const fromTxt = isSup ? `NCC ${tr.srcWh}` : `kho ${tr.srcWh}`;
-      const autoTxt = mode === 'auto' ? ' (tự động sau 1 ngày chờ xác nhận)' : '';
-      if (!isSup || mode !== 'auto') {
-        pushNotification('TRANSFER_ARRIVED', tr.id, `Đã nhập kho ${tr.dstWh}: ${tr.qty} ${tr.sku} từ ${fromTxt}${autoTxt}.`);
-      }
+      pushNotification(isSup ? 'SUPPLIER_RECEIVE' : 'TRANSFER_ARRIVED', tr.id,
+        `${tr.receiveTiming}: nhập kho ${tr.dstWh} ${tr.qty} ${tr.sku} từ ${fromTxt}.`, tr.dstWh);
       logAction(isSup ? 'SUPPLIER_RECEIVE' : 'TRANSFER_ARRIVED', tr.id,
-        `Nhận hàng ${tr.qty} ${tr.sku} từ ${fromTxt} vào kho ${tr.dstWh}${autoTxt}`, 0, tr.dstWh);
+        `${tr.receiveTiming}: nhận ${tr.qty} ${tr.sku} từ ${fromTxt} vào kho ${tr.dstWh} (dự kiến ${tr.arrivalDate})`, 0, tr.dstWh);
     }
 
-    // Lô hàng tới ngày đến -> 'Đã đến kho' chờ bấm "Nhận hàng"; quá 1 ngày chưa xác nhận thì tự nhập kho
+    // Giao sớm (trước ngày dự kiến) / Đúng hạn / Nhận trễ n ngày (không giới hạn thời gian nhận)
+    function getReceiveTiming(tr, curDate) {
+      const diff = Math.round((new Date(curDate) - new Date(tr.arrivalDate)) / 86400000);
+      if (diff < 0) return { code: 'EARLY', diff, label: 'Nhận sớm', action: 'Nhận sớm' };
+      if (diff === 0) return { code: 'ONTIME', diff, label: 'Nhận đúng hạn', action: 'Xác nhận nhận hàng' };
+      return { code: 'LATE', diff, label: `Nhận trễ ${diff} ngày`, action: 'Xác nhận nhập trễ' };
+    }
+
+    // Lô hàng tới ngày dự kiến -> 'Đã đến kho'. KHÔNG tự nhập kho: chỉ cộng tồn khi người dùng bấm nhận hàng.
     function processShipmentArrivals(curDate) {
+      const byWh = {};
       Store.transfers.forEach(tr => {
-        if (tr.status === 'Đã đến kho' && tr.arrivedDate < curDate) {
-          applyShipmentReceipt(tr, 'auto');
-        } else if (tr.status === 'Đang chuyển' && tr.arrivalDate <= curDate) {
+        if (tr.status === 'Đang chuyển' && tr.arrivalDate <= curDate) {
           tr.status = 'Đã đến kho';
           tr.arrivedDate = curDate;
-          if (tr.kind !== 'SUPPLIER') {
-            pushNotification('TRANSFER_ARRIVED', tr.id,
-              `Lô ${tr.id}: ${tr.qty} ${tr.sku} từ ${tr.srcWh} đã đến kho ${tr.dstWh}. Bấm "Nhận hàng" để nhập kho.`);
-          }
+          (byWh[tr.dstWh] = byWh[tr.dstWh] || []).push(tr);
         }
+      });
+      Object.keys(byWh).forEach(wh => {
+        const list = byWh[wh];
+        const first = list[0];
+        const text = list.length === 1
+          ? `Lô ${first.id}: ${first.qty} ${first.sku} đã đến kho ${wh}, chờ xác nhận nhận hàng.`
+          : `${list.length} lô hàng đã đến kho ${wh} (${list.map(t => t.id).join(', ')}), chờ xác nhận nhận hàng.`;
+        pushNotification('SHIPMENT_ARRIVED', first.id, text, wh);
       });
     }
 
     function receiveShipment(transferId) {
       const tr = Store.transfers.find(t => t.id === transferId);
       if (!tr || (tr.status !== 'Đang chuyển' && tr.status !== 'Đã đến kho')) return;
+      if (Store.ui && Store.ui.viewDate) {
+        showToast('Đang xem lại ngày cũ, hãy quay về hiện tại để nhận hàng.', 'error');
+        return;
+      }
       applyShipmentReceipt(tr, 'manual');
-      showToast(`Đã nhận lô hàng ${tr.id} vào kho ${tr.dstWh}!`, 'success');
+      showToast(`${tr.receiveTiming}: lô ${tr.id} đã cộng ${tr.qty} ${tr.sku} vào tồn kho ${tr.dstWh}.`, 'success');
       refreshAfterStockChange();
     }
 
@@ -219,20 +243,26 @@
         const qty = Math.min(reqQty, transferable);
         const days = getTransferDays(w.code, toWh, curDate);
         const unitFreight = getUnitFreightRate(w.code, toWh, skuCode);
-        const freight = qty * unitFreight;
+        const freight = calcFreightCost(w.code, toWh, skuCode, qty, curDate);
+        const tripFee = Math.max(0, freight - qty * unitFreight);
+        // Vốn hàng nằm trên đường (không bán được trong lúc vận chuyển)
+        const transitCapital = Math.round(qty * sku.cogs * (PARAMS.dailyHoldingWaitRate || 0.0005) * days);
+        // Giải phóng vốn ứ đọng: phần vượt MAX ở kho xuất lẽ ra phải nằm chờ tới khi kho đó tự bán hết
         const excessOverMax = Math.max(0, sEff - sP.qmax);
-        const capitalBenefit = Math.round(Math.min(qty, excessOverMax) * sku.cogs * dailyHolding * 30);
+        const sDaily = Math.max(0.1, (sP.f_next || 0) / 7);
+        const clearDays = Math.min(90, Math.max(7, excessOverMax / sDaily));
+        const capitalBenefit = Math.round(Math.min(qty, excessOverMax) * sku.cogs * dailyHolding * clearDays);
         const shortCost = shortageUnits(days) * margin;
         const uncovered = Math.max(0, reqQty - qty);
-        const total = freight + shortCost - capitalBenefit;
+        const total = freight + transitCapital + shortCost - capitalBenefit;
         let reason = '';
         if (transferable < 1) reason = 'Không còn tồn dư (kho xuất phải giữ mức an toàn)';
-        else if (freight > margin * qty * 0.5) reason = 'Cước vượt 50% biên lợi nhuận gộp';
+        else if (unitFreight > margin * 0.5) reason = 'Cước/đv vượt 50% biên lợi nhuận gộp';
         return {
           type: 'TRANSFER', srcWh: w.code, name: w.name,
           on_hand: sSt.on_hand, eff: sEff, rop: sP.rop, qmax: sP.qmax,
           status: getStatus(sEff, sP), transferable, hardTransferable, qty, days, unitFreight, freight,
-          excessOverMax, capitalBenefit, shortCost, uncovered, total, eligible: !reason, reason,
+          excessOverMax, capitalBenefit, tripFee, transitCapital, shortCost, uncovered, total, eligible: !reason, reason,
           releasedQty: rel
         };
       });
@@ -240,11 +270,13 @@
       // RFQ: phải chi tiền mua mới (giá vốn NCC) + phí đặt hàng + rủi ro thiếu hàng trong lead time NCC
       const supLead = Math.max(1, Math.round((p.L || ((sku.lead + (sku.delay || 0)) / 7)) * 7));
       const rfqShort = shortageUnits(supLead) * margin;
+      // Vốn mua mới (tiền chi ra) + phí đặt hàng + vốn nằm chờ trong lead time NCC + rủi ro thiếu hàng
       const purchaseValue = rfqQty * sku.cogs;
-      const rfqTotal = purchaseValue + orderCost + rfqShort;
+      const waitCapital = Math.round(purchaseValue * (PARAMS.dailyHoldingWaitRate || 0.0005) * supLead);
+      const rfqTotal = purchaseValue + orderCost + waitCapital + rfqShort;
       const rfq = {
         type: 'RFQ', sup: sku.sup, qty: rfqQty, days: supLead,
-        purchaseValue, orderCost, shortCost: rfqShort,
+        purchaseValue, orderCost, waitCapital, shortCost: rfqShort,
         total: rfqTotal, unitCost: rfqTotal / rfqQty, eligible: true
       };
 
@@ -292,7 +324,7 @@
               shipDate: Store.currentDate,
               arrivalDate: p.arrivalDate,
               status: 'Đang chuyển',
-              cost: p.freightCost
+              cost: calcFreightCost(p.srcWh, p.dstWh, p.sku, p.qty, Store.currentDate)
             });
             delete Store.proposals[k];
             logAction('APPROVE_TRANSFER', trId, `Lệnh chuyển ${p.qty} ${p.sku} (${p.srcWh} -> ${p.dstWh})`, p.freightCost);
@@ -430,8 +462,7 @@
       }
 
       const tDays = getTransferDays(srcWh, dstWh);
-      const unitRate = getUnitFreightRate(srcWh, dstWh, skuCode);
-      const totalFreight = qty * unitRate;
+      const totalFreight = calcFreightCost(srcWh, dstWh, skuCode, qty, Store.currentDate);
 
       fb.innerHTML = `
         <span style="color:var(--status-green);font-weight:600;">
@@ -459,8 +490,7 @@
       }
 
       const tDays = getTransferDays(srcWh, dstWh);
-      const unitRate = getUnitFreightRate(srcWh, dstWh, skuCode);
-      const totalFreight = qty * unitRate;
+      const totalFreight = calcFreightCost(srcWh, dstWh, skuCode, qty, Store.currentDate);
       const trId = padSeq('TR');
 
       st.on_hand -= qty;

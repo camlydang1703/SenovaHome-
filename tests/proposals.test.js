@@ -16,7 +16,7 @@ global.renderAllViews = () => {};
 global.openTransferCompareModal = () => {};
 global.openOverstockModal = () => {};
 
-['csv_data', 'config', 'rng', 'forecast', 'transfers', 'rfq', 'notifications', 'simulation', 'proposals']
+['csv_data', 'config', 'rng', 'forecast', 'transfers', 'rfq', 'notifications', 'simulation', 'proposals', 'ui/table', 'views/quick']
   .forEach(m => vm.runInThisContext(fs.readFileSync(path.join(__dirname, '../src/js', m + '.js'), 'utf8'), { filename: m }));
 
 const S = vm.runInThisContext('Store');
@@ -44,7 +44,7 @@ function checkAll() {
     if (p.type !== 'TRANSFER') return;
     n++;
     const sku = SK.find(s => s.code === p.sku);
-    assert(p.freightCost <= (sku.price - sku.cogs) * p.qty * 0.5, `${p.id}: cước vượt 50% biên LN`);
+    assert(getUnitFreightRate(p.srcWh, p.dstWh, p.sku) <= (sku.price - sku.cogs) * 0.5, `${p.id}: cước/đv vượt 50% biên LN`);
     const snap = JSON.stringify({ s: S.stock, p: S.proposals, t: S.transfers });
     lastToast = null;
     approveProposal(k);
@@ -76,7 +76,26 @@ function checkInTransitLedger() {
 }
 checkInTransitLedger();
 let total = day0Transfers;
-for (let i = 0; i < 83; i++) { advanceOneDay(); total += checkAll(); checkInTransitLedger(); }
+// Mô phỏng kho bấm "Nhận hàng" cho mọi lô đã đến (không có tự nhập kho)
+function receiveArrived() {
+  S.transfers.filter(t => t.status === 'Đã đến kho').forEach(t => applyShipmentReceipt(t, 'manual'));
+  scanAndGenerateProposals(S.currentDate);
+}
+for (let i = 0; i < 83; i++) {
+  advanceOneDay();
+  if (i === 40) {
+    // Lô không ai bấm nhận phải giữ nguyên trạng thái chờ, không tự cộng tồn
+    const waiting = S.transfers.filter(t => t.status === 'Đã đến kho');
+    assert(waiting.length > 0, 'Không có lô nào đã đến để kiểm tra');
+    const w0 = waiting[0], oh0 = S.stock[w0.dstWh][w0.sku].on_hand + 0;
+    for (let k = 0; k < 3; k++) { advanceOneDay(); i++; }
+    assert(w0.status === 'Đã đến kho', 'Lô đã đến bị tự nhập kho');
+    assert(getReceiveTiming(w0, S.currentDate).code === 'LATE', 'Lô quá hạn phải hiện nhận trễ');
+    console.log(`Test 3b: ${w0.id} chờ 3 ngày vẫn chưa nhập kho (tồn ${oh0} -> ${S.stock[w0.dstWh][w0.sku].on_hand} chỉ do bán hàng) (PASSED)`);
+  }
+  receiveArrived();
+  total += checkAll(); checkInTransitLedger();
+}
 assert(total > 0);
 console.log(`Test 3: 84 ngày, ${total} lượt đề xuất điều chuyển đều phê duyệt hợp lệ (PASSED)`);
 
@@ -102,4 +121,31 @@ assert(open.status === 'Đã nhận' && S.stock[open.dstWh][open.sku].on_hand ==
 assert(rescanned, 'Sau khi nhận hàng không quét lại đề xuất');
 checkInTransitLedger();
 console.log(`Test 5: ${supRecs.length} chứng từ hàng NCC, Nhận hàng ${open.id} cập nhật tồn + đề xuất (PASSED)`);
-console.log('\nALL PROPOSAL TESTS PASSED (5/5)!');
+
+// 6. Giao sớm / đúng hạn / trễ
+const ex = { arrivalDate: S.currentDate };
+assert.strictEqual(getReceiveTiming(ex, addDays(S.currentDate, -2)).code, 'EARLY');
+assert.strictEqual(getReceiveTiming(ex, S.currentDate).code, 'ONTIME');
+assert.strictEqual(getReceiveTiming(ex, addDays(S.currentDate, 5)).label, 'Nhận trễ 5 ngày');
+console.log('Test 6: Nhận sớm / đúng hạn / nhận trễ không giới hạn (PASSED)');
+
+// 7. Thông báo dẫn về đúng giao diện + dòng đã thay đổi
+const nTr = S.notifications.find(n => S.transfers.some(t => t.id === n.refId));
+assert.strictEqual(resolveNotificationTarget(nTr).tab, 'transfers');
+assert.strictEqual(resolveNotificationTarget({ type: 'ALERT_LOW', refId: 'DN_CITY-TLM-045' }).ref, 'TLM-045');
+assert.strictEqual(resolveNotificationTarget({ type: 'ALERT_LOW', refId: 'DN_CITY-TLM-045' }).wh, 'DN_CITY');
+console.log('Test 7: Thông báo điều hướng tới tab/kho/dòng liên quan (PASSED)');
+
+// 8. Phiếu nhập/xuất nhanh ghi nơi nhập / nơi xuất và đồng bộ chứng từ
+const fail = executeStockMovement({ wh: 'HCM', sku: 'TLM-045', type: 'OUT_SALE', party: 'Khách lẻ', qty: 1e9 });
+assert(!fail.ok, 'Xuất quá tồn phải bị chặn');
+const ohA = S.stock.HCM['PPR-025'].on_hand;
+const inRes = executeStockMovement({ wh: 'HCM', sku: 'PPR-025', type: 'IN_SUPPLIER', party: 'SUP-LOTUS', qty: 20 });
+assert(inRes.ok && S.stock.HCM['PPR-025'].on_hand === ohA + 20, 'Nhập NCC không cộng tồn');
+assert(S.transfers.find(t => t.id === inRes.refId).status === 'Đã nhận', 'Nhập NCC phải có chứng từ NK đã nhận');
+const saleRes = executeStockMovement({ wh: 'HCM', sku: 'PPR-025', type: 'OUT_SALE', party: 'Khách lẻ', qty: 5 });
+assert(saleRes.ok && S.stock.HCM['PPR-025'].on_hand === ohA + 15, 'Xuất bán không trừ tồn');
+assert.strictEqual(resolveNotificationTarget(S.notifications[0]).tab, 'movement');
+checkInTransitLedger();
+console.log(`Test 8: Phiếu ${inRes.id} (nhập NCC) và ${saleRes.id} (xuất bán) đồng bộ tồn + chứng từ (PASSED)`);
+console.log('\nALL PROPOSAL TESTS PASSED (8/8)!');

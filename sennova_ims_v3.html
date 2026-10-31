@@ -1041,6 +1041,10 @@
       background: #F8FAFC;
     }
 
+/* Dòng được mở từ thông báo */
+.row-highlight td { background: #FEF9C3 !important; animation: rowFlash 1.2s ease-in-out 3; }
+@keyframes rowFlash { 50% { background: #FDE68A !important; } }
+
   </style>
 </head>
 <body>
@@ -1395,7 +1399,7 @@
         <div style="padding:18px 20px;">
           <div class="form-row">
             <label class="form-lbl">Kho hàng:</label>
-            <select class="form-ctrl" id="mvWh" onchange="updateMovementStockDisplay()">
+            <select class="form-ctrl" id="mvWh" onchange="updateMovementForm()">
               <option value="HCM">Kho HCM</option>
               <option value="BD">Kho Bình Dương</option>
               <option value="DN">Kho Đà Nẵng</option>
@@ -1405,16 +1409,27 @@
           </div>
           <div class="form-row">
             <label class="form-lbl">Sản phẩm (SKU):</label>
-            <select class="form-ctrl" id="mvSku" onchange="updateMovementStockDisplay()">
+            <select class="form-ctrl" id="mvSku" onchange="updateMovementForm()">
               <!-- Populated dynamically -->
             </select>
           </div>
           <div class="form-row">
             <label class="form-lbl">Loại thao tác:</label>
-            <select class="form-ctrl" id="mvType">
-              <option value="IN">Nhập kho nhanh (+ On-hand)</option>
-              <option value="OUT">Xuất kho nhanh (- On-hand)</option>
+            <select class="form-ctrl" id="mvType" onchange="updateMovementForm()">
+              <optgroup label="Nhập kho (+ tồn thực tế)">
+                <option value="IN_SUPPLIER">Nhập hàng từ nhà cung cấp</option>
+                <option value="IN_SHIPMENT">Nhận lô hàng đang về (NCC / kho khác)</option>
+              </optgroup>
+              <optgroup label="Xuất kho (- tồn thực tế)">
+                <option value="OUT_SALE">Xuất bán hàng</option>
+                <option value="OUT_TRANSFER">Xuất chuyển sang kho khác</option>
+                <option value="OUT_DAMAGE">Xuất hủy / hàng lỗi / trả NCC</option>
+              </optgroup>
             </select>
+          </div>
+          <div class="form-row">
+            <label class="form-lbl" id="mvPartyLbl">Nơi nhập:</label>
+            <select class="form-ctrl" id="mvParty" onchange="onMovementPartyChange()"></select>
           </div>
           <div class="form-row">
             <label class="form-lbl">Số lượng:</label>
@@ -1430,6 +1445,14 @@
           <div style="display:flex;justify-content:flex-end;">
             <button class="btn-large" onclick="submitQuickMovement()">Xác nhận Nhập / Xuất kho</button>
           </div>
+        </div>
+      </div>
+          <div class="card-panel" style="max-width:1100px;margin:16px auto 0;">
+        <div class="card-head">
+          <span class="card-title" id="mvHistTitle">Lịch sử phiếu nhập / xuất kho</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="mvHistTable"><thead id="mvHistThead"></thead><tbody id="mvHistTbody"></tbody></table>
         </div>
       </div>
     </section>
@@ -1968,7 +1991,8 @@ const CSV_DATABASE = {
 
       // Real transaction records
       actions: [],     // Audit logs
-      transfers: [],   // Internal transfer orders
+      transfers: [],
+      movements: [],   // Internal transfer orders
       rfqs: [],        // Quotation requests sent to suppliers
       promotions: [],  // Overstock promotional discounts
 
@@ -2152,8 +2176,9 @@ function fmt(n) {
         const forecast = prev4Deseason * weeks[i].sm;
         errors.push(weeks[i].demand - forecast);
       }
-      const meanErr = errors.reduce((a, b) => a + b, 0) / errors.length;
-      const variance = errors.reduce((sum, e) => sum + Math.pow(e - meanErr, 2), 0) / errors.length;
+      const nErr = Math.max(1, errors.length); // tránh NaN khi lịch sử < 5 tuần
+      const meanErr = errors.reduce((a, b) => a + b, 0) / nErr;
+      const variance = errors.reduce((sum, e) => sum + Math.pow(e - meanErr, 2), 0) / nErr;
       const rawSigma = Math.sqrt(variance);
       const sigma_error = Math.max(rawSigma, 0.08 * f_next);
 
@@ -2438,11 +2463,20 @@ function fmt(n) {
       return { lead: 3, base: 1100000, unit: 25000 };
     }
 
-    function calcFreightCost(fromWh, toWh, skuCode, qty) {
+    // Đã có chuyến xe nội bộ cùng tuyến xuất trong ngày -> hàng ghép chuyến, không tính lại phí chuyến
+    function hasTripOnRoute(fromWh, toWh, dateStr) {
+      if (!dateStr || typeof Store === 'undefined' || !Store.transfers) return false;
+      return Store.transfers.some(t => t.kind !== 'SUPPLIER' && t.srcWh === fromWh && t.dstWh === toWh &&
+        (t.shipDate || t.date) === dateStr && t.status !== 'Bị từ chối');
+    }
+
+    // Cước = phí chuyến (freight_rate_base, 1 lần/tuyến/ngày) + đơn giá/đv (unit_rate_base x hệ số hàng) x SL
+    function calcFreightCost(fromWh, toWh, skuCode, qty, dateStr) {
       if (fromWh === toWh || qty <= 0) return 0;
       const route = getRouteData(fromWh, toWh);
       const iMult = ITEM_FREIGHT_MULT[skuCode] || 1.0;
-      return route.base + Math.round(qty * route.unit * iMult);
+      const tripFee = hasTripOnRoute(fromWh, toWh, dateStr) ? 0 : route.base;
+      return tripFee + Math.round(qty * route.unit * iMult);
     }
 
     function getUnitFreightRate(fromWh, toWh, skuCode) {
@@ -2535,37 +2569,52 @@ function fmt(n) {
       st.in_transit = Math.max(0, st.in_transit - tr.qty);
       tr.status = 'Đã nhận';
       tr.receivedDate = Store.currentDate;
+      tr.receiveTiming = getReceiveTiming(tr, Store.currentDate).label;
       const isSup = tr.kind === 'SUPPLIER';
       const fromTxt = isSup ? `NCC ${tr.srcWh}` : `kho ${tr.srcWh}`;
-      const autoTxt = mode === 'auto' ? ' (tự động sau 1 ngày chờ xác nhận)' : '';
-      if (!isSup || mode !== 'auto') {
-        pushNotification('TRANSFER_ARRIVED', tr.id, `Đã nhập kho ${tr.dstWh}: ${tr.qty} ${tr.sku} từ ${fromTxt}${autoTxt}.`);
-      }
+      pushNotification(isSup ? 'SUPPLIER_RECEIVE' : 'TRANSFER_ARRIVED', tr.id,
+        `${tr.receiveTiming}: nhập kho ${tr.dstWh} ${tr.qty} ${tr.sku} từ ${fromTxt}.`, tr.dstWh);
       logAction(isSup ? 'SUPPLIER_RECEIVE' : 'TRANSFER_ARRIVED', tr.id,
-        `Nhận hàng ${tr.qty} ${tr.sku} từ ${fromTxt} vào kho ${tr.dstWh}${autoTxt}`, 0, tr.dstWh);
+        `${tr.receiveTiming}: nhận ${tr.qty} ${tr.sku} từ ${fromTxt} vào kho ${tr.dstWh} (dự kiến ${tr.arrivalDate})`, 0, tr.dstWh);
     }
 
-    // Lô hàng tới ngày đến -> 'Đã đến kho' chờ bấm "Nhận hàng"; quá 1 ngày chưa xác nhận thì tự nhập kho
+    // Giao sớm (trước ngày dự kiến) / Đúng hạn / Nhận trễ n ngày (không giới hạn thời gian nhận)
+    function getReceiveTiming(tr, curDate) {
+      const diff = Math.round((new Date(curDate) - new Date(tr.arrivalDate)) / 86400000);
+      if (diff < 0) return { code: 'EARLY', diff, label: 'Nhận sớm', action: 'Nhận sớm' };
+      if (diff === 0) return { code: 'ONTIME', diff, label: 'Nhận đúng hạn', action: 'Xác nhận nhận hàng' };
+      return { code: 'LATE', diff, label: `Nhận trễ ${diff} ngày`, action: 'Xác nhận nhập trễ' };
+    }
+
+    // Lô hàng tới ngày dự kiến -> 'Đã đến kho'. KHÔNG tự nhập kho: chỉ cộng tồn khi người dùng bấm nhận hàng.
     function processShipmentArrivals(curDate) {
+      const byWh = {};
       Store.transfers.forEach(tr => {
-        if (tr.status === 'Đã đến kho' && tr.arrivedDate < curDate) {
-          applyShipmentReceipt(tr, 'auto');
-        } else if (tr.status === 'Đang chuyển' && tr.arrivalDate <= curDate) {
+        if (tr.status === 'Đang chuyển' && tr.arrivalDate <= curDate) {
           tr.status = 'Đã đến kho';
           tr.arrivedDate = curDate;
-          if (tr.kind !== 'SUPPLIER') {
-            pushNotification('TRANSFER_ARRIVED', tr.id,
-              `Lô ${tr.id}: ${tr.qty} ${tr.sku} từ ${tr.srcWh} đã đến kho ${tr.dstWh}. Bấm "Nhận hàng" để nhập kho.`);
-          }
+          (byWh[tr.dstWh] = byWh[tr.dstWh] || []).push(tr);
         }
+      });
+      Object.keys(byWh).forEach(wh => {
+        const list = byWh[wh];
+        const first = list[0];
+        const text = list.length === 1
+          ? `Lô ${first.id}: ${first.qty} ${first.sku} đã đến kho ${wh}, chờ xác nhận nhận hàng.`
+          : `${list.length} lô hàng đã đến kho ${wh} (${list.map(t => t.id).join(', ')}), chờ xác nhận nhận hàng.`;
+        pushNotification('SHIPMENT_ARRIVED', first.id, text, wh);
       });
     }
 
     function receiveShipment(transferId) {
       const tr = Store.transfers.find(t => t.id === transferId);
       if (!tr || (tr.status !== 'Đang chuyển' && tr.status !== 'Đã đến kho')) return;
+      if (Store.ui && Store.ui.viewDate) {
+        showToast('Đang xem lại ngày cũ, hãy quay về hiện tại để nhận hàng.', 'error');
+        return;
+      }
       applyShipmentReceipt(tr, 'manual');
-      showToast(`Đã nhận lô hàng ${tr.id} vào kho ${tr.dstWh}!`, 'success');
+      showToast(`${tr.receiveTiming}: lô ${tr.id} đã cộng ${tr.qty} ${tr.sku} vào tồn kho ${tr.dstWh}.`, 'success');
       refreshAfterStockChange();
     }
 
@@ -2626,20 +2675,26 @@ function fmt(n) {
         const qty = Math.min(reqQty, transferable);
         const days = getTransferDays(w.code, toWh, curDate);
         const unitFreight = getUnitFreightRate(w.code, toWh, skuCode);
-        const freight = qty * unitFreight;
+        const freight = calcFreightCost(w.code, toWh, skuCode, qty, curDate);
+        const tripFee = Math.max(0, freight - qty * unitFreight);
+        // Vốn hàng nằm trên đường (không bán được trong lúc vận chuyển)
+        const transitCapital = Math.round(qty * sku.cogs * (PARAMS.dailyHoldingWaitRate || 0.0005) * days);
+        // Giải phóng vốn ứ đọng: phần vượt MAX ở kho xuất lẽ ra phải nằm chờ tới khi kho đó tự bán hết
         const excessOverMax = Math.max(0, sEff - sP.qmax);
-        const capitalBenefit = Math.round(Math.min(qty, excessOverMax) * sku.cogs * dailyHolding * 30);
+        const sDaily = Math.max(0.1, (sP.f_next || 0) / 7);
+        const clearDays = Math.min(90, Math.max(7, excessOverMax / sDaily));
+        const capitalBenefit = Math.round(Math.min(qty, excessOverMax) * sku.cogs * dailyHolding * clearDays);
         const shortCost = shortageUnits(days) * margin;
         const uncovered = Math.max(0, reqQty - qty);
-        const total = freight + shortCost - capitalBenefit;
+        const total = freight + transitCapital + shortCost - capitalBenefit;
         let reason = '';
         if (transferable < 1) reason = 'Không còn tồn dư (kho xuất phải giữ mức an toàn)';
-        else if (freight > margin * qty * 0.5) reason = 'Cước vượt 50% biên lợi nhuận gộp';
+        else if (unitFreight > margin * 0.5) reason = 'Cước/đv vượt 50% biên lợi nhuận gộp';
         return {
           type: 'TRANSFER', srcWh: w.code, name: w.name,
           on_hand: sSt.on_hand, eff: sEff, rop: sP.rop, qmax: sP.qmax,
           status: getStatus(sEff, sP), transferable, hardTransferable, qty, days, unitFreight, freight,
-          excessOverMax, capitalBenefit, shortCost, uncovered, total, eligible: !reason, reason,
+          excessOverMax, capitalBenefit, tripFee, transitCapital, shortCost, uncovered, total, eligible: !reason, reason,
           releasedQty: rel
         };
       });
@@ -2647,11 +2702,13 @@ function fmt(n) {
       // RFQ: phải chi tiền mua mới (giá vốn NCC) + phí đặt hàng + rủi ro thiếu hàng trong lead time NCC
       const supLead = Math.max(1, Math.round((p.L || ((sku.lead + (sku.delay || 0)) / 7)) * 7));
       const rfqShort = shortageUnits(supLead) * margin;
+      // Vốn mua mới (tiền chi ra) + phí đặt hàng + vốn nằm chờ trong lead time NCC + rủi ro thiếu hàng
       const purchaseValue = rfqQty * sku.cogs;
-      const rfqTotal = purchaseValue + orderCost + rfqShort;
+      const waitCapital = Math.round(purchaseValue * (PARAMS.dailyHoldingWaitRate || 0.0005) * supLead);
+      const rfqTotal = purchaseValue + orderCost + waitCapital + rfqShort;
       const rfq = {
         type: 'RFQ', sup: sku.sup, qty: rfqQty, days: supLead,
-        purchaseValue, orderCost, shortCost: rfqShort,
+        purchaseValue, orderCost, waitCapital, shortCost: rfqShort,
         total: rfqTotal, unitCost: rfqTotal / rfqQty, eligible: true
       };
 
@@ -2699,7 +2756,7 @@ function fmt(n) {
               shipDate: Store.currentDate,
               arrivalDate: p.arrivalDate,
               status: 'Đang chuyển',
-              cost: p.freightCost
+              cost: calcFreightCost(p.srcWh, p.dstWh, p.sku, p.qty, Store.currentDate)
             });
             delete Store.proposals[k];
             logAction('APPROVE_TRANSFER', trId, `Lệnh chuyển ${p.qty} ${p.sku} (${p.srcWh} -> ${p.dstWh})`, p.freightCost);
@@ -2837,8 +2894,7 @@ function fmt(n) {
       }
 
       const tDays = getTransferDays(srcWh, dstWh);
-      const unitRate = getUnitFreightRate(srcWh, dstWh, skuCode);
-      const totalFreight = qty * unitRate;
+      const totalFreight = calcFreightCost(srcWh, dstWh, skuCode, qty, Store.currentDate);
 
       fb.innerHTML = `
         <span style="color:var(--status-green);font-weight:600;">
@@ -2866,8 +2922,7 @@ function fmt(n) {
       }
 
       const tDays = getTransferDays(srcWh, dstWh);
-      const unitRate = getUnitFreightRate(srcWh, dstWh, skuCode);
-      const totalFreight = qty * unitRate;
+      const totalFreight = calcFreightCost(srcWh, dstWh, skuCode, qty, Store.currentDate);
       const trId = padSeq('TR');
 
       st.on_hand -= qty;
@@ -3192,25 +3247,46 @@ function fmt(n) {
       list.innerHTML = html;
     }
 
+    // Xác định tab/kho/dòng cần mở cho một thông báo (độc lập DOM để test được)
+    function resolveNotificationTarget(item) {
+      const ref = String(item.refId || '').split(',')[0].trim();
+      const tr = ref && Store.transfers ? Store.transfers.find(t => t.id === ref) : null;
+      if (tr) return { tab: 'transfers', wh: (item.wh === tr.srcWh || item.wh === tr.dstWh) ? item.wh : tr.dstWh, ref };
+      const rfq = ref && Store.rfqs ? Store.rfqs.find(r => r.id === ref) : null;
+      if (rfq) return { tab: 'rfq', wh: rfq.wh, ref };
+      const mv = ref && Store.movements ? Store.movements.find(m => m.id === ref) : null;
+      if (mv) return { tab: 'movement', wh: mv.wh, ref };
+      if (item.type && item.type.indexOf('ALERT_') === 0) {
+        const w = WAREHOUSES.find(x => ref.indexOf(x.code + '-') === 0);
+        if (w) return { tab: 'inventory', wh: w.code, ref: ref.slice(w.code.length + 1) };
+      }
+      if (SKUS.some(x => x.code === ref)) return { tab: 'inventory', wh: item.wh, ref };
+      if (item.type && item.type.includes('RFQ')) return { tab: 'rfq', wh: item.wh, ref: null };
+      if (item.type && (item.type.includes('TRANSFER') || item.type.includes('SHIPMENT'))) return { tab: 'transfers', wh: item.wh, ref: null };
+      return { tab: 'dashboard', wh: item.wh, ref: null };
+    }
+
     function onNotificationClick(notifId) {
       const item = Store.notifications.find(n => n.id === notifId);
       if (item) item.read = true;
       updateNotificationBadge();
       const popover = document.getElementById('bellPopover');
       if (popover) popover.classList.remove('active');
+      if (!item) return;
 
-      if (item) {
-        if (item.wh && typeof switchWarehouse === 'function') {
-          switchWarehouse(item.wh);
-        }
-        if (item.type.includes('TRANSFER')) {
-          switchNavTab('transfers');
-        } else if (item.type.includes('RFQ')) {
-          switchNavTab('rfq');
-        } else {
-          switchNavTab('dashboard');
-        }
+      const target = resolveNotificationTarget(item);
+      item.wh = target.wh || item.wh;
+      if (!Store.ui) Store.ui = {};
+      Store.ui.highlight = target.ref ? { ref: target.ref, ts: Date.now() } : null;
+      Store.activeTab = target.tab;
+      if (item.wh && typeof switchWarehouse === 'function') {
+        switchWarehouse(item.wh);
       }
+      switchNavTab(target.tab);
+      setTimeout(() => {
+        const el = document.getElementById('hl-row');
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 60);
     }
 
     // ----------------------------------------------------------------------------
@@ -3231,6 +3307,7 @@ function fmt(n) {
       SEND_RFQ: 1,
       CANCEL_RFQ: 1,
       QUICK_IN: 1,
+      SUPPLIER_QUICK_IN: 1,
       QUICK_OUT: 1
     };
 
@@ -4199,11 +4276,12 @@ function scanAndGenerateProposals(curDate) {
             const room = Math.floor(getSafeTarget(oP) - oEff); // kho nhận chỉ lên tới mức an toàn, không lên MAX
             if (room < 1) return;
             const qty = Math.min(excessQty, room);
+            const freight = calcFreightCost(wh.code, otherWh.code, sku.code, qty, curDate);
             const unit = getUnitFreightRate(wh.code, otherWh.code, sku.code);
-            if (unit > (sku.price - sku.cogs) * 0.5) return; // cước phải <= 50% biên LN gộp
+            if (unit > (sku.price - sku.cogs) * 0.5) return; // cước/đv phải <= 50% biên LN gộp (phí chuyến tính vào tổng)
             const tDays = getTransferDays(wh.code, otherWh.code, curDate);
             const score = (oEff <= oP.rop ? 0 : 1e9) + unit * 10 + tDays * 1000 - qty;
-            if (!best || score < best.score) best = { dst: otherWh.code, qty, unit, tDays, score };
+            if (!best || score < best.score) best = { dst: otherWh.code, qty, unit, freight, tDays, score };
           });
 
           if (best) {
@@ -4219,7 +4297,7 @@ function scanAndGenerateProposals(curDate) {
               qty: best.qty,
               leadDays: best.tDays,
               arrivalDate: addDays(curDate, best.tDays),
-              freightCost: best.qty * best.unit,
+              freightCost: best.freight,
               status: 'Cần giải phóng vốn',
               hasActiveRfq: false
             };
@@ -4279,7 +4357,7 @@ function scanAndGenerateProposals(curDate) {
           shipDate: Store.currentDate,
           arrivalDate: p.arrivalDate,
           status: 'Đang chuyển',
-          cost: p.freightCost
+          cost: calcFreightCost(p.srcWh, p.dstWh, p.sku, p.qty, Store.currentDate)
         });
 
         delete Store.proposals[key]; // Yêu cầu 0.2
@@ -4322,7 +4400,13 @@ function scanAndGenerateProposals(curDate) {
  * @param {Array<Object>} options.rows - Array of data rows
  * @param {string} [options.emptyMsg] - Message to display when rows is empty
  */
-function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Không tìm thấy dữ liệu phù hợp.' }) {
+// Dòng được mở từ thông báo: tô sáng ~10 giây
+function highlightRowAttrs(key) {
+  const h = (typeof Store !== 'undefined' && Store.ui) ? Store.ui.highlight : null;
+  return (h && key && h.ref === key && Date.now() - h.ts < 10000) ? 'id="hl-row" class="row-highlight"' : '';
+}
+
+function renderTable({ tableId, theadId, tbodyId, columns, rows, rowAttrs, emptyMsg = 'Không tìm thấy dữ liệu phù hợp.' }) {
   let theadEl = theadId ? document.getElementById(theadId) : null;
   let tbodyEl = tbodyId ? document.getElementById(tbodyId) : null;
 
@@ -4367,7 +4451,8 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
 
   let tbodyHtml = '';
   rows.forEach((row, rowIdx) => {
-    tbodyHtml += '<tr>';
+    const ra = rowAttrs ? rowAttrs(row) : '';
+    tbodyHtml += ra ? `<tr ${ra}>` : '<tr>';
     columns.forEach(col => {
       let tdAttrs = [];
       if (col.align === 'right' || col.align === 'num') {
@@ -4456,7 +4541,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
         const destSt = Store.stock[w.code][skuCode];
         const destEff = destSt.on_hand + destSt.in_transit - destSt.committed;
         const tDays = getTransferDays(whCode, w.code);
-        const freight = calcFreightCost(whCode, w.code, skuCode, excess);
+        const freight = calcFreightCost(whCode, w.code, skuCode, excess, Store.currentDate);
         const isLow = destEff <= destP.rop;
         const capacity = Math.max(0, destP.qmax - destEff);
         const deficit = isLow ? (destP.rop - destEff) : 0;
@@ -4760,7 +4845,8 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
             <td style="text-align:right;"><strong>${fmtNum(s.transferable)}</strong></td>
             <td style="text-align:right;">${s.days} ngày</td>
             <td style="text-align:right;">${fmtVND(s.unitFreight)}</td>
-            <td style="text-align:right;">${s.qty > 0 ? fmtVND(s.freight) : '—'}</td>
+            <td style="text-align:right;">${s.qty > 0 ? `${fmtVND(s.freight)}<div style="font-size:10px;color:var(--text-muted);">${s.tripFee > 0 ? 'gồm phí chuyến ' + fmtVND(s.tripFee) : 'ghép chuyến sẵn có'}</div>` : '—'}</td>
+            <td style="text-align:right;">${s.qty > 0 ? `${fmtVND(Math.round(s.total))}<div style="font-size:10px;color:var(--text-muted);">~${fmtVND(Math.round(s.unitCost))}/${unit}</div>` : '—'}</td>
             <td style="font-size:11px;color:${s.eligible ? 'var(--status-green)' : 'var(--status-red)'};">${s.eligible ? (s.uncovered > 0 ? `Đáp ứng ${fmtNum(s.qty)}/${fmtNum(ctx.customQty)}` : 'Hợp lệ') : s.reason}</td>
           </tr>`;
       }).join('');
@@ -4797,7 +4883,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
           <thead><tr>
             <th></th><th>Kho nguồn</th><th>Tình trạng</th><th style="text-align:right;">Tồn / ROP / MAX</th>
             <th style="text-align:right;">Xuất an toàn tối đa</th><th style="text-align:right;">Thời gian</th>
-            <th style="text-align:right;">Cước/${unit}</th><th style="text-align:right;">Tổng cước</th><th>Đánh giá</th>
+            <th style="text-align:right;">Cước/${unit}</th><th style="text-align:right;">Tổng cước</th><th style="text-align:right;" title="Cước + vốn nằm trên đường + rủi ro thiếu hàng − vốn ứ đọng được giải phóng">Tổng chi phí</th><th>Đánh giá</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -4808,7 +4894,8 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
           <div style="font-size:11.5px;line-height:1.6;">
             Gửi RFQ đồng loạt tới <strong>${sups.length} NCC</strong> (${sups.join(', ')})${ctx.recommendedPlan === 'B' ? ' <span class="status-pill status-pill-ok" style="font-size:10px;">AI đề xuất</span>' : ''}<br>
             • Lead time NCC dự kiến: <strong>~${ev.rfq.days} ngày</strong><br>
-            • Vốn mua mới tạm tính: <strong>${fmtVND(ev.rfq.purchaseValue)}</strong> (${fmtVND(ctx.sku.cogs)}/${unit}) + phí đặt hàng ${fmtVND(ev.rfq.orderCost)}<br>
+            • Vốn mua mới (tiền chi ra): <strong>${fmtVND(ev.rfq.purchaseValue)}</strong> (${fmtVND(ctx.sku.cogs)}/${unit} × ${fmtNum(ev.rfq.qty)}) + phí đặt hàng ${fmtVND(ev.rfq.orderCost)} + vốn chờ hàng về ${fmtVND(ev.rfq.waitCapital)}<br>
+            • Tổng chi phí RFQ: <strong>${fmtVND(ev.rfq.total)}</strong> (~${fmtVND(Math.round(ev.rfq.unitCost))}/${unit})<br>
             • Rủi ro thiếu hàng trong thời gian chờ: <strong>${fmtVND(ev.rfq.shortCost)}</strong> (biên LN mất đi)
           </div>
         </div>
@@ -4876,7 +4963,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
 
         const tDays = getTransferDays(ctx.sourceWh, ctx.toWh);
         const unitFreight = getUnitFreightRate(ctx.sourceWh, ctx.toWh, ctx.skuCode);
-        const totalFreight = calcFreightCost(ctx.sourceWh, ctx.toWh, ctx.skuCode, ctx.customQty);
+        const totalFreight = calcFreightCost(ctx.sourceWh, ctx.toWh, ctx.skuCode, ctx.customQty, Store.currentDate);
         const trId = padSeq('TR');
 
         // Tạo yêu cầu điều chuyển gửi tới kho nhận xác nhận
@@ -6064,6 +6151,7 @@ function renderInventoryView() {
     tbodyId: 'inventoryTbody',
     columns: columns,
     rows: rows,
+    rowAttrs: r => highlightRowAttrs(r.sku.code),
     emptyMsg: `Không tìm thấy sản phẩm nào khớp bộ lọc tại ${whObj.name}.`
   });
 }
@@ -6160,10 +6248,11 @@ function renderTransfersView() {
       header: 'Trạng thái',
       render: tr => {
         if (tr.status === 'Đã nhận') {
-          return `<span class="status-pill status-pill-ok">✓ Đã nhận${tr.receivedDate ? ' ' + fmtDateVN(tr.receivedDate) : ''}</span>`;
+          return `<span class="status-pill status-pill-ok">✓ ${tr.receiveTiming || 'Đã nhận'}${tr.receivedDate ? ' ' + fmtDateVN(tr.receivedDate) : ''}</span>`;
         }
         if (tr.status === 'Đã đến kho') {
-          return `<span class="status-pill" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">📦 Đã đến - chờ nhận hàng</span>`;
+          const late = getReceiveTiming(tr, Store.currentDate).diff;
+          return `<span class="status-pill" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">📦 ${late > 0 ? `Quá hạn ${late} ngày - chờ nhận` : 'Đã đến - chờ nhận hàng'}</span>`;
         }
         if (tr.status === 'Chờ kho nhận đồng ý') {
           return `<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">⏳ Chờ kho nhận duyệt</span>`;
@@ -6195,8 +6284,9 @@ function renderTransfersView() {
         // Nếu đang chuyển
         if (tr.status === 'Đang chuyển' || tr.status === 'Đã đến kho') {
           if (tr.dstWh === activeWh) {
-            const arrived = tr.status === 'Đã đến kho';
-            return `<button class="btn-table" ${arrived ? 'style="background:#15803D;border-color:#15803D;"' : ''} onclick="receiveShipment('${tr.id}')">✓ Nhận hàng</button>`;
+            const tm = getReceiveTiming(tr, Store.currentDate);
+            const style = tm.code === 'EARLY' ? '' : (tm.code === 'ONTIME' ? 'style="background:#15803D;border-color:#15803D;"' : 'style="background:#B45309;border-color:#B45309;"');
+            return `<button class="btn-table" ${style} onclick="receiveShipment('${tr.id}')">✓ ${tm.action}</button>`;
           }
           return '<span style="font-size:11.5px;color:var(--text-muted);">Đang trên đường</span>';
         }
@@ -6215,6 +6305,7 @@ function renderTransfersView() {
     tbodyId: 'transferTbody',
     columns: columns,
     rows: whTransfers,
+    rowAttrs: tr => highlightRowAttrs(tr.id),
     emptyMsg: `Chưa có lệnh điều chuyển nào liên quan đến ${whObj.name}.`
   });
 }
@@ -6320,6 +6411,7 @@ function renderRfqView() {
     tbodyId: 'rfqTbody',
     columns: columns,
     rows: whRfqs,
+    rowAttrs: r => highlightRowAttrs(r.id),
     emptyMsg: `Chưa có Yêu cầu Báo giá (RFQ) nào được ghi nhận tại ${whObj.name}.`
   });
 }
@@ -6328,68 +6420,206 @@ function renderRfqView() {
 
 // --- BEGIN src/js/views/quick.js ---
 // ============================================================================
-// VIEW 5: QUICK MOVEMENT
+// VIEW 5: QUICK MOVEMENT - PHIẾU NHẬP / XUẤT KHO (bắt buộc ghi nơi nhập / nơi xuất)
 // ============================================================================
 
-    // 2.14 QUICK MOVEMENT (Yêu cầu 2.5)
-    // ----------------------------------------------------------------------------
+    const MV_TYPES = {
+      IN_SUPPLIER:  { dir: 'IN',  label: 'Nhập từ NCC',          party: 'Nơi nhập (NCC):' },
+      IN_SHIPMENT:  { dir: 'IN',  label: 'Nhận lô hàng đang về', party: 'Lô hàng nhận:' },
+      OUT_SALE:     { dir: 'OUT', label: 'Xuất bán hàng',        party: 'Nơi xuất (khách):' },
+      OUT_TRANSFER: { dir: 'OUT', label: 'Xuất chuyển kho',      party: 'Nơi xuất (kho nhận):' },
+      OUT_DAMAGE:   { dir: 'OUT', label: 'Xuất hủy / hàng lỗi',  party: 'Lý do xuất:' }
+    };
+    const MV_CUSTOMERS = ['Khách lẻ', 'Khách dự án / công trình', 'Đại lý'];
+    const MV_DAMAGE = ['Hàng lỗi / hư hỏng', 'Hủy do mất phẩm chất', 'Trả lại NCC'];
+
+    function getOpenShipments(whCode, skuCode) {
+      return Store.transfers.filter(t => t.dstWh === whCode && t.sku === skuCode &&
+        (t.status === 'Đang chuyển' || t.status === 'Đã đến kho'));
+    }
+
+    // Danh sách lựa chọn nơi nhập / nơi xuất (độc lập DOM)
+    function getMovementPartyOptions(type, whCode, skuCode) {
+      const sku = SKUS.find(s => s.code === skuCode);
+      if (type === 'IN_SUPPLIER') {
+        const codes = Object.keys(SUPPLIERS).filter(c => !sku.cat || SUPPLIERS[c].cat === sku.cat);
+        if (codes.indexOf(sku.sup) < 0) codes.unshift(sku.sup);
+        codes.sort((a, b) => (a === sku.sup ? -1 : 0) - (b === sku.sup ? -1 : 0));
+        return codes.map(c => ({ value: c, label: `${c}${SUPPLIERS[c] ? ' - ' + SUPPLIERS[c].name : ''}` }));
+      }
+      if (type === 'IN_SHIPMENT') {
+        return getOpenShipments(whCode, skuCode).map(t => ({
+          value: t.id, qty: t.qty,
+          label: `${t.id} · ${t.kind === 'SUPPLIER' ? 'NCC ' + t.srcWh : 'Kho ' + t.srcWh} · ${t.qty} ${sku.unit} · dự kiến ${fmtDateVN(t.arrivalDate)} · ${t.status}`
+        }));
+      }
+      if (type === 'OUT_TRANSFER') {
+        return WAREHOUSES.filter(w => w.code !== whCode).map(w => ({ value: w.code, label: `${w.name} (${w.code})` }));
+      }
+      return (type === 'OUT_SALE' ? MV_CUSTOMERS : MV_DAMAGE).map(x => ({ value: x, label: x }));
+    }
+
+    // Thực hiện phiếu nhập / xuất (độc lập DOM). Trả về { ok, msg, id, refId }
+    function executeStockMovement(o) {
+      const def = MV_TYPES[o.type];
+      if (!def) return { ok: false, msg: 'Loại thao tác không hợp lệ!' };
+      if (Store.ui && Store.ui.viewDate) return { ok: false, msg: 'Đang xem lại ngày cũ, hãy quay về hiện tại.' };
+      const cur = Store.currentDate;
+      const sku = SKUS.find(s => s.code === o.sku);
+      const st = Store.stock[o.wh][o.sku];
+      const physicalFree = st.on_hand - st.committed;
+      let qty = parseInt(o.qty, 10) || 0;
+      let refId = null;
+      let partyLabel = o.party;
+
+      if (o.type === 'IN_SHIPMENT') {
+        const tr = Store.transfers.find(t => t.id === o.party);
+        if (!tr || tr.dstWh !== o.wh || (tr.status !== 'Đang chuyển' && tr.status !== 'Đã đến kho')) {
+          return { ok: false, msg: 'Hãy chọn một lô hàng đang về của kho này!' };
+        }
+        qty = tr.qty;
+        applyShipmentReceipt(tr, 'manual');
+        refId = tr.id;
+        partyLabel = `${tr.kind === 'SUPPLIER' ? 'NCC ' : 'Kho '}${tr.srcWh} (lô ${tr.id})`;
+      } else {
+        if (qty <= 0) return { ok: false, msg: 'Số lượng phải > 0!' };
+        if (!o.party) return { ok: false, msg: 'Phải chọn nơi nhập / nơi xuất!' };
+        if (def.dir === 'OUT' && qty > physicalFree) {
+          return { ok: false, msg: `Không thể xuất quá tồn khả dụng (${physicalFree} = tồn ${st.on_hand} − giữ chỗ ${st.committed})!` };
+        }
+        if (o.type === 'IN_SUPPLIER') {
+          const rec = createSupplierShipment(o.sku, o.wh, qty, cur, 0, `Phiếu nhập nhanh từ NCC${o.note ? ': ' + o.note : ''}`);
+          rec.srcWh = o.party;
+          rec.value = qty * sku.cogs;
+          applyShipmentReceipt(rec, 'manual');
+          refId = rec.id;
+        } else if (o.type === 'OUT_TRANSFER') {
+          if (o.party === o.wh) return { ok: false, msg: 'Kho nhận phải khác kho xuất!' };
+          const safety = checkTransferSafety(o.sku, o.wh, qty, cur);
+          if (!safety.ok) return { ok: false, msg: safety.msg };
+          const cost = calcFreightCost(o.wh, o.party, o.sku, qty, cur);
+          const days = getTransferDays(o.wh, o.party, cur);
+          refId = padSeq('TR');
+          st.on_hand -= qty;
+          Store.stock[o.party][o.sku].in_transit += qty;
+          Store.transfers.unshift({
+            id: refId, date: cur, sku: o.sku, srcWh: o.wh, dstWh: o.party, qty,
+            shipDate: cur, arrivalDate: addDays(cur, days), status: 'Đang chuyển', cost, note: 'Xuất chuyển kho từ phiếu xuất nhanh'
+          });
+        } else {
+          st.on_hand -= qty;
+          if (o.type === 'OUT_SALE') {
+            if (Store.dailySales && Store.dailySales[cur]) Store.dailySales[cur].revenue += qty * sku.price;
+            if (Store.currentWeekDemand && Store.currentWeekDemand[o.sku]) {
+              Store.currentWeekDemand[o.sku][o.wh] = (Store.currentWeekDemand[o.sku][o.wh] || 0) + qty;
+            }
+          }
+        }
+      }
+
+      const id = padSeq('PNX');
+      if (!Store.movements) Store.movements = [];
+      Store.movements.unshift({
+        id, date: cur, wh: o.wh, sku: o.sku, type: o.type, dir: def.dir, typeLabel: def.label,
+        party: o.party, partyLabel, qty, note: o.note || '', refId, onHandAfter: st.on_hand
+      });
+
+      // Phiếu nhận lô hàng / nhập NCC đã có thông báo + nhật ký từ applyShipmentReceipt
+      if (o.type !== 'IN_SHIPMENT' && o.type !== 'IN_SUPPLIER') {
+        const route = o.type === 'OUT_TRANSFER' ? ` (${o.wh} -> ${o.party})` : '';
+        logAction('QUICK_OUT', refId || id, `${def.label} ${qty} ${o.sku} tại ${o.wh}${route}. Nơi xuất: ${partyLabel}. Ghi chú: ${o.note || 'Không có'}`, 0, o.wh);
+        pushNotification(o.type === 'OUT_TRANSFER' ? 'TRANSFER_APPROVED' : 'STOCK_OUT', refId || id,
+          `${def.label} ${qty} ${o.sku} tại kho ${o.wh} → ${partyLabel}.`, o.wh);
+      }
+      return { ok: true, id, refId, qty, msg: `${def.label} ${qty} ${o.sku} tại kho ${o.wh} (phiếu ${id}).` };
+    }
+
     function updateMovementStockDisplay() {
       const whSel = document.getElementById('mvWh');
       const skuSel = document.getElementById('mvSku');
       const help = document.getElementById('mvStockHelp');
       if (!whSel || !skuSel || !help) return;
 
-      const whCode = whSel.value;
-      const skuCode = skuSel.value;
-      const st = Store.stock[whCode][skuCode];
-      const p  = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
-
+      const st = Store.stock[whSel.value][skuSel.value];
+      const p  = calcSKUParams(skuSel.value, whSel.value, Store.currentDate, Store.history);
       help.innerHTML = `
-        Tồn kho thực tế hiện tại: <strong>${st.on_hand}</strong> | Đang chuyển: <strong>${st.in_transit}</strong> |
-        Ngưỡng MIN (ROP): <strong>${p.rop}</strong> | Trần MAX: <strong>${p.qmax}</strong>
+        Tồn thực tế: <strong>${st.on_hand}</strong> | Giữ chỗ: <strong>${st.committed}</strong> | Đang về: <strong>${st.in_transit}</strong> |
+        MIN (ROP): <strong>${p.rop}</strong> | MAX: <strong>${p.qmax}</strong>
       `;
     }
 
-    function submitQuickMovement() {
-      const wh   = document.getElementById('mvWh').value;
-      const sku  = document.getElementById('mvSku').value;
-      const type = document.getElementById('mvType').value;
-      const qty  = parseInt(document.getElementById('mvQty').value, 10) || 0;
-      const note = document.getElementById('mvNote').value.trim();
+    function updateMovementForm() {
+      const whSel = document.getElementById('mvWh');
+      const skuSel = document.getElementById('mvSku');
+      const typeSel = document.getElementById('mvType');
+      const partySel = document.getElementById('mvParty');
+      const lbl = document.getElementById('mvPartyLbl');
+      if (!whSel || !skuSel || !typeSel || !partySel) return;
+      const def = MV_TYPES[typeSel.value] || MV_TYPES.IN_SUPPLIER;
+      const opts = getMovementPartyOptions(typeSel.value, whSel.value, skuSel.value);
+      if (lbl) lbl.textContent = def.party;
+      partySel.innerHTML = opts.length
+        ? opts.map(x => `<option value="${x.value}">${x.label}</option>`).join('')
+        : '<option value="">(Không có lô hàng nào đang về cho SKU này)</option>';
+      onMovementPartyChange();
+      updateMovementStockDisplay();
+    }
 
-      if (qty <= 0) {
-        showToast('Số lượng điều chỉnh phải > 0!', 'error');
+    function onMovementPartyChange() {
+      const typeSel = document.getElementById('mvType');
+      const qtyEl = document.getElementById('mvQty');
+      if (!typeSel || !qtyEl) return;
+      const isShipment = typeSel.value === 'IN_SHIPMENT';
+      qtyEl.disabled = isShipment;
+      if (isShipment) {
+        const tr = Store.transfers.find(t => t.id === document.getElementById('mvParty').value);
+        qtyEl.value = tr ? tr.qty : '';
+      }
+    }
+
+    function submitQuickMovement() {
+      const res = executeStockMovement({
+        wh: document.getElementById('mvWh').value,
+        sku: document.getElementById('mvSku').value,
+        type: document.getElementById('mvType').value,
+        party: document.getElementById('mvParty').value,
+        qty: document.getElementById('mvQty').value,
+        note: document.getElementById('mvNote').value.trim()
+      });
+      if (!res.ok) {
+        showToast(res.msg, 'error');
         return;
       }
-
-      const st = Store.stock[wh][sku];
-
-      if (type === 'OUT') {
-        if (qty > st.on_hand) {
-          showToast(`Lỗi: Không thể xuất quá tồn kho vật lý hiện có (${st.on_hand})!`, 'error');
-          return;
-        }
-        st.on_hand -= qty;
-        logAction('QUICK_OUT', sku, `Xuất kho nhanh ${qty} ${sku} tại ${wh}. Lý do: ${note || 'Không có'}`);
-        pushNotification('STOCK_OUT', sku, `Xuất kho nhanh ${qty} ${sku} tại kho ${wh}.`);
-        showToast(`Đã xuất ${qty} ${sku} tại kho ${wh}`, 'success');
-      } else {
-        st.on_hand += qty;
-        logAction('QUICK_IN', sku, `Nhập kho nhanh ${qty} ${sku} tại ${wh}. Lý do: ${note || 'Không có'}`);
-        pushNotification('STOCK_IN', sku, `Nhập kho nhanh ${qty} ${sku} tại kho ${wh}.`);
-        showToast(`Đã nhập ${qty} ${sku} tại kho ${wh}`, 'success');
-      }
-
+      showToast(res.msg, 'success');
       document.getElementById('mvQty').value = '10';
       document.getElementById('mvNote').value = '';
-      updateMovementStockDisplay();
+      if (Store.ui) Store.ui.highlight = { ref: res.id, ts: Date.now() };
       refreshAfterStockChange();
     }
 
-    // ----------------------------------------------------------------------------
+    function renderMovementHistory(activeWh) {
+      const whObj = WAREHOUSES.find(w => w.code === activeWh) || { name: activeWh };
+      const title = document.getElementById('mvHistTitle');
+      if (title) title.textContent = `Lịch sử phiếu nhập / xuất kho: ${whObj.name}`;
+      const rows = (Store.movements || []).filter(m => m.wh === activeWh);
+      renderTable({
+        tableId: 'mvHistTable', theadId: 'mvHistThead', tbodyId: 'mvHistTbody',
+        rows, rowAttrs: m => highlightRowAttrs(m.id),
+        emptyMsg: `Chưa có phiếu nhập / xuất nào tại ${whObj.name}.`,
+        columns: [
+          { header: 'Mã phiếu', render: m => `<strong>${m.id}</strong>` },
+          { header: 'Ngày', render: m => fmtDateVN(m.date) },
+          { header: 'Loại', render: m => `<span class="status-pill ${m.dir === 'IN' ? 'status-pill-ok' : 'status-pill-low'}">${m.dir === 'IN' ? '⬇' : '⬆'} ${m.typeLabel}</span>` },
+          { header: 'SKU', render: m => m.sku },
+          { header: 'Nơi nhập / Nơi xuất', render: m => m.partyLabel },
+          { header: 'Số lượng', align: 'right', render: m => `<strong style="color:${m.dir === 'IN' ? 'var(--status-green)' : 'var(--status-red)'};">${m.dir === 'IN' ? '+' : '−'}${fmtNum(m.qty)}</strong>` },
+          { header: 'Tồn sau phiếu', align: 'right', render: m => fmtNum(m.onHandAfter) },
+          { header: 'Chứng từ liên quan', render: m => m.refId || '—' },
+          { header: 'Ghi chú', render: m => m.note || '—' }
+        ]
+      });
+    }
 
-    // 3.8 VIEW 5: QUICK MOVEMENT
-    // ----------------------------------------------------------------------------
     function renderMovementView() {
       const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
       const whSel = document.getElementById('mvWh');
@@ -6403,11 +6633,11 @@ function renderRfqView() {
       if (skuSel && skuSel.children.length === 0) {
         skuSel.innerHTML = SKUS.map(s => `<option value="${s.code}">${s.code} - ${s.name}</option>`).join('');
       }
-      updateMovementStockDisplay();
+      updateMovementForm();
+      renderMovementHistory(activeWh);
     }
 
     // ----------------------------------------------------------------------------
-
 
 // --- END src/js/views/quick.js ---
 

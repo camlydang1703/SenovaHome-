@@ -181,11 +181,12 @@ function scanAndGenerateProposals(curDate) {
             const room = Math.floor(getSafeTarget(oP) - oEff); // kho nhận chỉ lên tới mức an toàn, không lên MAX
             if (room < 1) return;
             const qty = Math.min(excessQty, room);
+            const freight = calcFreightCost(wh.code, otherWh.code, sku.code, qty, curDate);
             const unit = getUnitFreightRate(wh.code, otherWh.code, sku.code);
-            if (unit > (sku.price - sku.cogs) * 0.5) return; // cước phải <= 50% biên LN gộp
+            if (unit > (sku.price - sku.cogs) * 0.5) return; // cước/đv phải <= 50% biên LN gộp (phí chuyến tính vào tổng)
             const tDays = getTransferDays(wh.code, otherWh.code, curDate);
             const score = (oEff <= oP.rop ? 0 : 1e9) + unit * 10 + tDays * 1000 - qty;
-            if (!best || score < best.score) best = { dst: otherWh.code, qty, unit, tDays, score };
+            if (!best || score < best.score) best = { dst: otherWh.code, qty, unit, freight, tDays, score };
           });
 
           if (best) {
@@ -201,7 +202,7 @@ function scanAndGenerateProposals(curDate) {
               qty: best.qty,
               leadDays: best.tDays,
               arrivalDate: addDays(curDate, best.tDays),
-              freightCost: best.qty * best.unit,
+              freightCost: best.freight,
               status: 'Cần giải phóng vốn',
               hasActiveRfq: false
             };
@@ -261,7 +262,7 @@ function scanAndGenerateProposals(curDate) {
           shipDate: Store.currentDate,
           arrivalDate: p.arrivalDate,
           status: 'Đang chuyển',
-          cost: p.freightCost
+          cost: calcFreightCost(p.srcWh, p.dstWh, p.sku, p.qty, Store.currentDate)
         });
 
         delete Store.proposals[key]; // Yêu cầu 0.2

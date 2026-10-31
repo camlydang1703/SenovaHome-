@@ -239,7 +239,8 @@
 
       // Real transaction records
       actions: [],     // Audit logs
-      transfers: [],   // Internal transfer orders
+      transfers: [],
+      movements: [],   // Internal transfer orders
       rfqs: [],        // Quotation requests sent to suppliers
       promotions: [],  // Overstock promotional discounts
 

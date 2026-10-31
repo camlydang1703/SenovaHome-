@@ -137,25 +137,46 @@
       list.innerHTML = html;
     }
 
+    // Xác định tab/kho/dòng cần mở cho một thông báo (độc lập DOM để test được)
+    function resolveNotificationTarget(item) {
+      const ref = String(item.refId || '').split(',')[0].trim();
+      const tr = ref && Store.transfers ? Store.transfers.find(t => t.id === ref) : null;
+      if (tr) return { tab: 'transfers', wh: (item.wh === tr.srcWh || item.wh === tr.dstWh) ? item.wh : tr.dstWh, ref };
+      const rfq = ref && Store.rfqs ? Store.rfqs.find(r => r.id === ref) : null;
+      if (rfq) return { tab: 'rfq', wh: rfq.wh, ref };
+      const mv = ref && Store.movements ? Store.movements.find(m => m.id === ref) : null;
+      if (mv) return { tab: 'movement', wh: mv.wh, ref };
+      if (item.type && item.type.indexOf('ALERT_') === 0) {
+        const w = WAREHOUSES.find(x => ref.indexOf(x.code + '-') === 0);
+        if (w) return { tab: 'inventory', wh: w.code, ref: ref.slice(w.code.length + 1) };
+      }
+      if (SKUS.some(x => x.code === ref)) return { tab: 'inventory', wh: item.wh, ref };
+      if (item.type && item.type.includes('RFQ')) return { tab: 'rfq', wh: item.wh, ref: null };
+      if (item.type && (item.type.includes('TRANSFER') || item.type.includes('SHIPMENT'))) return { tab: 'transfers', wh: item.wh, ref: null };
+      return { tab: 'dashboard', wh: item.wh, ref: null };
+    }
+
     function onNotificationClick(notifId) {
       const item = Store.notifications.find(n => n.id === notifId);
       if (item) item.read = true;
       updateNotificationBadge();
       const popover = document.getElementById('bellPopover');
       if (popover) popover.classList.remove('active');
+      if (!item) return;
 
-      if (item) {
-        if (item.wh && typeof switchWarehouse === 'function') {
-          switchWarehouse(item.wh);
-        }
-        if (item.type.includes('TRANSFER')) {
-          switchNavTab('transfers');
-        } else if (item.type.includes('RFQ')) {
-          switchNavTab('rfq');
-        } else {
-          switchNavTab('dashboard');
-        }
+      const target = resolveNotificationTarget(item);
+      item.wh = target.wh || item.wh;
+      if (!Store.ui) Store.ui = {};
+      Store.ui.highlight = target.ref ? { ref: target.ref, ts: Date.now() } : null;
+      Store.activeTab = target.tab;
+      if (item.wh && typeof switchWarehouse === 'function') {
+        switchWarehouse(item.wh);
       }
+      switchNavTab(target.tab);
+      setTimeout(() => {
+        const el = document.getElementById('hl-row');
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 60);
     }
 
     // ----------------------------------------------------------------------------
@@ -176,6 +197,7 @@
       SEND_RFQ: 1,
       CANCEL_RFQ: 1,
       QUICK_IN: 1,
+      SUPPLIER_QUICK_IN: 1,
       QUICK_OUT: 1
     };
 

@@ -64,7 +64,7 @@
         const destSt = Store.stock[w.code][skuCode];
         const destEff = destSt.on_hand + destSt.in_transit - destSt.committed;
         const tDays = getTransferDays(whCode, w.code);
-        const freight = calcFreightCost(whCode, w.code, skuCode, excess);
+        const freight = calcFreightCost(whCode, w.code, skuCode, excess, Store.currentDate);
         const isLow = destEff <= destP.rop;
         const capacity = Math.max(0, destP.qmax - destEff);
         const deficit = isLow ? (destP.rop - destEff) : 0;
@@ -368,7 +368,8 @@
             <td style="text-align:right;"><strong>${fmtNum(s.transferable)}</strong></td>
             <td style="text-align:right;">${s.days} ngày</td>
             <td style="text-align:right;">${fmtVND(s.unitFreight)}</td>
-            <td style="text-align:right;">${s.qty > 0 ? fmtVND(s.freight) : '—'}</td>
+            <td style="text-align:right;">${s.qty > 0 ? `${fmtVND(s.freight)}<div style="font-size:10px;color:var(--text-muted);">${s.tripFee > 0 ? 'gồm phí chuyến ' + fmtVND(s.tripFee) : 'ghép chuyến sẵn có'}</div>` : '—'}</td>
+            <td style="text-align:right;">${s.qty > 0 ? `${fmtVND(Math.round(s.total))}<div style="font-size:10px;color:var(--text-muted);">~${fmtVND(Math.round(s.unitCost))}/${unit}</div>` : '—'}</td>
             <td style="font-size:11px;color:${s.eligible ? 'var(--status-green)' : 'var(--status-red)'};">${s.eligible ? (s.uncovered > 0 ? `Đáp ứng ${fmtNum(s.qty)}/${fmtNum(ctx.customQty)}` : 'Hợp lệ') : s.reason}</td>
           </tr>`;
       }).join('');
@@ -405,7 +406,7 @@
           <thead><tr>
             <th></th><th>Kho nguồn</th><th>Tình trạng</th><th style="text-align:right;">Tồn / ROP / MAX</th>
             <th style="text-align:right;">Xuất an toàn tối đa</th><th style="text-align:right;">Thời gian</th>
-            <th style="text-align:right;">Cước/${unit}</th><th style="text-align:right;">Tổng cước</th><th>Đánh giá</th>
+            <th style="text-align:right;">Cước/${unit}</th><th style="text-align:right;">Tổng cước</th><th style="text-align:right;" title="Cước + vốn nằm trên đường + rủi ro thiếu hàng − vốn ứ đọng được giải phóng">Tổng chi phí</th><th>Đánh giá</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -416,7 +417,8 @@
           <div style="font-size:11.5px;line-height:1.6;">
             Gửi RFQ đồng loạt tới <strong>${sups.length} NCC</strong> (${sups.join(', ')})${ctx.recommendedPlan === 'B' ? ' <span class="status-pill status-pill-ok" style="font-size:10px;">AI đề xuất</span>' : ''}<br>
             • Lead time NCC dự kiến: <strong>~${ev.rfq.days} ngày</strong><br>
-            • Vốn mua mới tạm tính: <strong>${fmtVND(ev.rfq.purchaseValue)}</strong> (${fmtVND(ctx.sku.cogs)}/${unit}) + phí đặt hàng ${fmtVND(ev.rfq.orderCost)}<br>
+            • Vốn mua mới (tiền chi ra): <strong>${fmtVND(ev.rfq.purchaseValue)}</strong> (${fmtVND(ctx.sku.cogs)}/${unit} × ${fmtNum(ev.rfq.qty)}) + phí đặt hàng ${fmtVND(ev.rfq.orderCost)} + vốn chờ hàng về ${fmtVND(ev.rfq.waitCapital)}<br>
+            • Tổng chi phí RFQ: <strong>${fmtVND(ev.rfq.total)}</strong> (~${fmtVND(Math.round(ev.rfq.unitCost))}/${unit})<br>
             • Rủi ro thiếu hàng trong thời gian chờ: <strong>${fmtVND(ev.rfq.shortCost)}</strong> (biên LN mất đi)
           </div>
         </div>
@@ -484,7 +486,7 @@
 
         const tDays = getTransferDays(ctx.sourceWh, ctx.toWh);
         const unitFreight = getUnitFreightRate(ctx.sourceWh, ctx.toWh, ctx.skuCode);
-        const totalFreight = calcFreightCost(ctx.sourceWh, ctx.toWh, ctx.skuCode, ctx.customQty);
+        const totalFreight = calcFreightCost(ctx.sourceWh, ctx.toWh, ctx.skuCode, ctx.customQty, Store.currentDate);
         const trId = padSeq('TR');
 
         // Tạo yêu cầu điều chuyển gửi tới kho nhận xác nhận

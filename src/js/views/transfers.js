@@ -87,10 +87,11 @@ function renderTransfersView() {
       header: 'Trạng thái',
       render: tr => {
         if (tr.status === 'Đã nhận') {
-          return `<span class="status-pill status-pill-ok">✓ Đã nhận${tr.receivedDate ? ' ' + fmtDateVN(tr.receivedDate) : ''}</span>`;
+          return `<span class="status-pill status-pill-ok">✓ ${tr.receiveTiming || 'Đã nhận'}${tr.receivedDate ? ' ' + fmtDateVN(tr.receivedDate) : ''}</span>`;
         }
         if (tr.status === 'Đã đến kho') {
-          return `<span class="status-pill" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">📦 Đã đến - chờ nhận hàng</span>`;
+          const late = getReceiveTiming(tr, Store.currentDate).diff;
+          return `<span class="status-pill" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">📦 ${late > 0 ? `Quá hạn ${late} ngày - chờ nhận` : 'Đã đến - chờ nhận hàng'}</span>`;
         }
         if (tr.status === 'Chờ kho nhận đồng ý') {
           return `<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">⏳ Chờ kho nhận duyệt</span>`;
@@ -122,8 +123,9 @@ function renderTransfersView() {
         // Nếu đang chuyển
         if (tr.status === 'Đang chuyển' || tr.status === 'Đã đến kho') {
           if (tr.dstWh === activeWh) {
-            const arrived = tr.status === 'Đã đến kho';
-            return `<button class="btn-table" ${arrived ? 'style="background:#15803D;border-color:#15803D;"' : ''} onclick="receiveShipment('${tr.id}')">✓ Nhận hàng</button>`;
+            const tm = getReceiveTiming(tr, Store.currentDate);
+            const style = tm.code === 'EARLY' ? '' : (tm.code === 'ONTIME' ? 'style="background:#15803D;border-color:#15803D;"' : 'style="background:#B45309;border-color:#B45309;"');
+            return `<button class="btn-table" ${style} onclick="receiveShipment('${tr.id}')">✓ ${tm.action}</button>`;
           }
           return '<span style="font-size:11.5px;color:var(--text-muted);">Đang trên đường</span>';
         }
@@ -142,6 +144,7 @@ function renderTransfersView() {
     tbodyId: 'transferTbody',
     columns: columns,
     rows: whTransfers,
+    rowAttrs: tr => highlightRowAttrs(tr.id),
     emptyMsg: `Chưa có lệnh điều chuyển nào liên quan đến ${whObj.name}.`
   });
 }
