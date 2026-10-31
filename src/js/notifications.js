@@ -84,16 +84,15 @@
 
       let html = '';
       Store.notifications.slice(0, 30).forEach(n => {
-        let icon = '🔔';
         let color = '#2563EB';
-        if (n.type === 'ALERT_LOW')  { icon = '⚠️'; color = '#EF4444'; }
-        if (n.type === 'ALERT_HIGH') { icon = '📦'; color = '#F59E0B'; }
-        if (n.type.includes('TRANSFER')) { icon = '🚚'; color = '#059669'; }
-        if (n.type.includes('RFQ'))      { icon = '📝'; color = '#8B5CF6'; }
+        if (n.type === 'ALERT_LOW')  { color = '#EF4444'; }
+        if (n.type === 'ALERT_HIGH') { color = '#F59E0B'; }
+        if (n.type.includes('TRANSFER')) { color = '#059669'; }
+        if (n.type.includes('RFQ'))      { color = '#8B5CF6'; }
 
         html += `
           <div class="bell-item ${n.read ? '' : 'unread'}" onclick="onNotificationClick('${n.id}')">
-            <div style="font-size:16px;margin-top:2px;">${icon}</div>
+            <div style="margin-top:5px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};"></span></div>
             <div style="flex:1;">
               <div style="font-size:12px;color:var(--text-main);font-weight:${n.read ? '500' : '700'};line-height:1.4;">
                 ${n.text}

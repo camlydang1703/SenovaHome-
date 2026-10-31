@@ -291,7 +291,7 @@ function fmt(n) {
       };
     }
 
-    // INITIAL STOCK ON 2026-08-01 (YÊU CẦU 4.2)
+    // INITIAL STOCK ON 2026-08-01 (NGUỒN SỰ THẬT TỪ data/inventory_opening.csv)
     function buildInitialStock() {
       const stock = {};
       WAREHOUSES.forEach(wh => {
@@ -305,7 +305,19 @@ function fmt(n) {
         });
       });
 
-      // Calculate initial params for Day 0
+      // 1. Nguồn sự thật 100% từ CSV_DATABASE (data/inventory_opening.csv)
+      if (typeof CSV_DATABASE !== 'undefined' && Array.isArray(CSV_DATABASE.inventory_opening)) {
+        CSV_DATABASE.inventory_opening.forEach(row => {
+          if (stock[row.wh] && stock[row.wh][row.sku]) {
+            stock[row.wh][row.sku].on_hand = row.on_hand;
+            stock[row.wh][row.sku].in_transit = row.in_transit;
+            stock[row.wh][row.sku].committed = row.committed;
+          }
+        });
+        return stock;
+      }
+
+      // 2. Fallback dự phòng nếu chạy test độc lập không qua build
       const day0Params = {};
       SKUS.forEach(sku => {
         day0Params[sku.code] = {};

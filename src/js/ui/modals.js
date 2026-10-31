@@ -20,13 +20,13 @@
 
       const toast = document.createElement('div');
       toast.className = `toast-item toast-${type}`;
-      let icon = 'ℹ️';
-      if (type === 'success') icon = '✅';
-      if (type === 'error')   icon = '❌';
-      if (type === 'warning') icon = '⚠️';
+      let iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+      if (type === 'success') iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      if (type === 'error')   iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+      if (type === 'warning') iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
 
       toast.innerHTML = `
-        <span style="font-size:15px;">${icon}</span>
+        <span style="display:inline-flex;align-items:center;">${iconSvg}</span>
         <span style="flex:1;">${msg}</span>
       `;
       tray.appendChild(toast);
@@ -89,11 +89,11 @@
         body.innerHTML = `
           <div style="background:#FFFBEB;border:1px solid #FDE68A;padding:12px;border-radius:6px;margin-bottom:16px;">
             <div style="font-weight:700;color:#92400E;margin-bottom:4px;">
-              ⚠️ Cảnh báo Tồn trữ: ${sku.name} (${sku.code})
+              Cảnh báo tồn trữ: ${sku.name} (${sku.code})
             </div>
             <div style="font-size:12px;color:#78350F;line-height:1.5;">
               Tồn kho hiện tại: <strong>${st.on_hand}</strong> ${sku.unit} | Ngưỡng MAX: ${dualQmax} | Tồn dư vượt đỉnh: <strong style="color:var(--status-red);">${excess}</strong> ${sku.unit}<br>
-              <div style="font-size:11px;color:#B45309;margin-top:2px;">💡 <em>${driver}</em></div>
+              <div style="font-size:11px;color:#B45309;margin-top:2px;"><em>${driver}</em></div>
               Vốn bị chiếm dụng ước tính: <strong>${fmtVND(excess * sku.cogs)}</strong>. Chọn một trong hai phương án bên dưới để giải phóng vốn:
             </div>
           </div>
@@ -370,7 +370,7 @@
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
             <span style="font-size:12px;color:var(--text-muted);">Trần MAX:</span>
             ${dualQmax}
-            <div style="font-size:11px;color:var(--navy-main);margin-top:4px;">💡 <em>${driver}</em></div>
+            <div style="font-size:11px;color:var(--navy-main);margin-top:4px;"><em>${driver}</em></div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng bổ sung:</span>
@@ -381,7 +381,7 @@
 
         <!-- PHÂN TÍCH VÀ KHUYẾN NGHỊ ĐIỀU HÀNH -->
         <div style="background:${srcSafe ? '#ECFDF5' : '#FEF3C7'};border:1px solid ${srcSafe ? '#A7F3D0' : '#FDE68A'};border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:${srcSafe ? '#065F46' : '#92400E'};line-height:1.5;">
-          <strong>💡 Phân tích Chi phí & Khuyến nghị Tối ưu:</strong><br>
+          <strong>Phân tích chi phí & khuyến nghị tối ưu:</strong><br>
           ${srcSafe 
             ? `• <strong>Khuyến nghị Phương án A (Điều chuyển nội bộ)</strong>: Kho ${WAREHOUSES.find(w => w.code === ctx.sourceWh)?.name || ctx.sourceWh} đủ thặng dư an toàn. Chi phí vận chuyển chỉ <strong>${fmtVND(totalFreight)}</strong> (so với giá mua NCC <strong>${fmtVND(supCost)}</strong>), hàng về nhanh trong <strong>${tDays} ngày</strong> (nhanh hơn đặt NCC ${Math.max(0, supLead - tDays)} ngày).`
             : `• <strong>Khuyến nghị Phương án B (Yêu cầu Báo giá NCC)</strong>: Kho nội bộ đang không đủ tồn thặng dư an toàn (nếu xuất sẽ rơi dưới ROP). Đề xuất gửi RFQ tới NCC để bảo toàn nguồn cung mạng lưới.`
@@ -903,7 +903,7 @@
       document.getElementById('skuDetailBody').innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           <div>
-            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">📦 Thông tin SKU</h4>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">Thông tin SKU</h4>
             <table style="font-size:12.5px;width:100%;border-collapse:collapse;">
               <tr><td style="color:var(--text-muted);padding:3px 0;">Mã SKU</td><td><strong>${sku.code}</strong></td></tr>
               <tr><td style="color:var(--text-muted);padding:3px 0;">Tên sản phẩm</td><td>${sku.name}</td></tr>
@@ -914,7 +914,7 @@
             </table>
           </div>
           <div>
-            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">🏪 Tồn kho tại ${wh.name}</h4>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">Tồn kho tại ${wh.name}</h4>
             <table style="font-size:12.5px;width:100%;border-collapse:collapse;">
               <tr><td style="color:var(--text-muted);padding:3px 0;">Tồn vật lý</td><td><strong>${fmtNum(st.on_hand)} sp</strong></td></tr>
               <tr><td style="color:var(--text-muted);padding:3px 0;">Đang về (in_transit)</td><td style="color:var(--navy-accent);">+${fmtNum(st.in_transit)} sp</td></tr>
@@ -925,7 +925,7 @@
             </table>
           </div>
           <div>
-            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">📊 Tham số Min/Max</h4>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">Tham số Min/Max</h4>
             <table style="font-size:12.5px;width:100%;border-collapse:collapse;">
               <tr><td style="color:var(--text-muted);padding:3px 0;">Nhu cầu dự báo (F)</td><td>${p.f_next.toFixed(1)} sp/tuần</td></tr>
               <tr><td style="color:var(--text-muted);padding:3px 0;">Lead time (L)</td><td>${p.lead_time.toFixed(2)} tuần</td></tr>
@@ -938,7 +938,7 @@
             </table>
           </div>
           <div>
-            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">⚠️ Cảnh báo 7 ngày tới</h4>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">Cảnh báo 7 ngày tới</h4>
             <div style="margin-bottom:8px;"><span class="risk-tag ${warn7.tagClass}">${warn7.label}</span></div>
             <p style="font-size:12px;color:var(--text-muted);margin:4px 0;">${warn7.subText}</p>
             <p style="font-size:12px;margin:8px 0 0;"><strong>Đề xuất:</strong> ${warn7.recommendation || 'Không cần hành động ngay.'}</p>

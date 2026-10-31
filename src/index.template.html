@@ -6,7 +6,7 @@
   <title>SenNova Home IMS - Hệ thống Quản trị & Điều phối Tồn kho Tự động</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
 /* <!-- STYLES --> */
   </style>
@@ -37,7 +37,7 @@
 
     <div class="header-right">
       <button class="btn-small" style="background:#475569;" onclick="openSelfTestModal()">
-        🧪 Tự kiểm tra hệ thống
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>Kiểm tra hệ thống
       </button>
 
       <div style="position:relative;">
@@ -394,23 +394,23 @@
       <!-- 5 FORMULA CARDS -->
       <div class="formula-cards-grid">
         <div class="formula-card">
-          <div class="formula-card-title">📊 1. Nhu cầu nền</div>
+          <div class="formula-card-title">1. Nhu cầu nền</div>
           <div class="formula-card-desc">Trung bình 4 tuần gần nhất (sau khi đã khử mùa vụ D / Sm) để loại trừ sai số thời điểm.</div>
         </div>
         <div class="formula-card">
-          <div class="formula-card-title">🔮 2. Dự báo tuần tới</div>
+          <div class="formula-card-title">2. Dự báo tuần tới</div>
           <div class="formula-card-desc"><code>F = D_SMA4 × Sm</code><br>Nhu cầu nền nhân hệ số mùa vụ tháng hiện tại.</div>
         </div>
         <div class="formula-card">
-          <div class="formula-card-title">⏱️ 3. Nhu cầu chờ hàng</div>
+          <div class="formula-card-title">3. Nhu cầu chờ hàng</div>
           <div class="formula-card-desc"><code>D_lead = F × Lead_time</code><br>Lượng tiêu thụ dự kiến trong toàn bộ thời gian chờ hàng về.</div>
         </div>
         <div class="formula-card">
-          <div class="formula-card-title">🛡️ 4. Tồn an toàn (SS)</div>
+          <div class="formula-card-title">4. Tồn an toàn (SS)</div>
           <div class="formula-card-desc"><code>SS = 1.65 × σ × √L</code><br>Đảm bảo mức phục vụ Service Level đạt 95% chống biến động cầu.</div>
         </div>
         <div class="formula-card">
-          <div class="formula-card-title">📏 5. MIN và MAX</div>
+          <div class="formula-card-title">5. MIN và MAX</div>
           <div class="formula-card-desc"><code>MIN (ROP) = D_lead + SS</code><br><code>MAX (Qmax) = MIN + F</code> (chu kỳ bổ sung 1 tuần).</div>
         </div>
       </div>

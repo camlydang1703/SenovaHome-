@@ -106,21 +106,20 @@ function renderDashboardView() {
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
               <button class="btn-table" onclick="approveProposal('${r.key}')">Phê duyệt</button>
-              <button class="btn-table btn-table-sec" onclick="openTransferCompareModal('${r.sku}', '${r.wh}')">So sánh</button>
+
             </div>
           `;
         } else if (r.type === 'RFQ') {
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
               <button class="btn-table" ${r.hasActiveRfq ? 'disabled' : ''} onclick="openRfqModal('${r.sku}', '${r.wh}', ${r.qty}, '${r.sup}')">Gửi RFQ</button>
-              <button class="btn-table btn-table-sec" onclick="openTransferCompareModal('${r.sku}', '${r.wh}')">So sánh</button>
+
             </div>
           `;
         } else {
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
               <button class="btn-table" onclick="openOverstockModal('${r.sku}', '${r.wh}')">Xử lý</button>
-              <button class="btn-table btn-table-sec" onclick="openOverstockModal('${r.sku}', '${r.wh}')">So sánh</button>
             </div>
           `;
         }

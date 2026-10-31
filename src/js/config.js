@@ -24,8 +24,10 @@
       { code: 'TBV-VOI',  name: 'Vòi sen cao cấp',        base: 10,  cogs: 480000,  price: 650000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  }
     ];
 
-    // SEASONAL INDEX Sm (BÁO CÁO GỐC - SI TRUNG BÌNH = 0.979)
-    const SI = { 1:1.15, 2:0.60, 3:1.10, 4:1.15, 5:0.90, 6:0.80, 7:0.80, 8:0.85, 9:0.90, 10:1.05, 11:1.20, 12:1.25 };
+    // SEASONAL INDEX Sm (LẤY TRỰC TIẾP TỪ data/seasonal_parameters.csv)
+    const SI = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.seasonal_parameters)
+      ? { ...CSV_DATABASE.seasonal_parameters }
+      : { 1:1.15, 2:0.60, 3:1.10, 4:1.15, 5:0.90, 6:0.80, 7:0.80, 8:0.85, 9:0.90, 10:1.05, 11:1.20, 12:1.25 };
     // Allow SKU-level access fallback so SI['TLM-045'][8] or SI[8] both work reliably
     SKUS.forEach(s => {
       SI[s.code] = SI;

@@ -203,13 +203,23 @@ function renderAllViews() {
 
 // SIMULATION TIME CONTROL
 function advanceToDate(targetDate) {
+  if (targetDate > Store.endDate) targetDate = Store.endDate;
+
+  // Backward navigation: read-only view of past snapshots
   if (targetDate < Store.currentDate) {
-    showToast('Không thể quay ngược thời gian! Hệ thống chỉ mô phỏng tiến tới.', 'error');
+    Store.ui.viewDate = targetDate;
     const picker = document.getElementById('simDatePicker');
-    if (picker) picker.value = Store.currentDate;
+    if (picker) picker.value = targetDate;
+    showViewModeBanner(targetDate);
+    renderAllViews();
     return;
   }
-  if (targetDate > Store.endDate) targetDate = Store.endDate;
+
+  // Clear view mode if going forward
+  if (Store.ui.viewDate) {
+    delete Store.ui.viewDate;
+    hideViewModeBanner();
+  }
 
   while (Store.currentDate < targetDate) {
     const ok = advanceOneDay();
@@ -217,13 +227,43 @@ function advanceToDate(targetDate) {
   }
 
   const picker = document.getElementById('simDatePicker');
-  if (picker) {
-    picker.value = Store.currentDate;
-    picker.min = Store.currentDate;
-  }
+  if (picker) picker.value = Store.currentDate;
 
   renderAllViews();
-  // Toast removed per user request
+}
+
+function showViewModeBanner(date) {
+  let banner = document.getElementById('viewModeBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'viewModeBanner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#0F172A;color:#F8FAFC;text-align:center;padding:7px 16px;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:14px;border-bottom:1px solid #334155;box-shadow:0 2px 6px rgba(0,0,0,0.15);';
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML = `
+    <span style="display:inline-flex;align-items:center;gap:6px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <strong>Chế độ tra cứu quá khứ:</strong> ${fmtDateVN(date)} (Chỉ đọc — Dữ liệu lịch sử không được phép chỉnh sửa)
+    </span>
+    <button onclick="returnToPresent()" style="background:#2563EB;color:#FFFFFF;border:none;border-radius:4px;padding:3px 12px;font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+      Quay về ngày hiện tại
+    </button>
+  `;
+  document.body.style.paddingTop = '34px';
+}
+
+function hideViewModeBanner() {
+  const banner = document.getElementById('viewModeBanner');
+  if (banner) banner.remove();
+  document.body.style.paddingTop = '';
+}
+
+function returnToPresent() {
+  delete Store.ui.viewDate;
+  hideViewModeBanner();
+  const picker = document.getElementById('simDatePicker');
+  if (picker) picker.value = Store.currentDate;
+  renderAllViews();
 }
 
 function stepDays(days) {
@@ -233,12 +273,6 @@ function stepDays(days) {
 
 function onManualDateChange(newVal) {
   if (!newVal) return;
-  if (newVal < Store.currentDate) {
-    showToast('Không thể chọn ngày trong quá khứ!', 'error');
-    const picker = document.getElementById('simDatePicker');
-    if (picker) picker.value = Store.currentDate;
-    return;
-  }
   advanceToDate(newVal);
 }
 

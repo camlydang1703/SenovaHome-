@@ -6,7 +6,7 @@
   <title>SenNova Home IMS - Hệ thống Quản trị & Điều phối Tồn kho Tự động</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
 :root {
       --bg-page: #FAFAF8;
@@ -41,7 +41,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
-      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--bg-page);
       color: var(--text-main);
       font-size: 13px;
@@ -1000,7 +1000,7 @@
 
     <div class="header-right">
       <button class="btn-small" style="background:#475569;" onclick="openSelfTestModal()">
-        🧪 Tự kiểm tra hệ thống
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>Kiểm tra hệ thống
       </button>
 
       <div style="position:relative;">
@@ -1357,23 +1357,23 @@
       <!-- 5 FORMULA CARDS -->
       <div class="formula-cards-grid">
         <div class="formula-card">
-          <div class="formula-card-title">📊 1. Nhu cầu nền</div>
+          <div class="formula-card-title">1. Nhu cầu nền</div>
           <div class="formula-card-desc">Trung bình 4 tuần gần nhất (sau khi đã khử mùa vụ D / Sm) để loại trừ sai số thời điểm.</div>
         </div>
         <div class="formula-card">
-          <div class="formula-card-title">🔮 2. Dự báo tuần tới</div>
+          <div class="formula-card-title">2. Dự báo tuần tới</div>
           <div class="formula-card-desc"><code>F = D_SMA4 × Sm</code><br>Nhu cầu nền nhân hệ số mùa vụ tháng hiện tại.</div>
         </div>
         <div class="formula-card">
-          <div class="formula-card-title">⏱️ 3. Nhu cầu chờ hàng</div>
+          <div class="formula-card-title">3. Nhu cầu chờ hàng</div>
           <div class="formula-card-desc"><code>D_lead = F × Lead_time</code><br>Lượng tiêu thụ dự kiến trong toàn bộ thời gian chờ hàng về.</div>
         </div>
         <div class="formula-card">
-          <div class="formula-card-title">🛡️ 4. Tồn an toàn (SS)</div>
+          <div class="formula-card-title">4. Tồn an toàn (SS)</div>
           <div class="formula-card-desc"><code>SS = 1.65 × σ × √L</code><br>Đảm bảo mức phục vụ Service Level đạt 95% chống biến động cầu.</div>
         </div>
         <div class="formula-card">
-          <div class="formula-card-title">📏 5. MIN và MAX</div>
+          <div class="formula-card-title">5. MIN và MAX</div>
           <div class="formula-card-desc"><code>MIN (ROP) = D_lead + SS</code><br><code>MAX (Qmax) = MIN + F</code> (chu kỳ bổ sung 1 tuần).</div>
         </div>
       </div>
@@ -1630,6 +1630,16 @@
   <!-- TOAST TRAY -->
   <div id="toastTray"></div>
   <script>
+// --- BEGIN src/js/csv_data.js ---
+// AUTO-GENERATED FROM data/*.csv BY build.py — NGUỒN SỰ THẬT DUY NHẤT
+const CSV_DATABASE = {
+  inventory_opening: [{"sku": "TLM-045", "wh": "HCM", "on_hand": 180, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "HCM", "on_hand": 200, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "HCM", "on_hand": 87, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "HCM", "on_hand": 122, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "HCM", "on_hand": 140, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "HCM", "on_hand": 432, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "HCM", "on_hand": 383, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "HCM", "on_hand": 44, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "HCM", "on_hand": 220, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "HCM", "on_hand": 180, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "HCM", "on_hand": 8, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "BD", "on_hand": 486, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "BD", "on_hand": 154, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "BD", "on_hand": 51, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "BD", "on_hand": 156, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "BD", "on_hand": 64, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "BD", "on_hand": 224, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "BD", "on_hand": 326, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "BD", "on_hand": 25, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "BD", "on_hand": 9, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "BD", "on_hand": 5, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "BD", "on_hand": 3, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "DN", "on_hand": 109, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "DN", "on_hand": 130, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "DN", "on_hand": 63, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "DN", "on_hand": 50, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "DN", "on_hand": 30, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "DN", "on_hand": 188, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "DN", "on_hand": 164, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "DN", "on_hand": 31, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "DN", "on_hand": 4, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "DN", "on_hand": 4, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "DN", "on_hand": 2, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "DN_CITY", "on_hand": 80, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "DN_CITY", "on_hand": 38, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "DN_CITY", "on_hand": 35, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "DN_CITY", "on_hand": 24, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "DN_CITY", "on_hand": 44, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "DN_CITY", "on_hand": 95, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "DN_CITY", "on_hand": 81, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "DN_CITY", "on_hand": 14, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "DN_CITY", "on_hand": 7, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "DN_CITY", "on_hand": 0, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "DN_CITY", "on_hand": 2, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "HN", "on_hand": 159, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "HN", "on_hand": 216, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "HN", "on_hand": 95, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "HN", "on_hand": 248, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "HN", "on_hand": 77, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "HN", "on_hand": 229, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "HN", "on_hand": 358, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "HN", "on_hand": 45, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "HN", "on_hand": 21, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "HN", "on_hand": 6, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "HN", "on_hand": 9, "in_transit": 0, "committed": 0}],
+  seasonal_parameters: {"1": 1.15, "2": 0.6, "3": 1.1, "4": 1.15, "5": 0.9, "6": 0.8, "7": 0.8, "8": 0.85, "9": 0.9, "10": 1.05, "11": 1.2, "12": 1.25},
+  routes: [{"from": "HCM", "to": "BD", "lead": 1, "rate": 18000, "note": "Noi vung Dong Nam Bo"}, {"from": "HCM", "to": "DN", "lead": 3, "rate": 65000, "note": "Lien vung Nam - Trung"}, {"from": "HCM", "to": "DN_CITY", "lead": 3, "rate": 75000, "note": "Lien vung Nam - Trung"}, {"from": "HCM", "to": "HN", "lead": 4, "rate": 95000, "note": "Lien vung Bac - Nam"}, {"from": "BD", "to": "HCM", "lead": 1, "rate": 18000, "note": "Noi vung Dong Nam Bo"}, {"from": "BD", "to": "DN", "lead": 3, "rate": 60000, "note": "Lien vung Nam - Trung"}, {"from": "BD", "to": "DN_CITY", "lead": 3, "rate": 70000, "note": "Lien vung Nam - Trung"}, {"from": "BD", "to": "HN", "lead": 4, "rate": 90000, "note": "Lien vung Bac - Nam"}, {"from": "DN", "to": "HCM", "lead": 3, "rate": 65000, "note": "Lien vung Trung - Nam"}, {"from": "DN", "to": "BD", "lead": 3, "rate": 60000, "note": "Lien vung Trung - Nam"}, {"from": "DN", "to": "DN_CITY", "lead": 1, "rate": 22000, "note": "Noi thanh Da Nang"}, {"from": "DN", "to": "HN", "lead": 3, "rate": 80000, "note": "Lien vung Trung - Bac"}, {"from": "DN_CITY", "to": "HCM", "lead": 3, "rate": 75000, "note": "Lien vung Trung - Nam"}, {"from": "DN_CITY", "to": "BD", "lead": 3, "rate": 70000, "note": "Lien vung Trung - Nam"}, {"from": "DN_CITY", "to": "DN", "lead": 1, "rate": 22000, "note": "Noi thanh Da Nang"}, {"from": "DN_CITY", "to": "HN", "lead": 3, "rate": 85000, "note": "Lien vung Trung - Bac"}, {"from": "HN", "to": "HCM", "lead": 4, "rate": 95000, "note": "Lien vung Bac - Nam"}, {"from": "HN", "to": "BD", "lead": 4, "rate": 90000, "note": "Lien vung Bac - Nam"}, {"from": "HN", "to": "DN", "lead": 3, "rate": 80000, "note": "Lien vung Bac - Trung"}, {"from": "HN", "to": "DN_CITY", "lead": 3, "rate": 85000, "note": "Lien vung Bac - Trung"}]
+};
+
+// --- END src/js/csv_data.js ---
+
 // --- BEGIN src/js/config.js ---
 // ============================================================================
 // CONFIGURATION & CONSTANTS
@@ -1657,8 +1667,10 @@
       { code: 'TBV-VOI',  name: 'Vòi sen cao cấp',        base: 10,  cogs: 480000,  price: 650000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  }
     ];
 
-    // SEASONAL INDEX Sm (BÁO CÁO GỐC - SI TRUNG BÌNH = 0.979)
-    const SI = { 1:1.15, 2:0.60, 3:1.10, 4:1.15, 5:0.90, 6:0.80, 7:0.80, 8:0.85, 9:0.90, 10:1.05, 11:1.20, 12:1.25 };
+    // SEASONAL INDEX Sm (LẤY TRỰC TIẾP TỪ data/seasonal_parameters.csv)
+    const SI = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.seasonal_parameters)
+      ? { ...CSV_DATABASE.seasonal_parameters }
+      : { 1:1.15, 2:0.60, 3:1.10, 4:1.15, 5:0.90, 6:0.80, 7:0.80, 8:0.85, 9:0.90, 10:1.05, 11:1.20, 12:1.25 };
     // Allow SKU-level access fallback so SI['TLM-045'][8] or SI[8] both work reliably
     SKUS.forEach(s => {
       SI[s.code] = SI;
@@ -2200,7 +2212,7 @@ function fmt(n) {
       };
     }
 
-    // INITIAL STOCK ON 2026-08-01 (YÊU CẦU 4.2)
+    // INITIAL STOCK ON 2026-08-01 (NGUỒN SỰ THẬT TỪ data/inventory_opening.csv)
     function buildInitialStock() {
       const stock = {};
       WAREHOUSES.forEach(wh => {
@@ -2214,7 +2226,19 @@ function fmt(n) {
         });
       });
 
-      // Calculate initial params for Day 0
+      // 1. Nguồn sự thật 100% từ CSV_DATABASE (data/inventory_opening.csv)
+      if (typeof CSV_DATABASE !== 'undefined' && Array.isArray(CSV_DATABASE.inventory_opening)) {
+        CSV_DATABASE.inventory_opening.forEach(row => {
+          if (stock[row.wh] && stock[row.wh][row.sku]) {
+            stock[row.wh][row.sku].on_hand = row.on_hand;
+            stock[row.wh][row.sku].in_transit = row.in_transit;
+            stock[row.wh][row.sku].committed = row.committed;
+          }
+        });
+        return stock;
+      }
+
+      // 2. Fallback dự phòng nếu chạy test độc lập không qua build
       const day0Params = {};
       SKUS.forEach(sku => {
         day0Params[sku.code] = {};
@@ -2747,16 +2771,15 @@ function fmt(n) {
 
       let html = '';
       Store.notifications.slice(0, 30).forEach(n => {
-        let icon = '🔔';
         let color = '#2563EB';
-        if (n.type === 'ALERT_LOW')  { icon = '⚠️'; color = '#EF4444'; }
-        if (n.type === 'ALERT_HIGH') { icon = '📦'; color = '#F59E0B'; }
-        if (n.type.includes('TRANSFER')) { icon = '🚚'; color = '#059669'; }
-        if (n.type.includes('RFQ'))      { icon = '📝'; color = '#8B5CF6'; }
+        if (n.type === 'ALERT_LOW')  { color = '#EF4444'; }
+        if (n.type === 'ALERT_HIGH') { color = '#F59E0B'; }
+        if (n.type.includes('TRANSFER')) { color = '#059669'; }
+        if (n.type.includes('RFQ'))      { color = '#8B5CF6'; }
 
         html += `
           <div class="bell-item ${n.read ? '' : 'unread'}" onclick="onNotificationClick('${n.id}')">
-            <div style="font-size:16px;margin-top:2px;">${icon}</div>
+            <div style="margin-top:5px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};"></span></div>
             <div style="flex:1;">
               <div style="font-size:12px;color:var(--text-main);font-weight:${n.read ? '500' : '700'};line-height:1.4;">
                 ${n.text}
@@ -3495,13 +3518,13 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
 
       const toast = document.createElement('div');
       toast.className = `toast-item toast-${type}`;
-      let icon = 'ℹ️';
-      if (type === 'success') icon = '✅';
-      if (type === 'error')   icon = '❌';
-      if (type === 'warning') icon = '⚠️';
+      let iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+      if (type === 'success') iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      if (type === 'error')   iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+      if (type === 'warning') iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
 
       toast.innerHTML = `
-        <span style="font-size:15px;">${icon}</span>
+        <span style="display:inline-flex;align-items:center;">${iconSvg}</span>
         <span style="flex:1;">${msg}</span>
       `;
       tray.appendChild(toast);
@@ -3564,11 +3587,11 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
         body.innerHTML = `
           <div style="background:#FFFBEB;border:1px solid #FDE68A;padding:12px;border-radius:6px;margin-bottom:16px;">
             <div style="font-weight:700;color:#92400E;margin-bottom:4px;">
-              ⚠️ Cảnh báo Tồn trữ: ${sku.name} (${sku.code})
+              Cảnh báo tồn trữ: ${sku.name} (${sku.code})
             </div>
             <div style="font-size:12px;color:#78350F;line-height:1.5;">
               Tồn kho hiện tại: <strong>${st.on_hand}</strong> ${sku.unit} | Ngưỡng MAX: ${dualQmax} | Tồn dư vượt đỉnh: <strong style="color:var(--status-red);">${excess}</strong> ${sku.unit}<br>
-              <div style="font-size:11px;color:#B45309;margin-top:2px;">💡 <em>${driver}</em></div>
+              <div style="font-size:11px;color:#B45309;margin-top:2px;"><em>${driver}</em></div>
               Vốn bị chiếm dụng ước tính: <strong>${fmtVND(excess * sku.cogs)}</strong>. Chọn một trong hai phương án bên dưới để giải phóng vốn:
             </div>
           </div>
@@ -3845,7 +3868,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
             <span style="font-size:12px;color:var(--text-muted);">Trần MAX:</span>
             ${dualQmax}
-            <div style="font-size:11px;color:var(--navy-main);margin-top:4px;">💡 <em>${driver}</em></div>
+            <div style="font-size:11px;color:var(--navy-main);margin-top:4px;"><em>${driver}</em></div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng bổ sung:</span>
@@ -3856,7 +3879,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
 
         <!-- PHÂN TÍCH VÀ KHUYẾN NGHỊ ĐIỀU HÀNH -->
         <div style="background:${srcSafe ? '#ECFDF5' : '#FEF3C7'};border:1px solid ${srcSafe ? '#A7F3D0' : '#FDE68A'};border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:${srcSafe ? '#065F46' : '#92400E'};line-height:1.5;">
-          <strong>💡 Phân tích Chi phí & Khuyến nghị Tối ưu:</strong><br>
+          <strong>Phân tích chi phí & khuyến nghị tối ưu:</strong><br>
           ${srcSafe 
             ? `• <strong>Khuyến nghị Phương án A (Điều chuyển nội bộ)</strong>: Kho ${WAREHOUSES.find(w => w.code === ctx.sourceWh)?.name || ctx.sourceWh} đủ thặng dư an toàn. Chi phí vận chuyển chỉ <strong>${fmtVND(totalFreight)}</strong> (so với giá mua NCC <strong>${fmtVND(supCost)}</strong>), hàng về nhanh trong <strong>${tDays} ngày</strong> (nhanh hơn đặt NCC ${Math.max(0, supLead - tDays)} ngày).`
             : `• <strong>Khuyến nghị Phương án B (Yêu cầu Báo giá NCC)</strong>: Kho nội bộ đang không đủ tồn thặng dư an toàn (nếu xuất sẽ rơi dưới ROP). Đề xuất gửi RFQ tới NCC để bảo toàn nguồn cung mạng lưới.`
@@ -4378,7 +4401,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
       document.getElementById('skuDetailBody').innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           <div>
-            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">📦 Thông tin SKU</h4>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">Thông tin SKU</h4>
             <table style="font-size:12.5px;width:100%;border-collapse:collapse;">
               <tr><td style="color:var(--text-muted);padding:3px 0;">Mã SKU</td><td><strong>${sku.code}</strong></td></tr>
               <tr><td style="color:var(--text-muted);padding:3px 0;">Tên sản phẩm</td><td>${sku.name}</td></tr>
@@ -4389,7 +4412,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
             </table>
           </div>
           <div>
-            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">🏪 Tồn kho tại ${wh.name}</h4>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">Tồn kho tại ${wh.name}</h4>
             <table style="font-size:12.5px;width:100%;border-collapse:collapse;">
               <tr><td style="color:var(--text-muted);padding:3px 0;">Tồn vật lý</td><td><strong>${fmtNum(st.on_hand)} sp</strong></td></tr>
               <tr><td style="color:var(--text-muted);padding:3px 0;">Đang về (in_transit)</td><td style="color:var(--navy-accent);">+${fmtNum(st.in_transit)} sp</td></tr>
@@ -4400,7 +4423,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
             </table>
           </div>
           <div>
-            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">📊 Tham số Min/Max</h4>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">Tham số Min/Max</h4>
             <table style="font-size:12.5px;width:100%;border-collapse:collapse;">
               <tr><td style="color:var(--text-muted);padding:3px 0;">Nhu cầu dự báo (F)</td><td>${p.f_next.toFixed(1)} sp/tuần</td></tr>
               <tr><td style="color:var(--text-muted);padding:3px 0;">Lead time (L)</td><td>${p.lead_time.toFixed(2)} tuần</td></tr>
@@ -4413,7 +4436,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
             </table>
           </div>
           <div>
-            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">⚠️ Cảnh báo 7 ngày tới</h4>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">Cảnh báo 7 ngày tới</h4>
             <div style="margin-bottom:8px;"><span class="risk-tag ${warn7.tagClass}">${warn7.label}</span></div>
             <p style="font-size:12px;color:var(--text-muted);margin:4px 0;">${warn7.subText}</p>
             <p style="font-size:12px;margin:8px 0 0;"><strong>Đề xuất:</strong> ${warn7.recommendation || 'Không cần hành động ngay.'}</p>
@@ -4544,21 +4567,20 @@ function renderDashboardView() {
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
               <button class="btn-table" onclick="approveProposal('${r.key}')">Phê duyệt</button>
-              <button class="btn-table btn-table-sec" onclick="openTransferCompareModal('${r.sku}', '${r.wh}')">So sánh</button>
+
             </div>
           `;
         } else if (r.type === 'RFQ') {
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
               <button class="btn-table" ${r.hasActiveRfq ? 'disabled' : ''} onclick="openRfqModal('${r.sku}', '${r.wh}', ${r.qty}, '${r.sup}')">Gửi RFQ</button>
-              <button class="btn-table btn-table-sec" onclick="openTransferCompareModal('${r.sku}', '${r.wh}')">So sánh</button>
+
             </div>
           `;
         } else {
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
               <button class="btn-table" onclick="openOverstockModal('${r.sku}', '${r.wh}')">Xử lý</button>
-              <button class="btn-table btn-table-sec" onclick="openOverstockModal('${r.sku}', '${r.wh}')">So sánh</button>
             </div>
           `;
         }
@@ -6025,13 +6047,23 @@ function renderAllViews() {
 
 // SIMULATION TIME CONTROL
 function advanceToDate(targetDate) {
+  if (targetDate > Store.endDate) targetDate = Store.endDate;
+
+  // Backward navigation: read-only view of past snapshots
   if (targetDate < Store.currentDate) {
-    showToast('Không thể quay ngược thời gian! Hệ thống chỉ mô phỏng tiến tới.', 'error');
+    Store.ui.viewDate = targetDate;
     const picker = document.getElementById('simDatePicker');
-    if (picker) picker.value = Store.currentDate;
+    if (picker) picker.value = targetDate;
+    showViewModeBanner(targetDate);
+    renderAllViews();
     return;
   }
-  if (targetDate > Store.endDate) targetDate = Store.endDate;
+
+  // Clear view mode if going forward
+  if (Store.ui.viewDate) {
+    delete Store.ui.viewDate;
+    hideViewModeBanner();
+  }
 
   while (Store.currentDate < targetDate) {
     const ok = advanceOneDay();
@@ -6039,13 +6071,43 @@ function advanceToDate(targetDate) {
   }
 
   const picker = document.getElementById('simDatePicker');
-  if (picker) {
-    picker.value = Store.currentDate;
-    picker.min = Store.currentDate;
-  }
+  if (picker) picker.value = Store.currentDate;
 
   renderAllViews();
-  // Toast removed per user request
+}
+
+function showViewModeBanner(date) {
+  let banner = document.getElementById('viewModeBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'viewModeBanner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#0F172A;color:#F8FAFC;text-align:center;padding:7px 16px;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:14px;border-bottom:1px solid #334155;box-shadow:0 2px 6px rgba(0,0,0,0.15);';
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML = `
+    <span style="display:inline-flex;align-items:center;gap:6px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <strong>Chế độ tra cứu quá khứ:</strong> ${fmtDateVN(date)} (Chỉ đọc — Dữ liệu lịch sử không được phép chỉnh sửa)
+    </span>
+    <button onclick="returnToPresent()" style="background:#2563EB;color:#FFFFFF;border:none;border-radius:4px;padding:3px 12px;font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+      Quay về ngày hiện tại
+    </button>
+  `;
+  document.body.style.paddingTop = '34px';
+}
+
+function hideViewModeBanner() {
+  const banner = document.getElementById('viewModeBanner');
+  if (banner) banner.remove();
+  document.body.style.paddingTop = '';
+}
+
+function returnToPresent() {
+  delete Store.ui.viewDate;
+  hideViewModeBanner();
+  const picker = document.getElementById('simDatePicker');
+  if (picker) picker.value = Store.currentDate;
+  renderAllViews();
 }
 
 function stepDays(days) {
@@ -6055,12 +6117,6 @@ function stepDays(days) {
 
 function onManualDateChange(newVal) {
   if (!newVal) return;
-  if (newVal < Store.currentDate) {
-    showToast('Không thể chọn ngày trong quá khứ!', 'error');
-    const picker = document.getElementById('simDatePicker');
-    if (picker) picker.value = Store.currentDate;
-    return;
-  }
   advanceToDate(newVal);
 }
 
