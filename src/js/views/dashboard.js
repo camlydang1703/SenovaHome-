@@ -220,6 +220,17 @@ function renderDashboardView() {
   // --------------------------------------------------------------------------
   // 3. 5x11 Inventory Status Matrix (with active warehouse highlighted)
   // --------------------------------------------------------------------------
+  WAREHOUSES.forEach(wh => {
+    const thEl = document.getElementById(`th-wh-${wh.code}`);
+    if (thEl) {
+      if (wh.code === activeWh) {
+        thEl.classList.add('active-wh-col');
+      } else {
+        thEl.classList.remove('active-wh-col');
+      }
+    }
+  });
+
   const matrixTbody = document.getElementById('matrixTbody');
   if (matrixTbody) {
     let mHtml = '';
@@ -265,10 +276,10 @@ function renderDashboardView() {
         const transitText = st.in_transit > 0 ? ` (+${st.in_transit} đang về)` : '';
         const modalFunc = status === 'HIGH' ? `openOverstockModal('${sku.code}', '${wh.code}')` : `openTransferCompareModal('${sku.code}', '${wh.code}')`;
         const isCurrentActive = (wh.code === activeWh);
-        const activeStyle = isCurrentActive ? 'border: 2px solid var(--navy-main);' : '';
+        const activeClass = isCurrentActive ? ' active-wh-col' : '';
 
         mHtml += `
-          <td class="${cellClass}" style="${activeStyle}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | MIN(ROP): ${p.rop} | MAX(Qmax): ${p.qmax}">
+          <td class="${cellClass}${activeClass}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | MIN(ROP): ${p.rop} | MAX(Qmax): ${p.qmax}">
             <div class="cell-qty">${st.on_hand}${transitText}</div>
             <div class="cell-sub">${tagText} (${ropRender} / ${qmaxRender})</div>
           </td>
@@ -285,12 +296,12 @@ function renderDashboardView() {
         ${WAREHOUSES.map(wh => {
           const t = whTotals[wh.code];
           const isCurrentActive = (wh.code === activeWh);
-          const activeStyle = isCurrentActive ? 'background:#E2E8F0;font-weight:800;' : '';
+          const activeClass = isCurrentActive ? ' class="active-wh-col"' : '';
           return `
-            <td style="text-align:center;font-size:11.5px;padding:8px 4px;${activeStyle}">
-              <span style="color:var(--status-red);">${t.low}</span> /
-              <span style="color:var(--status-green);">${t.ok}</span> /
-              <span style="color:var(--status-yellow);">${t.high}</span>
+            <td style="text-align:center;font-size:11.5px;padding:8px 4px;"${activeClass}>
+              <span style="color:var(--status-red);font-weight:700;">${t.low}</span> /
+              <span style="color:var(--status-green);font-weight:700;">${t.ok}</span> /
+              <span style="color:var(--status-yellow);font-weight:700;">${t.high}</span>
             </td>
           `;
         }).join('')}

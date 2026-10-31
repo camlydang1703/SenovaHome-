@@ -77,8 +77,16 @@ function renderTransfersView() {
       key: 'status',
       header: 'Trạng thái',
       render: tr => {
-        const isArrived = tr.status === 'Đã nhận';
-        return `<span class="status-pill ${isArrived ? 'status-pill-ok' : 'status-pill-high'}">${tr.status}</span>`;
+        if (tr.status === 'Đã nhận') {
+          return `<span class="status-pill status-pill-ok">✓ Đã nhận</span>`;
+        }
+        if (tr.status === 'Chờ kho nhận đồng ý') {
+          return `<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">⏳ Chờ kho nhận duyệt</span>`;
+        }
+        if (tr.status === 'Bị từ chối') {
+          return `<span class="status-pill status-pill-low" style="background:#FEE2E2;color:#991B1B;border-color:#FECACA;">✕ Bị từ chối</span>`;
+        }
+        return `<span class="status-pill" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;font-weight:600;">🚚 Đang chuyển</span>`;
       }
     },
     {
@@ -86,14 +94,31 @@ function renderTransfersView() {
       header: 'Thao tác',
       align: 'center',
       render: tr => {
-        const isArrived = tr.status === 'Đã nhận';
-        if (!isArrived && tr.dstWh === activeWh) {
-          return `<button class="btn-table" onclick="receiveTransferEarly('${tr.id}')">Tiếp nhận sớm</button>`;
+        // Nếu là kho nhận và lệnh đang ở trạng thái 'Chờ kho nhận đồng ý'
+        if (tr.status === 'Chờ kho nhận đồng ý') {
+          if (tr.dstWh === activeWh) {
+            return `
+              <div style="display:flex;gap:4px;justify-content:center;">
+                <button class="btn-table" style="background:#15803D;border-color:#15803D;" onclick="acceptTransferInbound('${tr.id}')">✓ Đồng ý nhận</button>
+                <button class="btn-table-sec" style="color:#DC2626;border-color:#FCA5A5;" onclick="rejectTransferInbound('${tr.id}')">✕ Từ chối</button>
+              </div>
+            `;
+          }
+          return `<span style="font-size:11.5px;color:var(--status-yellow);font-weight:600;">Chờ kho ${tr.dstWh} duyệt</span>`;
         }
-        if (isArrived) {
+
+        // Nếu đang chuyển
+        if (tr.status === 'Đang chuyển') {
+          if (tr.dstWh === activeWh) {
+            return `<button class="btn-table" onclick="receiveTransferEarly('${tr.id}')">Tiếp nhận sớm</button>`;
+          }
+          return '<span style="font-size:11.5px;color:var(--text-muted);">Đang trên đường</span>';
+        }
+
+        if (tr.status === 'Đã nhận') {
           return '<span style="font-size:11.5px;color:var(--status-green);font-weight:600;">✓ Hoàn tất</span>';
         }
-        return '<span style="font-size:11.5px;color:var(--text-muted);">Đang vận chuyển</span>';
+        return '<span style="font-size:11.5px;color:var(--text-muted);">-</span>';
       }
     }
   ];

@@ -972,6 +972,44 @@
       font-weight: 500;
     }
 
+    /* MA TRAN TON KHO - Grid lines nhe & active column */
+    .matrix-tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      border: 1px solid #CBD5E1;
+    }
+    .matrix-tbl th {
+      background: #F8FAFC;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 9px 10px;
+      border: 1px solid #E2E8F0;
+      white-space: nowrap;
+    }
+    .matrix-tbl td {
+      padding: 8px 10px;
+      border: 1px solid #E2E8F0;
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+    .matrix-tbl th.active-wh-col {
+      background: #EFF6FF !important;
+      color: var(--navy-accent) !important;
+      font-weight: 700 !important;
+      border-left: 2px solid var(--navy-accent) !important;
+      border-right: 2px solid var(--navy-accent) !important;
+      border-top: 2px solid var(--navy-accent) !important;
+    }
+    .matrix-tbl td.active-wh-col {
+      border-left: 2px solid var(--navy-accent) !important;
+      border-right: 2px solid var(--navy-accent) !important;
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.15);
+    }
+    .matrix-tbl tr:last-child td.active-wh-col {
+      border-bottom: 2px solid var(--navy-accent) !important;
+    }
+
   </style>
 </head>
 <body>
@@ -1158,15 +1196,15 @@
           </div>
         </div>
         <div class="table-container">
-          <table class="data-tbl">
+          <table class="matrix-tbl" id="matrixTableMain">
             <thead>
-              <tr>
+              <tr id="matrixTheadRow">
                 <th style="min-width:180px;">Sản phẩm (SKU)</th>
-                <th style="text-align:center;">Kho HCM</th>
-                <th style="text-align:center;">Kho Bình Dương</th>
-                <th style="text-align:center;">Kho Đà Nẵng</th>
-                <th style="text-align:center;">Kho Hà Giang</th>
-                <th style="text-align:center;">Kho Hà Nội</th>
+                <th style="text-align:center;" class="col-wh-HCM" id="th-wh-HCM">Kho HCM</th>
+                <th style="text-align:center;" class="col-wh-BD" id="th-wh-BD">Kho Bình Dương</th>
+                <th style="text-align:center;" class="col-wh-DN" id="th-wh-DN">Kho Đà Nẵng</th>
+                <th style="text-align:center;" class="col-wh-DN_CITY" id="th-wh-DN_CITY">Kho Hà Giang</th>
+                <th style="text-align:center;" class="col-wh-HN" id="th-wh-HN">Kho Hà Nội</th>
               </tr>
             </thead>
             <tbody id="matrixTbody">
@@ -2389,7 +2427,46 @@ function fmt(n) {
       }
     }
 
+        function acceptTransferInbound(transferId) {
+      const tr = Store.transfers.find(t => t.id === transferId);
+      if (!tr || tr.status !== 'Chờ kho nhận đồng ý') return;
+
+      const srcSt = Store.stock[tr.srcWh][tr.sku];
+      const srcP  = calcSKUParams(tr.sku, tr.srcWh, Store.currentDate, Store.history);
+      const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
+
+      if (tr.qty > srcSt.on_hand || (srcEff - tr.qty) <= srcP.rop) {
+        showToast(`Kho xuất ${tr.srcWh} hiện không còn đủ tồn khả dụng an toàn!`, 'error');
+        return;
+      }
+
+      // Trừ hàng tại kho xuất và đưa vào in_transit của kho nhận
+      srcSt.on_hand -= tr.qty;
+      Store.stock[tr.dstWh][tr.sku].in_transit += tr.qty;
+      tr.status = 'Đang chuyển';
+      tr.shipDate = Store.currentDate;
+      const tDays = getTransferDays(tr.srcWh, tr.dstWh);
+      tr.arrivalDate = addDays(Store.currentDate, tDays);
+
+      pushNotification('TRANSFER_APPROVED', tr.id, `Kho nhận ${tr.dstWh} đã đồng ý tiếp nhận ${tr.qty} ${tr.sku} từ ${tr.srcWh}. Hàng bắt đầu lăn bánh!`);
+      logAction('TRANSFER_ACCEPTED', tr.id, `Kho ${tr.dstWh} đồng ý tiếp nhận đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}`, tr.cost);
+      showToast(`Kho ${tr.dstWh} đã xác nhận tiếp nhận đơn chuyển ${tr.id}. Hàng đang vận chuyển!`, 'success');
+      renderAllViews();
+    }
+
+    function rejectTransferInbound(transferId) {
+      const tr = Store.transfers.find(t => t.id === transferId);
+      if (!tr || tr.status !== 'Chờ kho nhận đồng ý') return;
+
+      tr.status = 'Bị từ chối';
+      pushNotification('TRANSFER_REJECTED', tr.id, `Kho nhận ${tr.dstWh} đã từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}.`);
+      logAction('TRANSFER_REJECTED', tr.id, `Kho ${tr.dstWh} từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}`);
+      showToast(`Đã từ chối đơn điều chuyển ${tr.id}`, 'info');
+      renderAllViews();
+    }
+
     function receiveTransferEarly(transferId) {
+
       const tr = Store.transfers.find(t => t.id === transferId);
       if (!tr || tr.status !== 'Đang chuyển') return;
 
@@ -3328,16 +3405,22 @@ function fmt(n) {
           } else if (status === 'HIGH') {
             // Tồn dư vượt đỉnh MAX -> Đề xuất điều chuyển san tải sang kho cần hàng
             const excessQty = st.on_hand - p.qmax;
+            // Ưu tiên chọn kho nhận:
+            // 1. Kho thiếu hụt (isLow = true)
+            // 2. Cùng thiếu hụt: ưu tiên chi phí vận chuyển thấp hơn + lead time nhanh hơn
             let bestRecipient = null;
-            let lowestRatio = 999;
+            let bestRecipientScore = Infinity;
             WAREHOUSES.forEach(otherWh => {
               if (otherWh.code !== wh.code) {
                 const otherSt = Store.stock[otherWh.code][sku.code];
                 const otherP = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
                 const otherEff = otherSt.on_hand + otherSt.in_transit - otherSt.committed;
-                const ratio = otherP.rop > 0 ? (otherEff / otherP.rop) : 1;
-                if (ratio < lowestRatio) {
-                  lowestRatio = ratio;
+                const isLow = otherEff <= otherP.rop;
+                const freight = calcFreightCost(wh.code, otherWh.code, sku.code, excessQty);
+                const tDays = getTransferDays(wh.code, otherWh.code);
+                const score = (isLow ? 0 : 100000000) + freight + (tDays * 10000);
+                if (score < bestRecipientScore) {
+                  bestRecipientScore = score;
                   bestRecipient = otherWh.code;
                 }
               }
@@ -3577,6 +3660,10 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
       const dualQmax = renderDualParam(baseP ? baseP.qmax : p.qmax, p.qmax, 'Qmax', driver);
 
       // Phân tích các kho nhận tiềm năng trong mạng lưới
+      // Ưu tiên:
+      // 1. Kho đang thiếu hụt (isLow = true) ưu tiên hơn kho không thiếu
+      // 2. Trong các kho cùng thiếu (hoặc cùng không thiếu), ưu tiên kho có chi phí vận chuyển thấp hơn + lead time nhanh hơn
+      // 3. Nếu chênh lệch cước rất lớn, hệ thống chọn kho có tổng hiệu quả chi phí / cứu nguy cao nhất
       const candidateWhs = WAREHOUSES.filter(w => w.code !== whCode).map(w => {
         const destP = calcSKUParams(skuCode, w.code, Store.currentDate, Store.history);
         const destSt = Store.stock[w.code][skuCode];
@@ -3585,6 +3672,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
         const freight = calcFreightCost(whCode, w.code, skuCode, excess);
         const isLow = destEff <= destP.rop;
         const capacity = Math.max(0, destP.qmax - destEff);
+        const deficit = isLow ? (destP.rop - destEff) : 0;
         const ratio = destP.rop > 0 ? (destEff / destP.rop) : 1;
         return {
           code: w.code,
@@ -3596,9 +3684,21 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
           freight: freight,
           isLow: isLow,
           capacity: capacity,
+          deficit: deficit,
           ratio: ratio
         };
-      }).sort((a, b) => a.ratio - b.ratio);
+      }).sort((a, b) => {
+        // Cùng thiếu hụt: ưu tiên chi phí vận chuyển thấp hơn (ví dụ Bình Dương gần hơn nhiều so với Hà Nội)
+        if (a.isLow && b.isLow) {
+          if (a.freight !== b.freight) return a.freight - b.freight;
+          return a.tDays - b.tDays;
+        }
+        // Một bên thiếu, một bên không thiếu
+        if (a.isLow !== b.isLow) return a.isLow ? -1 : 1;
+        // Cùng không thiếu: ưu tiên cước thấp hơn
+        if (a.freight !== b.freight) return a.freight - b.freight;
+        return a.ratio - b.ratio;
+      });
 
       const bestTarget = candidateWhs[0];
 
@@ -3638,12 +3738,12 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
                 </thead>
                 <tbody>
                   ${candidateWhs.map((cw, idx) => `
-                    <tr style="border-bottom:1px solid var(--border-subtle);${idx === 0 ? 'background:#F0FDF4;' : ''}">
+                    <tr id="overstock-row-${cw.code}" style="border-bottom:1px solid var(--border-subtle);${idx === 0 ? 'background:#F0FDF4;' : ''}">
                       <td style="padding:8px 10px;">
                         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
-                          <input type="radio" name="overstockWhSelect" value="${cw.code}" ${idx === 0 ? 'checked' : ''} onchange="document.getElementById('overstockTargetWh').value='${cw.code}'">
+                          <input type="radio" name="overstockWhSelect" value="${cw.code}" ${idx === 0 ? 'checked' : ''} onchange="selectOverstockWhOption('${cw.code}')">
                           ${cw.name}
-                          ${idx === 0 ? '<span style="font-size:10px;background:#15803D;color:#fff;padding:1px 6px;border-radius:3px;font-weight:700;">Khuyến nghị</span>' : ''}
+                          ${idx === 0 ? '<span style="font-size:10px;background:#15803D;color:#fff;padding:1px 6px;border-radius:3px;font-weight:700;">Khuyến nghị tối ưu</span>' : ''}
                         </label>
                       </td>
                       <td style="padding:8px 10px;text-align:right;font-weight:600;">
@@ -3682,6 +3782,21 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
       openModal('overstockModal');
     }
 
+        function selectOverstockWhOption(whCode) {
+      const targetInput = document.getElementById('overstockTargetWh');
+      if (targetInput) targetInput.value = whCode;
+      WAREHOUSES.forEach(w => {
+        const row = document.getElementById(`overstock-row-${w.code}`);
+        if (row) {
+          if (w.code === whCode) {
+            row.style.background = '#F0FDF4';
+          } else {
+            row.style.background = '';
+          }
+        }
+      });
+    }
+
     function executeBatch2ATransfer(skuCode, srcWhCode) {
       const sku = SKUS.find(s => s.code === skuCode);
       const st  = Store.stock[srcWhCode][skuCode];
@@ -3706,9 +3821,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
       const freight = qty * unitRate;
       const trId = padSeq('TR');
 
-      st.on_hand -= qty;
-      Store.stock[targetWh.code][skuCode].in_transit += qty;
-
+      // Tạo đề xuất san tải sang kho đích, chờ kho đích đồng ý tiếp nhận
       Store.transfers.unshift({
         id: trId,
         date: Store.currentDate,
@@ -3718,7 +3831,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
         qty: qty,
         shipDate: Store.currentDate,
         arrivalDate: addDays(Store.currentDate, tDays),
-        status: 'Đang chuyển',
+        status: 'Chờ kho nhận đồng ý',
         cost: freight
       });
 
@@ -3726,9 +3839,9 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
       delete Store.proposals[`${skuCode}-${srcWhCode}`];
 
       closeModal('overstockModal');
-      pushNotification('TRANSFER_APPROVED', trId, `Thực thi san tải 2A: ${qty} ${skuCode} (${srcWhCode} -> ${targetWh.code})`);
-      logAction('SAN_TAI_2A', trId, `Điều chuyển san tải tồn dư ${qty} ${skuCode} sang kho ${targetWh.name}`, freight);
-      showToast(`Đã lập lệnh điều chuyển san tải ${trId} sang ${targetWh.name}`, 'success');
+      pushNotification('TRANSFER_PROPOSED', trId, `Đã đề xuất san tải ${qty} ${skuCode} sang ${targetWh.name}. Chờ kho nhận xác nhận.`);
+      logAction('SAN_TAI_2A', trId, `Đề xuất san tải tồn dư ${qty} ${skuCode} sang kho ${targetWh.name} (chờ kho nhận đồng ý)`, freight);
+      showToast(`Đã lập lệnh điều chuyển san tải ${trId} sang ${targetWh.name} (Chờ kho nhận đồng ý).`, 'success');
 
       if (typeof switchNavTab === 'function') {
         switchNavTab('transfers');
@@ -3801,6 +3914,11 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
       });
       if (!bestSource) bestSource = (toWh === 'HCM' ? 'BD' : 'HCM');
 
+      const srcStInit = Store.stock[bestSource][skuCode];
+      const srcPInit  = calcSKUParams(skuCode, bestSource, Store.currentDate, Store.history);
+      const srcEffInit = srcStInit.on_hand + srcStInit.in_transit - srcStInit.committed;
+      const srcSafeInit = (qNeed <= srcStInit.on_hand) && ((srcEffInit - qNeed) > srcPInit.rop);
+
       ActiveModalContext = {
         skuCode: skuCode,
         toWh: toWh,
@@ -3812,7 +3930,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
         qNeed: qNeed,
         sourceWh: bestSource,
         supplier: sku.sup,
-        selectedPlan: (maxSurplus > 0 ? 'A' : 'B'),
+        selectedPlan: srcSafeInit ? 'A' : 'B',
         customQty: qNeed
       };
 
@@ -3880,7 +3998,7 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
           <!-- OPTION A: INTERNAL TRANSFER -->
           <div style="border:2px solid ${ctx.selectedPlan === 'A' ? 'var(--navy-accent)' : 'var(--border-color)'};border-radius:8px;padding:14px;background:#FFFFFF;position:relative;cursor:pointer;" onclick="selectModalPlan('A')">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span class="status-pill ${srcSafe ? 'status-pill-ok' : 'status-pill-low'}">
+              <span style="${srcSafe ? 'background:#DCFCE7;color:#15803D;border:1px solid #86EFAC;' : 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;'}font-size:11px;font-weight:700;padding:2px 8px;border-radius:9999px;">
                 ${srcSafe ? 'Khuyến nghị: Tối ưu chi phí & Tốc độ' : 'Cảnh báo kho xuất'}
               </span>
               <input type="radio" name="planSelect" value="A" ${ctx.selectedPlan === 'A' ? 'checked' : ''}>
@@ -3898,15 +4016,16 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
             <div style="font-size:11.5px;color:var(--text-main);line-height:1.6;background:#F8FAFC;padding:8px;border-radius:4px;">
               • Thời gian vận chuyển: <strong>${tDays} ngày</strong> (Đến ngày: ${fmtDateVN(addDays(Store.currentDate, tDays))})<br>
               • Đơn giá cước: <strong>${fmtVND(unitFreight)}/${ctx.sku.unit}</strong><br>
-              • Tổng cước dự kiến: <strong style="color:var(--navy-accent);">${fmtVND(totalFreight)}</strong><br>
-              • Tình trạng kho xuất: ${srcSafe ? '<span style="color:var(--status-green);font-weight:600;">Đủ hàng an toàn</span>' : '<span style="color:var(--status-red);font-weight:600;">Thiếu hụt hoặc <= ROP</span>'}
+              • Chi phí vận chuyển tuyến: <strong>${fmtVND(totalFreight)}</strong><br>
+              • <strong>Tổng chi phí phương án A:</strong> <strong style="color:var(--navy-accent);font-size:12.5px;">${fmtVND(totalFreight)}</strong><br>
+              • Tình trạng kho xuất: ${srcSafe ? '<span style="color:var(--status-green);font-weight:600;">Đủ hàng an toàn (Sau chuyển > ROP)</span>' : '<span style="color:var(--status-red);font-weight:600;">Thiếu hụt hoặc <= ROP</span>'}
             </div>
           </div>
 
           <!-- OPTION B: RFQ ALL SUPPLIERS -->
           <div style="border:2px solid ${ctx.selectedPlan === 'B' ? 'var(--navy-accent)' : 'var(--border-color)'};border-radius:8px;padding:14px;background:#FFFFFF;position:relative;cursor:pointer;" onclick="selectModalPlan('B')">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span class="status-pill status-pill-high">
+              <span style="${!srcSafe ? 'background:#DCFCE7;color:#15803D;border:1px solid #86EFAC;' : 'background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;'}font-size:11px;font-weight:700;padding:2px 8px;border-radius:9999px;">
                 ${!srcSafe ? 'Khuyến nghị: Chào giá cạnh tranh toàn bộ NCC' : 'Dự phòng: Gửi chào giá toàn bộ NCC'}
               </span>
               <input type="radio" name="planSelect" value="B" ${ctx.selectedPlan === 'B' ? 'checked' : ''}>
@@ -3982,9 +4101,8 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
         const totalFreight = calcFreightCost(ctx.sourceWh, ctx.toWh, ctx.skuCode, ctx.customQty);
         const trId = padSeq('TR');
 
-        srcSt.on_hand -= ctx.customQty;
-        Store.stock[ctx.toWh][ctx.skuCode].in_transit += ctx.customQty;
-
+        // Tạo yêu cầu điều chuyển gửi tới kho nhận xác nhận
+        // Khi kho nhận bấm 'Đồng ý nhận hàng', hàng mới chính thức trừ kho xuất và lăn bánh
         Store.transfers.unshift({
           id: trId,
           date: Store.currentDate,
@@ -3994,15 +4112,15 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
           qty: ctx.customQty,
           shipDate: Store.currentDate,
           arrivalDate: addDays(Store.currentDate, tDays),
-          status: 'Đang chuyển',
+          status: 'Chờ kho nhận đồng ý',
           cost: totalFreight
         });
 
         delete Store.proposals[pairKey];
         closeModal('transferModal');
-        pushNotification('TRANSFER_APPROVED', trId, `Phê duyệt điều chuyển ${ctx.customQty} ${ctx.skuCode} (${ctx.sourceWh} -> ${ctx.toWh})`);
-        logAction('APPROVE_TRANSFER', trId, `Phê duyệt điều chuyển ${ctx.customQty} ${ctx.skuCode} (${ctx.sourceWh} -> ${ctx.toWh})`, totalFreight);
-        showToast(`Đã duyệt thành công lệnh điều chuyển ${trId}`, 'success');
+        pushNotification('TRANSFER_PROPOSED', trId, `Đã tạo lệnh chuyển ${ctx.customQty} ${ctx.skuCode} từ ${ctx.sourceWh} sang ${ctx.toWh}. Đang chờ kho ${ctx.destWh.name} đồng ý tiếp nhận!`);
+        logAction('PROPOSE_TRANSFER', trId, `Tạo đề xuất chuyển ${ctx.customQty} ${ctx.skuCode} (${ctx.sourceWh} -> ${ctx.toWh}), chờ kho nhận phê duyệt`, totalFreight);
+        showToast(`Đã tạo lệnh chuyển ${trId}. Cần kho nhận (${ctx.destWh.name}) đồng ý để bắt đầu vận chuyển.`, 'success');
         if (typeof switchWarehouse === 'function' && Store.ui && Store.ui.activeWh !== ctx.toWh) {
           switchWarehouse(ctx.toWh);
         }
@@ -4671,6 +4789,17 @@ function renderDashboardView() {
   // --------------------------------------------------------------------------
   // 3. 5x11 Inventory Status Matrix (with active warehouse highlighted)
   // --------------------------------------------------------------------------
+  WAREHOUSES.forEach(wh => {
+    const thEl = document.getElementById(`th-wh-${wh.code}`);
+    if (thEl) {
+      if (wh.code === activeWh) {
+        thEl.classList.add('active-wh-col');
+      } else {
+        thEl.classList.remove('active-wh-col');
+      }
+    }
+  });
+
   const matrixTbody = document.getElementById('matrixTbody');
   if (matrixTbody) {
     let mHtml = '';
@@ -4716,10 +4845,10 @@ function renderDashboardView() {
         const transitText = st.in_transit > 0 ? ` (+${st.in_transit} đang về)` : '';
         const modalFunc = status === 'HIGH' ? `openOverstockModal('${sku.code}', '${wh.code}')` : `openTransferCompareModal('${sku.code}', '${wh.code}')`;
         const isCurrentActive = (wh.code === activeWh);
-        const activeStyle = isCurrentActive ? 'border: 2px solid var(--navy-main);' : '';
+        const activeClass = isCurrentActive ? ' active-wh-col' : '';
 
         mHtml += `
-          <td class="${cellClass}" style="${activeStyle}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | MIN(ROP): ${p.rop} | MAX(Qmax): ${p.qmax}">
+          <td class="${cellClass}${activeClass}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | MIN(ROP): ${p.rop} | MAX(Qmax): ${p.qmax}">
             <div class="cell-qty">${st.on_hand}${transitText}</div>
             <div class="cell-sub">${tagText} (${ropRender} / ${qmaxRender})</div>
           </td>
@@ -4736,12 +4865,12 @@ function renderDashboardView() {
         ${WAREHOUSES.map(wh => {
           const t = whTotals[wh.code];
           const isCurrentActive = (wh.code === activeWh);
-          const activeStyle = isCurrentActive ? 'background:#E2E8F0;font-weight:800;' : '';
+          const activeClass = isCurrentActive ? ' class="active-wh-col"' : '';
           return `
-            <td style="text-align:center;font-size:11.5px;padding:8px 4px;${activeStyle}">
-              <span style="color:var(--status-red);">${t.low}</span> /
-              <span style="color:var(--status-green);">${t.ok}</span> /
-              <span style="color:var(--status-yellow);">${t.high}</span>
+            <td style="text-align:center;font-size:11.5px;padding:8px 4px;"${activeClass}>
+              <span style="color:var(--status-red);font-weight:700;">${t.low}</span> /
+              <span style="color:var(--status-green);font-weight:700;">${t.ok}</span> /
+              <span style="color:var(--status-yellow);font-weight:700;">${t.high}</span>
             </td>
           `;
         }).join('')}
@@ -5019,8 +5148,16 @@ function renderTransfersView() {
       key: 'status',
       header: 'Trạng thái',
       render: tr => {
-        const isArrived = tr.status === 'Đã nhận';
-        return `<span class="status-pill ${isArrived ? 'status-pill-ok' : 'status-pill-high'}">${tr.status}</span>`;
+        if (tr.status === 'Đã nhận') {
+          return `<span class="status-pill status-pill-ok">✓ Đã nhận</span>`;
+        }
+        if (tr.status === 'Chờ kho nhận đồng ý') {
+          return `<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">⏳ Chờ kho nhận duyệt</span>`;
+        }
+        if (tr.status === 'Bị từ chối') {
+          return `<span class="status-pill status-pill-low" style="background:#FEE2E2;color:#991B1B;border-color:#FECACA;">✕ Bị từ chối</span>`;
+        }
+        return `<span class="status-pill" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;font-weight:600;">🚚 Đang chuyển</span>`;
       }
     },
     {
@@ -5028,14 +5165,31 @@ function renderTransfersView() {
       header: 'Thao tác',
       align: 'center',
       render: tr => {
-        const isArrived = tr.status === 'Đã nhận';
-        if (!isArrived && tr.dstWh === activeWh) {
-          return `<button class="btn-table" onclick="receiveTransferEarly('${tr.id}')">Tiếp nhận sớm</button>`;
+        // Nếu là kho nhận và lệnh đang ở trạng thái 'Chờ kho nhận đồng ý'
+        if (tr.status === 'Chờ kho nhận đồng ý') {
+          if (tr.dstWh === activeWh) {
+            return `
+              <div style="display:flex;gap:4px;justify-content:center;">
+                <button class="btn-table" style="background:#15803D;border-color:#15803D;" onclick="acceptTransferInbound('${tr.id}')">✓ Đồng ý nhận</button>
+                <button class="btn-table-sec" style="color:#DC2626;border-color:#FCA5A5;" onclick="rejectTransferInbound('${tr.id}')">✕ Từ chối</button>
+              </div>
+            `;
+          }
+          return `<span style="font-size:11.5px;color:var(--status-yellow);font-weight:600;">Chờ kho ${tr.dstWh} duyệt</span>`;
         }
-        if (isArrived) {
+
+        // Nếu đang chuyển
+        if (tr.status === 'Đang chuyển') {
+          if (tr.dstWh === activeWh) {
+            return `<button class="btn-table" onclick="receiveTransferEarly('${tr.id}')">Tiếp nhận sớm</button>`;
+          }
+          return '<span style="font-size:11.5px;color:var(--text-muted);">Đang trên đường</span>';
+        }
+
+        if (tr.status === 'Đã nhận') {
           return '<span style="font-size:11.5px;color:var(--status-green);font-weight:600;">✓ Hoàn tất</span>';
         }
-        return '<span style="font-size:11.5px;color:var(--text-muted);">Đang vận chuyển</span>';
+        return '<span style="font-size:11.5px;color:var(--text-muted);">-</span>';
       }
     }
   ];

@@ -114,16 +114,22 @@
           } else if (status === 'HIGH') {
             // Tồn dư vượt đỉnh MAX -> Đề xuất điều chuyển san tải sang kho cần hàng
             const excessQty = st.on_hand - p.qmax;
+            // Ưu tiên chọn kho nhận:
+            // 1. Kho thiếu hụt (isLow = true)
+            // 2. Cùng thiếu hụt: ưu tiên chi phí vận chuyển thấp hơn + lead time nhanh hơn
             let bestRecipient = null;
-            let lowestRatio = 999;
+            let bestRecipientScore = Infinity;
             WAREHOUSES.forEach(otherWh => {
               if (otherWh.code !== wh.code) {
                 const otherSt = Store.stock[otherWh.code][sku.code];
                 const otherP = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
                 const otherEff = otherSt.on_hand + otherSt.in_transit - otherSt.committed;
-                const ratio = otherP.rop > 0 ? (otherEff / otherP.rop) : 1;
-                if (ratio < lowestRatio) {
-                  lowestRatio = ratio;
+                const isLow = otherEff <= otherP.rop;
+                const freight = calcFreightCost(wh.code, otherWh.code, sku.code, excessQty);
+                const tDays = getTransferDays(wh.code, otherWh.code);
+                const score = (isLow ? 0 : 100000000) + freight + (tDays * 10000);
+                if (score < bestRecipientScore) {
+                  bestRecipientScore = score;
                   bestRecipient = otherWh.code;
                 }
               }

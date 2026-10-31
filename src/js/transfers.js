@@ -93,7 +93,46 @@
       }
     }
 
+        function acceptTransferInbound(transferId) {
+      const tr = Store.transfers.find(t => t.id === transferId);
+      if (!tr || tr.status !== 'Chờ kho nhận đồng ý') return;
+
+      const srcSt = Store.stock[tr.srcWh][tr.sku];
+      const srcP  = calcSKUParams(tr.sku, tr.srcWh, Store.currentDate, Store.history);
+      const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
+
+      if (tr.qty > srcSt.on_hand || (srcEff - tr.qty) <= srcP.rop) {
+        showToast(`Kho xuất ${tr.srcWh} hiện không còn đủ tồn khả dụng an toàn!`, 'error');
+        return;
+      }
+
+      // Trừ hàng tại kho xuất và đưa vào in_transit của kho nhận
+      srcSt.on_hand -= tr.qty;
+      Store.stock[tr.dstWh][tr.sku].in_transit += tr.qty;
+      tr.status = 'Đang chuyển';
+      tr.shipDate = Store.currentDate;
+      const tDays = getTransferDays(tr.srcWh, tr.dstWh);
+      tr.arrivalDate = addDays(Store.currentDate, tDays);
+
+      pushNotification('TRANSFER_APPROVED', tr.id, `Kho nhận ${tr.dstWh} đã đồng ý tiếp nhận ${tr.qty} ${tr.sku} từ ${tr.srcWh}. Hàng bắt đầu lăn bánh!`);
+      logAction('TRANSFER_ACCEPTED', tr.id, `Kho ${tr.dstWh} đồng ý tiếp nhận đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}`, tr.cost);
+      showToast(`Kho ${tr.dstWh} đã xác nhận tiếp nhận đơn chuyển ${tr.id}. Hàng đang vận chuyển!`, 'success');
+      renderAllViews();
+    }
+
+    function rejectTransferInbound(transferId) {
+      const tr = Store.transfers.find(t => t.id === transferId);
+      if (!tr || tr.status !== 'Chờ kho nhận đồng ý') return;
+
+      tr.status = 'Bị từ chối';
+      pushNotification('TRANSFER_REJECTED', tr.id, `Kho nhận ${tr.dstWh} đã từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}.`);
+      logAction('TRANSFER_REJECTED', tr.id, `Kho ${tr.dstWh} từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}`);
+      showToast(`Đã từ chối đơn điều chuyển ${tr.id}`, 'info');
+      renderAllViews();
+    }
+
     function receiveTransferEarly(transferId) {
+
       const tr = Store.transfers.find(t => t.id === transferId);
       if (!tr || tr.status !== 'Đang chuyển') return;
 
