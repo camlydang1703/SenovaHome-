@@ -78,6 +78,7 @@
 
           if (p.qty <= srcSt.on_hand && (srcEff - p.qty) > srcP.rop) {
             srcSt.on_hand -= p.qty;
+            srcSt.committed = Math.max(0, srcSt.committed - p.qty);
             Store.stock[p.dstWh][p.sku].in_transit += p.qty;
             const trId = padSeq('TR');
             Store.transfers.unshift({
@@ -122,6 +123,7 @@
 
       // Trừ hàng tại kho xuất và đưa vào in_transit của kho nhận
       srcSt.on_hand -= tr.qty;
+      srcSt.committed = Math.max(0, srcSt.committed - tr.qty);
       Store.stock[tr.dstWh][tr.sku].in_transit += tr.qty;
       tr.status = 'Đang chuyển';
       tr.shipDate = Store.currentDate;
@@ -139,6 +141,8 @@
       if (!tr || tr.status !== 'Chờ kho nhận đồng ý') return;
 
       tr.status = 'Bị từ chối';
+      const rejSrcSt = Store.stock[tr.srcWh] ? Store.stock[tr.srcWh][tr.sku] : null;
+      if (rejSrcSt) rejSrcSt.committed = Math.max(0, rejSrcSt.committed - tr.qty);
       pushNotification('TRANSFER_REJECTED', tr.id, `Kho nhận ${tr.dstWh} đã từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}.`);
       logAction('TRANSFER_REJECTED', tr.id, `Kho ${tr.dstWh} từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}`);
       showToast(`Đã từ chối đơn điều chuyển ${tr.id}`, 'info');

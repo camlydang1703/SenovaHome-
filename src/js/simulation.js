@@ -71,6 +71,9 @@
     // 2.4 PERIODIC INBOUND REPLENISHMENT (Yêu cầu 3.2)
     // ----------------------------------------------------------------------------
     function processInboundReplenishment(curDate, dayIdx) {
+      const whDayInbound = {};
+      WAREHOUSES.forEach(wh => { whDayInbound[wh.code] = { total: 0, cost: 0, skus: [] }; });
+
       SKUS.forEach(sku => {
         WAREHOUSES.forEach(wh => {
           const st = Store.stock[wh.code][sku.code];
@@ -108,7 +111,7 @@
             // Tinh ton kha dung hien tai
             const eff = st.on_hand + st.in_transit - st.committed;
 
-            // Muc tieu ton = ROP + 45% F_next (trung tam dai "An toan")
+            // Muc tieu ton = ROP + 45% F_next (trung tam dai An toan)
             const targetMid = p.rop + 0.45 * f_next;
             // Pull factor: keo ve target_mid, clamp [0.30, 1.50]
             let pullFactor = 1.0 + (targetMid - eff) / (f_next * 2.2);
@@ -131,10 +134,20 @@
 
             if (inboundQty > 0) {
               st.on_hand += inboundQty;
-              logAction('INBOUND_NCC', sku.code, `Hang ve dinh ky tu ${sku.sup} tai ${wh.code}: +${inboundQty}`, inboundQty * sku.cogs);
+              whDayInbound[wh.code].total += inboundQty;
+              whDayInbound[wh.code].cost += inboundQty * sku.cogs;
+              whDayInbound[wh.code].skus.push(`${sku.code} (+${inboundQty})`);
             }
           }
         });
+      });
+
+      // Log 1 lan tong hop cho moi kho co hang ve dinh ky
+      WAREHOUSES.forEach(wh => {
+        const d = whDayInbound[wh.code];
+        if (d && d.total > 0) {
+          logAction('INBOUND_NCC', wh.code, `Hàng về định kỳ từ NCC tại ${wh.name}: ${d.skus.join(', ')} (tổng ${d.total} sp)`, d.cost);
+        }
       });
     }
 

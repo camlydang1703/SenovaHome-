@@ -2421,6 +2421,7 @@ function fmt(n) {
 
           if (p.qty <= srcSt.on_hand && (srcEff - p.qty) > srcP.rop) {
             srcSt.on_hand -= p.qty;
+            srcSt.committed = Math.max(0, srcSt.committed - p.qty);
             Store.stock[p.dstWh][p.sku].in_transit += p.qty;
             const trId = padSeq('TR');
             Store.transfers.unshift({
@@ -2465,6 +2466,7 @@ function fmt(n) {
 
       // Trừ hàng tại kho xuất và đưa vào in_transit của kho nhận
       srcSt.on_hand -= tr.qty;
+      srcSt.committed = Math.max(0, srcSt.committed - tr.qty);
       Store.stock[tr.dstWh][tr.sku].in_transit += tr.qty;
       tr.status = 'Đang chuyển';
       tr.shipDate = Store.currentDate;
@@ -2482,6 +2484,8 @@ function fmt(n) {
       if (!tr || tr.status !== 'Chờ kho nhận đồng ý') return;
 
       tr.status = 'Bị từ chối';
+      const rejSrcSt = Store.stock[tr.srcWh] ? Store.stock[tr.srcWh][tr.sku] : null;
+      if (rejSrcSt) rejSrcSt.committed = Math.max(0, rejSrcSt.committed - tr.qty);
       pushNotification('TRANSFER_REJECTED', tr.id, `Kho nhận ${tr.dstWh} đã từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}.`);
       logAction('TRANSFER_REJECTED', tr.id, `Kho ${tr.dstWh} từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}`);
       showToast(`Đã từ chối đơn điều chuyển ${tr.id}`, 'info');
@@ -3060,6 +3064,9 @@ function fmt(n) {
     // 2.4 PERIODIC INBOUND REPLENISHMENT (Yêu cầu 3.2)
     // ----------------------------------------------------------------------------
     function processInboundReplenishment(curDate, dayIdx) {
+      const whDayInbound = {};
+      WAREHOUSES.forEach(wh => { whDayInbound[wh.code] = { total: 0, cost: 0, skus: [] }; });
+
       SKUS.forEach(sku => {
         WAREHOUSES.forEach(wh => {
           const st = Store.stock[wh.code][sku.code];
@@ -3097,7 +3104,7 @@ function fmt(n) {
             // Tinh ton kha dung hien tai
             const eff = st.on_hand + st.in_transit - st.committed;
 
-            // Muc tieu ton = ROP + 45% F_next (trung tam dai "An toan")
+            // Muc tieu ton = ROP + 45% F_next (trung tam dai An toan)
             const targetMid = p.rop + 0.45 * f_next;
             // Pull factor: keo ve target_mid, clamp [0.30, 1.50]
             let pullFactor = 1.0 + (targetMid - eff) / (f_next * 2.2);
@@ -3120,10 +3127,20 @@ function fmt(n) {
 
             if (inboundQty > 0) {
               st.on_hand += inboundQty;
-              logAction('INBOUND_NCC', sku.code, `Hang ve dinh ky tu ${sku.sup} tai ${wh.code}: +${inboundQty}`, inboundQty * sku.cogs);
+              whDayInbound[wh.code].total += inboundQty;
+              whDayInbound[wh.code].cost += inboundQty * sku.cogs;
+              whDayInbound[wh.code].skus.push(`${sku.code} (+${inboundQty})`);
             }
           }
         });
+      });
+
+      // Log 1 lan tong hop cho moi kho co hang ve dinh ky
+      WAREHOUSES.forEach(wh => {
+        const d = whDayInbound[wh.code];
+        if (d && d.total > 0) {
+          logAction('INBOUND_NCC', wh.code, `Hàng về định kỳ từ NCC tại ${wh.name}: ${d.skus.join(', ')} (tổng ${d.total} sp)`, d.cost);
+        }
       });
     }
 
@@ -3351,7 +3368,37 @@ function fmt(n) {
 
     // 2.8 PROPOSALS SCANNER & ALERTS (Yêu cầu 0.2, 0.3, 0.5, 5.2)
     // ----------------------------------------------------------------------------
-    function scanAndGenerateProposals(curDate) {
+        // ----------------------------------------------------------------------------
+    // RECALCULATE COMMITTED STOCK FROM ACTIVE PROPOSALS & TRANSFERS
+    // ----------------------------------------------------------------------------
+    function recalcCommittedStock() {
+      if (!Store.stock) return;
+      WAREHOUSES.forEach(wh => {
+        SKUS.forEach(sku => {
+          if (Store.stock[wh.code] && Store.stock[wh.code][sku.code]) {
+            Store.stock[wh.code][sku.code].committed = 0;
+          }
+        });
+      });
+
+      if (Store.transfers) {
+        Store.transfers.forEach(tr => {
+          if (tr.status === 'Chờ kho nhận đồng ý' && Store.stock[tr.srcWh] && Store.stock[tr.srcWh][tr.sku]) {
+            Store.stock[tr.srcWh][tr.sku].committed += tr.qty;
+          }
+        });
+      }
+
+      if (Store.proposals) {
+        Object.values(Store.proposals).forEach(p => {
+          if (p.type === 'TRANSFER' && p.status === 'Chờ duyệt' && p.srcWh && Store.stock[p.srcWh] && Store.stock[p.srcWh][p.sku]) {
+            Store.stock[p.srcWh][p.sku].committed += p.qty;
+          }
+        });
+      }
+    }
+
+function scanAndGenerateProposals(curDate) {
       // 1. Quét trạng thái và kích hoạt Cảnh báo chuyển dịch trạng thái
       SKUS.forEach(sku => {
         WAREHOUSES.forEach(wh => {
@@ -3439,6 +3486,10 @@ function fmt(n) {
                 status: 'Chờ duyệt',
                 hasActiveRfq: false
               };
+              // Giữ chỗ tồn tại kho nguồn để các kho thiếu sau không đặt trùng
+              if (Store.stock[donorWh] && Store.stock[donorWh][sku.code]) {
+                Store.stock[donorWh][sku.code].committed += needQty;
+              }
             } else {
               // Không tìm được kho điều chuyển -> Đề xuất Yêu cầu Báo giá NCC
               Store.proposals[pairKey] = {
@@ -3536,6 +3587,7 @@ function fmt(n) {
 
         // Cập nhật tồn kho
         srcSt.on_hand -= p.qty;
+        srcSt.committed = Math.max(0, srcSt.committed - p.qty);
         Store.stock[p.dstWh][p.sku].in_transit += p.qty;
 
         const trId = padSeq('TR');

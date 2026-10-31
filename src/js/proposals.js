@@ -4,7 +4,37 @@
 
     // 2.8 PROPOSALS SCANNER & ALERTS (Yêu cầu 0.2, 0.3, 0.5, 5.2)
     // ----------------------------------------------------------------------------
-    function scanAndGenerateProposals(curDate) {
+        // ----------------------------------------------------------------------------
+    // RECALCULATE COMMITTED STOCK FROM ACTIVE PROPOSALS & TRANSFERS
+    // ----------------------------------------------------------------------------
+    function recalcCommittedStock() {
+      if (!Store.stock) return;
+      WAREHOUSES.forEach(wh => {
+        SKUS.forEach(sku => {
+          if (Store.stock[wh.code] && Store.stock[wh.code][sku.code]) {
+            Store.stock[wh.code][sku.code].committed = 0;
+          }
+        });
+      });
+
+      if (Store.transfers) {
+        Store.transfers.forEach(tr => {
+          if (tr.status === 'Chờ kho nhận đồng ý' && Store.stock[tr.srcWh] && Store.stock[tr.srcWh][tr.sku]) {
+            Store.stock[tr.srcWh][tr.sku].committed += tr.qty;
+          }
+        });
+      }
+
+      if (Store.proposals) {
+        Object.values(Store.proposals).forEach(p => {
+          if (p.type === 'TRANSFER' && p.status === 'Chờ duyệt' && p.srcWh && Store.stock[p.srcWh] && Store.stock[p.srcWh][p.sku]) {
+            Store.stock[p.srcWh][p.sku].committed += p.qty;
+          }
+        });
+      }
+    }
+
+function scanAndGenerateProposals(curDate) {
       // 1. Quét trạng thái và kích hoạt Cảnh báo chuyển dịch trạng thái
       SKUS.forEach(sku => {
         WAREHOUSES.forEach(wh => {
@@ -92,6 +122,10 @@
                 status: 'Chờ duyệt',
                 hasActiveRfq: false
               };
+              // Giữ chỗ tồn tại kho nguồn để các kho thiếu sau không đặt trùng
+              if (Store.stock[donorWh] && Store.stock[donorWh][sku.code]) {
+                Store.stock[donorWh][sku.code].committed += needQty;
+              }
             } else {
               // Không tìm được kho điều chuyển -> Đề xuất Yêu cầu Báo giá NCC
               Store.proposals[pairKey] = {
@@ -189,6 +223,7 @@
 
         // Cập nhật tồn kho
         srcSt.on_hand -= p.qty;
+        srcSt.committed = Math.max(0, srcSt.committed - p.qty);
         Store.stock[p.dstWh][p.sku].in_transit += p.qty;
 
         const trId = padSeq('TR');
