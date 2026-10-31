@@ -67,6 +67,11 @@ function fmt(n) {
     }
 
     // SEEDED HISTORY GENERATION (12 WEEKS BEFORE 01/08/2026)
+    // Mức an toàn mục tiêu khi bổ sung bằng điều chuyển: giữa dải ROP..MAX (không bơm lên MAX)
+    function getSafeTarget(p) {
+      return Math.max(p.rop + 1, Math.ceil(p.rop + 0.5 * Math.max(0, p.qmax - p.rop)));
+    }
+
     function initSeededHistory() {
       const rng = makeRNG(20260801);
       Store.history = {};
@@ -228,7 +233,7 @@ function fmt(n) {
       let arriving7 = 0;
       if (Store.transfers) {
         Store.transfers.forEach(tr => {
-          if (tr.status === 'Đang chuyển' && tr.dstWh === whCode && tr.sku === skuCode) {
+          if ((tr.status === 'Đang chuyển' || tr.status === 'Đã đến kho') && tr.dstWh === whCode && tr.sku === skuCode) {
             const daysLeft = diffDays(curDate, tr.arrivalDate);
             if (daysLeft >= 0 && daysLeft <= 7) {
               arriving7 += tr.qty;
@@ -311,8 +316,12 @@ function fmt(n) {
         CSV_DATABASE.inventory_opening.forEach(row => {
           if (stock[row.wh] && stock[row.wh][row.sku]) {
             stock[row.wh][row.sku].on_hand = row.on_hand;
-            stock[row.wh][row.sku].in_transit = row.in_transit;
+            stock[row.wh][row.sku].in_transit = 0;
             stock[row.wh][row.sku].committed = row.committed;
+            // Hàng đầu kỳ đang về phải có chứng từ để theo dõi và bấm "Nhận hàng"
+            if (row.in_transit > 0 && typeof createSupplierShipment === 'function' && typeof Store !== 'undefined') {
+              createSupplierShipment(row.sku, row.wh, row.in_transit, Store.startDate, 1 + (Store.transfers.length % 3), 'Hàng NCC đầu kỳ đang về', stock);
+            }
           }
         });
         return stock;

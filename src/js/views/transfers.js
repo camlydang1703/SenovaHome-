@@ -8,7 +8,7 @@ function renderTransfersView() {
 
   const cardTitle = document.querySelector('#view-transfers .card-title');
   if (cardTitle) {
-    cardTitle.textContent = `Sổ Lệnh Chuyển kho: ${whObj.name} (Nhập về & Xuất đi)`;
+    cardTitle.textContent = `Sổ Lệnh Chuyển kho & Hàng đang về: ${whObj.name} (Nhập về & Xuất đi)`;
   }
 
   // Filter transfers involving active warehouse (C2)
@@ -25,6 +25,9 @@ function renderTransfersView() {
       key: 'direction',
       header: 'Chiều luân chuyển',
       render: tr => {
+        if (tr.kind === 'SUPPLIER') {
+          return `<span class="status-pill status-pill-ok" style="font-weight:700;background:#EDE9FE;color:#6D28D9;border-color:#DDD6FE;">⬇ Hàng NCC về ${activeWh}</span>`;
+        }
         if (tr.dstWh === activeWh) {
           return `<span class="status-pill status-pill-ok" style="font-weight:700;">⬇ Nhập về ${activeWh}</span>`;
         }
@@ -50,6 +53,10 @@ function renderTransfersView() {
       render: tr => {
         const sWh = WAREHOUSES.find(w => w.code === tr.srcWh);
         const dWh = WAREHOUSES.find(w => w.code === tr.dstWh);
+        if (tr.kind === 'SUPPLIER') {
+          const sup = (typeof SUPPLIERS !== 'undefined' && SUPPLIERS[tr.srcWh]) || null;
+          return `<strong>NCC ${sup && sup.name ? sup.name : tr.srcWh}</strong> ➔ <strong>${dWh ? dWh.name : tr.dstWh}</strong><div style="font-size:11px;color:var(--text-muted);">${tr.note || ''}</div>`;
+        }
         return `<strong>${sWh ? sWh.name : tr.srcWh}</strong> ➔ <strong>${dWh ? dWh.name : tr.dstWh}</strong>`;
       }
     },
@@ -64,9 +71,11 @@ function renderTransfersView() {
     },
     {
       key: 'cost',
-      header: 'Cước vận chuyển',
+      header: 'Cước / Giá trị hàng',
       align: 'right',
-      render: tr => fmtVND(tr.cost)
+      render: tr => tr.kind === 'SUPPLIER'
+        ? `<span style="color:var(--text-muted);">Hàng NCC</span><div>${fmtVND(tr.value || 0)}</div>`
+        : fmtVND(tr.cost)
     },
     {
       key: 'arrival',
@@ -78,7 +87,10 @@ function renderTransfersView() {
       header: 'Trạng thái',
       render: tr => {
         if (tr.status === 'Đã nhận') {
-          return `<span class="status-pill status-pill-ok">✓ Đã nhận</span>`;
+          return `<span class="status-pill status-pill-ok">✓ Đã nhận${tr.receivedDate ? ' ' + fmtDateVN(tr.receivedDate) : ''}</span>`;
+        }
+        if (tr.status === 'Đã đến kho') {
+          return `<span class="status-pill" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">📦 Đã đến - chờ nhận hàng</span>`;
         }
         if (tr.status === 'Chờ kho nhận đồng ý') {
           return `<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">⏳ Chờ kho nhận duyệt</span>`;
@@ -108,9 +120,10 @@ function renderTransfersView() {
         }
 
         // Nếu đang chuyển
-        if (tr.status === 'Đang chuyển') {
+        if (tr.status === 'Đang chuyển' || tr.status === 'Đã đến kho') {
           if (tr.dstWh === activeWh) {
-            return `<button class="btn-table" onclick="receiveTransferEarly('${tr.id}')">Tiếp nhận sớm</button>`;
+            const arrived = tr.status === 'Đã đến kho';
+            return `<button class="btn-table" ${arrived ? 'style="background:#15803D;border-color:#15803D;"' : ''} onclick="receiveShipment('${tr.id}')">✓ Nhận hàng</button>`;
           }
           return '<span style="font-size:11.5px;color:var(--text-muted);">Đang trên đường</span>';
         }

@@ -49,6 +49,10 @@ function checkAll() {
     lastToast = null;
     approveProposal(k);
     assert(!(lastToast && lastToast.t === 'error'), `${S.currentDate} ${p.id} ${p.sku} ${p.srcWh}->${p.dstWh} không hợp lệ: ${lastToast && lastToast.m}`);
+    const dst = S.stock[p.dstWh][p.sku];
+    const dstP = calcSKUParams(p.sku, p.dstWh, S.currentDate, S.history);
+    const dstEff = dst.on_hand + dst.in_transit - dst.committed + getPendingInboundQty(p.dstWh, p.sku);
+    assert(dstEff <= getSafeTarget(dstP) && (dstEff < dstP.qmax || getSafeTarget(dstP) >= dstP.qmax), `${p.id}: kho nhận bị bơm quá mức an toàn (${dstEff} > ${getSafeTarget(dstP)}, MAX ${dstP.qmax})`);
     const src = S.stock[p.srcWh][p.sku];
     const srcP = calcSKUParams(p.sku, p.srcWh, S.currentDate, S.history);
     assert(src.on_hand >= 0 && (src.on_hand + src.in_transit - src.committed) > srcP.rop, `${p.id}: kho xuất rơi dưới ROP`);
@@ -62,8 +66,17 @@ const day0Rfq = Object.values(S.proposals).filter(p => p.type === 'RFQ').length;
 assert(day0Transfers > day0Rfq, `Ngày 0 vẫn lệch về RFQ (${day0Transfers} điều chuyển vs ${day0Rfq} RFQ)`);
 console.log(`Test 2: Ngày 0 có ${day0Transfers} điều chuyển hợp lệ, ${day0Rfq} RFQ (PASSED)`);
 
+// in_transit của mỗi ô phải khớp đúng tổng các lô (chuyển kho + NCC) đang về / đã đến chờ nhận
+function checkInTransitLedger() {
+  SK.forEach(s => WH.forEach(w => {
+    const open = S.transfers.filter(t => t.sku === s.code && t.dstWh === w.code && (t.status === 'Đang chuyển' || t.status === 'Đã đến kho'))
+      .reduce((a, t) => a + t.qty, 0);
+    assert.strictEqual(S.stock[w.code][s.code].in_transit, open, `${S.currentDate} ${s.code}@${w.code}: in_transit lệch chứng từ`);
+  }));
+}
+checkInTransitLedger();
 let total = day0Transfers;
-for (let i = 0; i < 83; i++) { advanceOneDay(); total += checkAll(); }
+for (let i = 0; i < 83; i++) { advanceOneDay(); total += checkAll(); checkInTransitLedger(); }
 assert(total > 0);
 console.log(`Test 3: 84 ngày, ${total} lượt đề xuất điều chuyển đều phê duyệt hợp lệ (PASSED)`);
 
@@ -73,4 +86,20 @@ Object.values(S.proposals).filter(p => p.type === 'RFQ').forEach(p => {
   assert(ev.best.type === 'RFQ', `${p.id}: có kho dư hợp lệ nhưng vẫn đề xuất RFQ`);
 });
 console.log('Test 4: Đề xuất RFQ chỉ xuất hiện khi không có kho dư điều chuyển hợp lệ (PASSED)');
-console.log('\nALL PROPOSAL TESTS PASSED (4/4)!');
+
+// 5. Hàng NCC đi chung sổ lệnh chuyển; bấm "Nhận hàng" thì nhập kho + quét lại đề xuất
+const supRecs = S.transfers.filter(t => t.kind === 'SUPPLIER');
+assert(supRecs.length > 0 && supRecs.every(t => t.id.startsWith('NK-')), 'Thiếu chứng từ hàng NCC đang về');
+const open = S.transfers.find(t => t.status === 'Đang chuyển' || t.status === 'Đã đến kho');
+assert(open, 'Không có lô nào đang về để thử Nhận hàng');
+const before = S.stock[open.dstWh][open.sku].on_hand;
+let rescanned = false;
+const origScan = scanAndGenerateProposals;
+scanAndGenerateProposals = d => { rescanned = true; return origScan(d); };
+receiveShipment(open.id);
+scanAndGenerateProposals = origScan;
+assert(open.status === 'Đã nhận' && S.stock[open.dstWh][open.sku].on_hand === before + open.qty, 'Nhận hàng không cộng tồn');
+assert(rescanned, 'Sau khi nhận hàng không quét lại đề xuất');
+checkInTransitLedger();
+console.log(`Test 5: ${supRecs.length} chứng từ hàng NCC, Nhận hàng ${open.id} cập nhật tồn + đề xuất (PASSED)`);
+console.log('\nALL PROPOSAL TESTS PASSED (5/5)!');

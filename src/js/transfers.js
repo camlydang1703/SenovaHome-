@@ -87,6 +87,81 @@
       return Math.max(0, Math.min(physicalFree, Math.floor(eff - p.rop - 1)));
     }
 
+    // Lượng AI được phép rút: kho xuất vẫn giữ ở mức an toàn mục tiêu (không rơi sát ROP rồi lại thiếu)
+    function getAiTransferableQty(skuCode, srcWh, curDate, releasedQty) {
+      const rel = releasedQty || 0;
+      const hard = getTransferableQty(skuCode, srcWh, curDate, rel);
+      const st = Store.stock[srcWh][skuCode];
+      const p = calcSKUParams(skuCode, srcWh, curDate, Store.history);
+      const eff = st.on_hand + st.in_transit - st.committed + rel;
+      return Math.max(0, Math.min(hard, Math.floor(eff - getSafeTarget(p))));
+    }
+
+    // Chứng từ hàng NCC đang về (đi chung sổ với lệnh chuyển kho, kind = 'SUPPLIER')
+    function createSupplierShipment(skuCode, whCode, qty, curDate, days, note, stockOverride) {
+      const sku = SKUS.find(s => s.code === skuCode);
+      const stock = stockOverride || Store.stock;
+      stock[whCode][skuCode].in_transit += qty;
+      const rec = {
+        id: padSeq('NK'),
+        kind: 'SUPPLIER',
+        date: curDate,
+        sku: skuCode,
+        srcWh: sku.sup,
+        dstWh: whCode,
+        qty: qty,
+        shipDate: curDate,
+        arrivalDate: addDays(curDate, days),
+        status: 'Đang chuyển',
+        cost: 0,
+        value: qty * sku.cogs,
+        note: note || 'Hàng NCC giao theo chu kỳ'
+      };
+      Store.transfers.unshift(rec);
+      return rec;
+    }
+
+    // Nhập kho một lô hàng (điều chuyển hoặc NCC): on_hand tăng, in_transit giảm đúng bằng số lượng
+    function applyShipmentReceipt(tr, mode) {
+      const st = Store.stock[tr.dstWh][tr.sku];
+      st.on_hand += tr.qty;
+      st.in_transit = Math.max(0, st.in_transit - tr.qty);
+      tr.status = 'Đã nhận';
+      tr.receivedDate = Store.currentDate;
+      const isSup = tr.kind === 'SUPPLIER';
+      const fromTxt = isSup ? `NCC ${tr.srcWh}` : `kho ${tr.srcWh}`;
+      const autoTxt = mode === 'auto' ? ' (tự động sau 1 ngày chờ xác nhận)' : '';
+      if (!isSup || mode !== 'auto') {
+        pushNotification('TRANSFER_ARRIVED', tr.id, `Đã nhập kho ${tr.dstWh}: ${tr.qty} ${tr.sku} từ ${fromTxt}${autoTxt}.`);
+      }
+      logAction(isSup ? 'SUPPLIER_RECEIVE' : 'TRANSFER_ARRIVED', tr.id,
+        `Nhận hàng ${tr.qty} ${tr.sku} từ ${fromTxt} vào kho ${tr.dstWh}${autoTxt}`, 0, tr.dstWh);
+    }
+
+    // Lô hàng tới ngày đến -> 'Đã đến kho' chờ bấm "Nhận hàng"; quá 1 ngày chưa xác nhận thì tự nhập kho
+    function processShipmentArrivals(curDate) {
+      Store.transfers.forEach(tr => {
+        if (tr.status === 'Đã đến kho' && tr.arrivedDate < curDate) {
+          applyShipmentReceipt(tr, 'auto');
+        } else if (tr.status === 'Đang chuyển' && tr.arrivalDate <= curDate) {
+          tr.status = 'Đã đến kho';
+          tr.arrivedDate = curDate;
+          if (tr.kind !== 'SUPPLIER') {
+            pushNotification('TRANSFER_ARRIVED', tr.id,
+              `Lô ${tr.id}: ${tr.qty} ${tr.sku} từ ${tr.srcWh} đã đến kho ${tr.dstWh}. Bấm "Nhận hàng" để nhập kho.`);
+          }
+        }
+      });
+    }
+
+    function receiveShipment(transferId) {
+      const tr = Store.transfers.find(t => t.id === transferId);
+      if (!tr || (tr.status !== 'Đang chuyển' && tr.status !== 'Đã đến kho')) return;
+      applyShipmentReceipt(tr, 'manual');
+      showToast(`Đã nhận lô hàng ${tr.id} vào kho ${tr.dstWh}!`, 'success');
+      refreshAfterStockChange();
+    }
+
     function checkTransferSafety(skuCode, srcWh, qty, curDate, releasedQty) {
       const rel = releasedQty || 0;
       const st = Store.stock[srcWh][skuCode];
@@ -122,8 +197,10 @@
       const p = calcSKUParams(skuCode, toWh, curDate, Store.history);
       const st = Store.stock[toWh][skuCode];
       const eff = st.on_hand + st.in_transit - st.committed + getPendingInboundQty(toWh, skuCode);
-      const qNeed = Math.max(1, p.qmax - eff);
+      // Điều chuyển chỉ bù tới mức an toàn; RFQ (lead time dài) đặt bù tới MAX theo chính sách Min/Max
+      const qNeed = Math.max(1, getSafeTarget(p) - eff);
       const reqQty = Math.max(1, o.qty || qNeed);
+      const rfqQty = Math.max(1, o.qty || (p.qmax - eff));
       const reserved = getReservedQtyOfProposal(o.excludeKey || `${skuCode}-${toWh}`);
 
       const margin = Math.max(0, sku.price - sku.cogs);
@@ -137,7 +214,8 @@
         const sP = calcSKUParams(skuCode, w.code, curDate, Store.history);
         const rel = (reserved && reserved.srcWh === w.code) ? reserved.qty : 0;
         const sEff = sSt.on_hand + sSt.in_transit - sSt.committed + rel;
-        const transferable = getTransferableQty(skuCode, w.code, curDate, rel);
+        const transferable = getAiTransferableQty(skuCode, w.code, curDate, rel);
+        const hardTransferable = getTransferableQty(skuCode, w.code, curDate, rel);
         const qty = Math.min(reqQty, transferable);
         const days = getTransferDays(w.code, toWh, curDate);
         const unitFreight = getUnitFreightRate(w.code, toWh, skuCode);
@@ -148,12 +226,12 @@
         const uncovered = Math.max(0, reqQty - qty);
         const total = freight + shortCost - capitalBenefit;
         let reason = '';
-        if (transferable < 1) reason = 'Không còn tồn dư an toàn (sẽ rơi dưới ROP)';
+        if (transferable < 1) reason = 'Không còn tồn dư (kho xuất phải giữ mức an toàn)';
         else if (freight > margin * qty * 0.5) reason = 'Cước vượt 50% biên lợi nhuận gộp';
         return {
           type: 'TRANSFER', srcWh: w.code, name: w.name,
           on_hand: sSt.on_hand, eff: sEff, rop: sP.rop, qmax: sP.qmax,
-          status: getStatus(sEff, sP), transferable, qty, days, unitFreight, freight,
+          status: getStatus(sEff, sP), transferable, hardTransferable, qty, days, unitFreight, freight,
           excessOverMax, capitalBenefit, shortCost, uncovered, total, eligible: !reason, reason,
           releasedQty: rel
         };
@@ -162,12 +240,12 @@
       // RFQ: phải chi tiền mua mới (giá vốn NCC) + phí đặt hàng + rủi ro thiếu hàng trong lead time NCC
       const supLead = Math.max(1, Math.round((p.L || ((sku.lead + (sku.delay || 0)) / 7)) * 7));
       const rfqShort = shortageUnits(supLead) * margin;
-      const purchaseValue = reqQty * sku.cogs;
+      const purchaseValue = rfqQty * sku.cogs;
       const rfqTotal = purchaseValue + orderCost + rfqShort;
       const rfq = {
-        type: 'RFQ', sup: sku.sup, qty: reqQty, days: supLead,
+        type: 'RFQ', sup: sku.sup, qty: rfqQty, days: supLead,
         purchaseValue, orderCost, shortCost: rfqShort,
-        total: rfqTotal, unitCost: rfqTotal / reqQty, eligible: true
+        total: rfqTotal, unitCost: rfqTotal / rfqQty, eligible: true
       };
 
       // Chi phí bình quân để đáp ứng toàn bộ nhu cầu: phần thiếu còn lại tính theo đơn giá RFQ
@@ -183,7 +261,7 @@
       const best = (bestTransfer && bestTransfer.unitCost <= rfq.unitCost) ? bestTransfer : rfq;
 
       return {
-        sku, toWh, params: p, eff, qNeed, reqQty, sources, rfq, bestTransfer, best,
+        sku, toWh, params: p, eff, qNeed, reqQty, rfqQty, safeTarget: getSafeTarget(p), sources, rfq, bestTransfer, best,
         savingVsRfq: best.type === 'TRANSFER' ? Math.max(0, Math.round(rfq.unitCost * best.qty - best.total)) : 0
       };
     }
@@ -225,7 +303,7 @@
 
       if (count > 0) {
         showToast(`Đã duyệt tự động ${count} lệnh điều chuyển hợp lệ!`, 'success');
-        renderAllViews();
+        refreshAfterStockChange();
       } else {
         showToast('Không có đề xuất điều chuyển hợp lệ nào để duyệt.', 'info');
       }
@@ -256,7 +334,7 @@
       pushNotification('TRANSFER_APPROVED', tr.id, `Kho nhận ${tr.dstWh} đã đồng ý tiếp nhận ${tr.qty} ${tr.sku} từ ${tr.srcWh}. Hàng bắt đầu lăn bánh!`);
       logAction('TRANSFER_ACCEPTED', tr.id, `Kho ${tr.dstWh} đồng ý tiếp nhận đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}`, tr.cost);
       showToast(`Kho ${tr.dstWh} đã xác nhận tiếp nhận đơn chuyển ${tr.id}. Hàng đang vận chuyển!`, 'success');
-      renderAllViews();
+      refreshAfterStockChange();
     }
 
     function rejectTransferInbound(transferId) {
@@ -269,22 +347,11 @@
       pushNotification('TRANSFER_REJECTED', tr.id, `Kho nhận ${tr.dstWh} đã từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}.`);
       logAction('TRANSFER_REJECTED', tr.id, `Kho ${tr.dstWh} từ chối đơn chuyển ${tr.qty} ${tr.sku} từ ${tr.srcWh}`);
       showToast(`Đã từ chối đơn điều chuyển ${tr.id}`, 'info');
-      renderAllViews();
+      refreshAfterStockChange();
     }
 
     function receiveTransferEarly(transferId) {
-
-      const tr = Store.transfers.find(t => t.id === transferId);
-      if (!tr || tr.status !== 'Đang chuyển') return;
-
-      tr.status = 'Đã nhận';
-      Store.stock[tr.dstWh][tr.sku].on_hand += tr.qty;
-      Store.stock[tr.dstWh][tr.sku].in_transit = Math.max(0, Store.stock[tr.dstWh][tr.sku].in_transit - tr.qty);
-
-      pushNotification('TRANSFER_ARRIVED', tr.id, `Tiếp nhận sớm: Lô hàng ${tr.sku} (${tr.qty}) đã nhập kho ${tr.dstWh}.`);
-      logAction('TRANSFER_EARLY_RECEIVE', tr.id, `Tiếp nhận sớm lô hàng ${tr.qty} ${tr.sku} tại ${tr.dstWh}`);
-      showToast(`Đã tiếp nhận thành công lô hàng ${tr.id} vào kho ${tr.dstWh}!`, 'success');
-      renderAllViews();
+      receiveShipment(transferId);
     }
 
     // ----------------------------------------------------------------------------
@@ -342,9 +409,10 @@
       const st = Store.stock[srcWh][skuCode];
       const p  = calcSKUParams(skuCode, srcWh, Store.currentDate, Store.history);
       const eff = st.on_hand + st.in_transit - st.committed;
+      const physicalFree = st.on_hand - st.committed;
 
-      if (qty > st.on_hand) {
-        fb.innerHTML = `<span style="color:var(--status-red);font-weight:600;">❌ Tồn kho vật lý không đủ: Kho ${srcWh} chỉ còn ${st.on_hand} sản phẩm!</span>`;
+      if (qty > physicalFree) {
+        fb.innerHTML = `<span style="color:var(--status-red);font-weight:600;">❌ Tồn kho vật lý không đủ: Kho ${srcWh} chỉ còn ${physicalFree} sản phẩm khả dụng (đã trừ hàng giữ chỗ)!</span>`;
         fb.style.background = '#FEE2E2';
         btn.disabled = true;
         return;
@@ -384,8 +452,9 @@
       const p  = calcSKUParams(skuCode, srcWh, Store.currentDate, Store.history);
       const eff = st.on_hand + st.in_transit - st.committed;
 
-      if (qty <= 0 || qty > st.on_hand || (eff - qty) <= p.rop) {
-        showToast('Lỗi: Dữ liệu không hợp lệ hoặc vi phạm an toàn kho!', 'error');
+      const safety = checkTransferSafety(skuCode, srcWh, qty, Store.currentDate);
+      if (srcWh === dstWh || !safety.ok) {
+        showToast(safety.msg || 'Lỗi: Kho xuất và kho nhận trùng nhau!', 'error');
         return;
       }
 
@@ -414,7 +483,7 @@
       pushNotification('TRANSFER_APPROVED', trId, `Tạo lệnh chuyển thủ công ${qty} ${skuCode} (${srcWh} -> ${dstWh})`);
       logAction('MANUAL_TRANSFER', trId, `Lệnh chuyển ${qty} ${skuCode} (${srcWh} -> ${dstWh}), chi phí: ${fmtVND(totalFreight)}`, totalFreight);
       showToast(`Đã tạo thành công lệnh điều chuyển ${trId}`, 'success');
-      renderAllViews();
+      refreshAfterStockChange();
     }
 
     // ----------------------------------------------------------------------------

@@ -125,7 +125,7 @@
       if (typeof switchNavTab === 'function') {
         switchNavTab('rfq');
       }
-      renderAllViews();
+      refreshAfterStockChange();
     }
 
     function cancelRfq(rfqId) {
@@ -143,7 +143,7 @@
       pushNotification('RFQ_CANCELLED', rfqId, `Yêu cầu báo giá ${rfqId} đã bị hủy.`);
       logAction('CANCEL_RFQ', rfqId, `Hủy yêu cầu báo giá ${rfqId} (${rfq.sku} tại ${rfq.wh})`);
       showToast(`Đã hủy Yêu cầu Báo giá ${rfqId}`, 'info');
-      renderAllViews();
+      refreshAfterStockChange();
     }
 
     // ----------------------------------------------------------------------------

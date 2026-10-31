@@ -120,7 +120,7 @@ function renderAllViews() {
     badgeRecs.style.display = whProposals.length > 0 ? 'inline-block' : 'none';
   }
 
-  const activeTrf = Store.transfers.filter(t => t.status === 'Đang chuyển' && (t.dstWh === activeWh || t.srcWh === activeWh)).length;
+  const activeTrf = Store.transfers.filter(t => (t.status === 'Đang chuyển' || t.status === 'Đã đến kho') && (t.dstWh === activeWh || t.srcWh === activeWh)).length;
   const badgeTrf = document.getElementById('badge-trf-count');
   if (badgeTrf) {
     badgeTrf.textContent = activeTrf;

@@ -54,7 +54,7 @@
       document.getElementById('mvQty').value = '10';
       document.getElementById('mvNote').value = '';
       updateMovementStockDisplay();
-      renderAllViews();
+      refreshAfterStockChange();
     }
 
     // ----------------------------------------------------------------------------

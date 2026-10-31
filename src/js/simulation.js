@@ -70,6 +70,8 @@
     // ----------------------------------------------------------------------------
     // 2.4 PERIODIC INBOUND REPLENISHMENT (Yêu cầu 3.2)
     // ----------------------------------------------------------------------------
+    const SUPPLIER_SHIP_DAYS = 2;
+
     function processInboundReplenishment(curDate, dayIdx) {
       const whDayInbound = {};
       WAREHOUSES.forEach(wh => { whDayInbound[wh.code] = { total: 0, cost: 0, skus: [] }; });
@@ -135,7 +137,8 @@
             if (inboundQty <= 0 && eventFill > 0 && eff <= p.rop) inboundQty = 1;
 
             if (inboundQty > 0) {
-              st.on_hand += inboundQty;
+              // NCC xuất hàng -> chứng từ "Hàng NCC đang về", kho bấm "Nhận hàng" khi hàng tới
+              createSupplierShipment(sku.code, wh.code, inboundQty, curDate, SUPPLIER_SHIP_DAYS);
               whDayInbound[wh.code].total += inboundQty;
               whDayInbound[wh.code].cost += inboundQty * sku.cogs;
               whDayInbound[wh.code].skus.push(`${sku.code} (+${inboundQty})`);
@@ -278,6 +281,10 @@
             const addQty = Math.max(1, Math.round(pick.p.qmax * 1.25 - pick.eff));
             pick.st.on_hand += addQty;
             executedEventInWh = true;
+            const exRec = createSupplierShipment(pick.sku.code, wh.code, addQty, curDate, 0, 'Chứng từ ngoại lệ: NCC giao dư');
+            pick.st.in_transit -= addQty;
+            exRec.status = 'Đã nhận';
+            exRec.receivedDate = curDate;
             pushNotification('EXCEPTION_EVENT', pick.sku.code, `Chứng từ nhập kho ngoại lệ: NCC giao dư +${addQty} ${pick.sku.code} tại ${wh.name}`, wh.code);
           }
         }
@@ -382,18 +389,8 @@ function advanceOneDay() {
       const curDate = Store.currentDate;
       const dayIdx = diffDays(Store.startDate, curDate);
 
-      // Bước 1: Tiếp nhận các chuyến hàng điều chuyển đã cập cảng
-      Store.transfers.forEach(tr => {
-        if (tr.status === 'Đang chuyển' && tr.arrivalDate <= curDate) {
-          tr.status = 'Đã nhận';
-          Store.stock[tr.dstWh][tr.sku].on_hand += tr.qty;
-          Store.stock[tr.dstWh][tr.sku].in_transit = Math.max(0, Store.stock[tr.dstWh][tr.sku].in_transit - tr.qty);
-          pushNotification('TRANSFER_ARRIVED', tr.id,
-            `Hàng điều chuyển ${tr.sku} (${tr.qty}) từ ${tr.srcWh} đã nhập kho ${tr.dstWh}.`
-          );
-          logAction('TRANSFER_ARRIVED', tr.id, `Nhập kho ${tr.dstWh}: ${tr.qty} ${tr.sku}`);
-        }
-      });
+      // Bước 1: Lô hàng tới ngày -> 'Đã đến kho' chờ bấm Nhận hàng (quá 1 ngày tự nhập kho)
+      processShipmentArrivals(curDate);
 
       // Bước 2: Bổ sung định kỳ từ Nhà cung cấp & Theo dõi vòng đời sự kiện
       processEventLifecycle(curDate);

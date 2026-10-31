@@ -248,7 +248,7 @@
       if (typeof switchNavTab === 'function') {
         switchNavTab('transfers');
       }
-      renderAllViews();
+      refreshAfterStockChange();
     }
 
     function execute2BPromotion(skuCode, whCode) {
@@ -277,7 +277,7 @@
         `Kích hoạt Flash Sale ${kmId} cho ${skuCode} tại kho ${whCode}: Chiết khấu ${discountPct}%, thời hạn 7 ngày.`
       );
       showToast(`Đã kích hoạt thành công chương trình Flash Sale ${kmId}`, 'success');
-      renderAllViews();
+      refreshAfterStockChange();
     }
 
     // ----------------------------------------------------------------------------
@@ -311,6 +311,8 @@
         st: st,
         eff: ev.eff,
         qNeed: ev.qNeed,
+        rfqQty: ev.rfqQty,
+        safeTarget: ev.safeTarget,
         sourceWh: defaultSrc,
         supplier: sku.sup,
         selectedPlan: ev.best.type === 'TRANSFER' ? 'A' : 'B',
@@ -384,7 +386,7 @@
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
             <span style="font-size:12px;color:var(--text-muted);">MAX:</span> ${dualQmax}
             <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
-            <span style="font-size:12px;color:var(--text-muted);">Cần bổ sung tới MAX:</span> <strong>${ctx.qNeed} ${unit}</strong>
+            <span style="font-size:12px;color:var(--text-muted);">Cần bổ sung tới mức an toàn (${fmtNum(ctx.safeTarget)}):</span> <strong>${ctx.qNeed} ${unit}</strong> <span style="font-size:11.5px;color:var(--text-muted);">(RFQ đặt bù tới MAX: ${ctx.rfqQty} ${unit})</span>
             <div style="font-size:11px;color:var(--navy-main);margin-top:4px;"><em>${driver}</em></div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
@@ -512,7 +514,7 @@
         if (typeof switchNavTab === 'function') {
           switchNavTab('transfers');
         }
-        renderAllViews();
+        refreshAfterStockChange();
 
       } else {
         // Thực thi Gửi RFQ đồng loạt tới TẤT CẢ Nhà cung cấp có mặt hàng
@@ -553,7 +555,7 @@
         if (typeof switchNavTab === 'function') {
           switchNavTab('rfq');
         }
-        renderAllViews();
+        refreshAfterStockChange();
       }
     }
 
@@ -613,7 +615,7 @@
       } else if (scId === 'sc4') {
         // Kịch bản 4: Cân bằng toàn mạng lưới
         balanceInventoryGroups(Store.currentDate);
-        renderAllViews();
+        refreshAfterStockChange();
         showToast('Kịch bản 4: Đã thực thi tái cân bằng 3 nhóm toàn mạng lưới!', 'success');
       }
 

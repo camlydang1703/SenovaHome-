@@ -34,6 +34,15 @@
       }
     }
 
+// Sau mọi thao tác làm đổi số lượng: quét lại đề xuất + snapshot ngày hiện tại rồi vẽ lại mọi tab
+function refreshAfterStockChange() {
+  if (!(Store.ui && Store.ui.viewDate)) {
+    scanAndGenerateProposals(Store.currentDate);
+    if (typeof recordDailySnapshot === 'function') recordDailySnapshot(Store.currentDate);
+  }
+  if (typeof renderAllViews === 'function') renderAllViews();
+}
+
 function scanAndGenerateProposals(curDate) {
       // 1. Quét trạng thái và kích hoạt Cảnh báo chuyển dịch trạng thái
       SKUS.forEach(sku => {
@@ -134,7 +143,7 @@ function scanAndGenerateProposals(curDate) {
             wh: wh.code,
             type: 'RFQ',
             action: 'Yêu cầu Báo giá (RFQ)',
-            qty: ev.qNeed,
+            qty: ev.rfq.qty,
             sup: sku.sup,
             leadDays: best.days,
             arrivalDate: addDays(curDate, best.days),
@@ -169,7 +178,7 @@ function scanAndGenerateProposals(curDate) {
             if (otherWh.code === wh.code) return;
             const oP = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
             const oEff = effOf(sku.code, otherWh.code) + (plannedInbound[`${sku.code}-${otherWh.code}`] || 0);
-            const room = Math.floor(oP.qmax - oEff);
+            const room = Math.floor(getSafeTarget(oP) - oEff); // kho nhận chỉ lên tới mức an toàn, không lên MAX
             if (room < 1) return;
             const qty = Math.min(excessQty, room);
             const unit = getUnitFreightRate(wh.code, otherWh.code, sku.code);
@@ -264,7 +273,7 @@ function scanAndGenerateProposals(curDate) {
           p.freightCost
         );
         showToast(`Đã duyệt thành công lệnh điều chuyển ${trId}`, 'success');
-        renderAllViews();
+        refreshAfterStockChange();
 
       } else if (p.type === 'RFQ') {
         // Mở màn hình so sánh tích hợp (điều chuyển vs RFQ) để xử lý đơn
