@@ -594,19 +594,35 @@
       gap: 8px;
       z-index: 2000;
     }
-    .toast-msg {
-      padding: 10px 16px;
-      border-radius: var(--radius-md);
-      font-size: 12.5px;
-      font-weight: 500;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    .toast-item, .toast-msg {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
       color: #FFFFFF;
-      background: #1E293B;
+      background: #047857; /* Nền xanh lá nổi bật theo yêu cầu */
+      border: 1px solid #10B981;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
     }
-    .toast-msg.success { background: #166534; }
-    .toast-msg.warning { background: #B45309; }
-    .toast-msg.error { background: #991B1B; }
-    .toast-msg.info { background: var(--navy-main); }
+    .toast-item.toast-success, .toast-msg.success {
+      background: #047857;
+      border: 1px solid #10B981;
+    }
+    .toast-item.toast-warning, .toast-msg.warning {
+      background: #B45309;
+      border: 1px solid #F59E0B;
+    }
+    .toast-item.toast-error, .toast-msg.error {
+      background: #991B1B;
+      border: 1px solid #EF4444;
+    }
+    .toast-item.toast-info, .toast-msg.info {
+      background: #0F766E;
+      border: 1px solid #14B8A6;
+    }
 
     .log-accordion-body {
       display: none;
@@ -2422,6 +2438,7 @@ function fmt(n) {
         qty: qty
       };
 
+      const matchingSups = Object.keys(SUPPLIERS).filter(s => !sku.cat || SUPPLIERS[s].cat === sku.cat);
       const body = document.getElementById('rfqModalBody');
       if (body) {
         body.innerHTML = `
@@ -2438,18 +2455,23 @@ function fmt(n) {
             <input type="text" class="form-ctrl" value="${wh.name} (${wh.code})" readonly style="background:#F1F5F9;">
           </div>
           <div class="form-row">
-            <label class="form-lbl">Nhà cung cấp gửi yêu cầu:</label>
-            <select class="form-ctrl" id="rfqModalSup">
-              ${Object.keys(SUPPLIERS)
-                .filter(s => !sku.cat || SUPPLIERS[s].cat === sku.cat)
-                .map(s =>
-                  `<option value="${s}" ${s === sup ? 'selected' : ''}>${s} - ${SUPPLIERS[s].name} (${SUPPLIERS[s].cat})</option>`
-                ).join('')}
-            </select>
+            <label class="form-lbl">Danh sách Nhà cung cấp nhận RFQ (Gửi chùm toàn bộ để so sánh giá):</label>
+            <div style="background:#F8FAFC;border:1px solid var(--border-subtle);border-radius:6px;padding:8px 12px;font-size:12px;">
+              ${matchingSups.map(s => `
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #E2E8F0;">
+                  <strong>✓ ${s} - ${SUPPLIERS[s].name}</strong>
+                  <span style="color:var(--text-muted);">Lead time: ~${SUPPLIERS[s].leadDays} ngày</span>
+                </div>
+              `).join('')}
+            </div>
           </div>
           <div class="form-row">
             <label class="form-lbl">Số lượng yêu cầu báo giá (${sku.unit}):</label>
-            <input type="number" class="form-ctrl" id="rfqModalQty" min="1" value="${qty}">
+            <input type="number" class="form-ctrl" id="rfqModalQty" min="1" value="${qty}" oninput="document.getElementById('rfqBudgetEst').value = fmtNum(this.value * ${sku.cogs}) + ' đ (Chờ NCC báo giá)'">
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Dự toán ngân sách tạm tính (tham chiếu theo COGS ${fmtNum(sku.cogs)} đ/sp):</label>
+            <input type="text" class="form-ctrl" id="rfqBudgetEst" value="${fmtNum(qty * sku.cogs)} đ (Chờ NCC báo giá)" readonly style="background:#F1F5F9;font-weight:600;color:var(--navy-main);">
           </div>
           <div class="form-row">
             <label class="form-lbl">Thời hạn hiệu lực báo giá:</label>
@@ -2466,7 +2488,10 @@ function fmt(n) {
 
     function sendRfqOrder() {
       if (!activeRfqDraft) return;
-      const sup = document.getElementById('rfqModalSup') ? document.getElementById('rfqModalSup').value : activeRfqDraft.sup;
+      const skuObj = SKUS.find(s => s.code === activeRfqDraft.sku) || {};
+      const matchingSups = Object.keys(SUPPLIERS).filter(s => !skuObj.cat || SUPPLIERS[s].cat === skuObj.cat);
+      const targetSups = matchingSups.length > 0 ? matchingSups : [activeRfqDraft.sup];
+
       const qty = parseInt(document.getElementById('rfqModalQty') ? document.getElementById('rfqModalQty').value : 0, 10) || activeRfqDraft.qty;
       const notes = document.getElementById('rfqModalNotes') ? document.getElementById('rfqModalNotes').value : '';
 
@@ -2475,37 +2500,41 @@ function fmt(n) {
         return;
       }
 
-      const rfqId = padSeq('RFQ');
       const validUntil = addDays(Store.currentDate, 7);
+      const createdIds = [];
 
-      Store.rfqs.unshift({
-        id: rfqId,
-        date: Store.currentDate,
-        sku: activeRfqDraft.sku,
-        wh: activeRfqDraft.wh,
-        sup: sup,
-        qty: qty,
-        validUntil: validUntil,
-        status: 'Đã gửi NCC',
-        notes: notes
+      targetSups.forEach(sCode => {
+        const rfqId = padSeq('RFQ');
+        createdIds.push(rfqId);
+        Store.rfqs.unshift({
+          id: rfqId,
+          date: Store.currentDate,
+          sku: activeRfqDraft.sku,
+          wh: activeRfqDraft.wh,
+          sup: sCode,
+          qty: qty,
+          validUntil: validUntil,
+          status: 'Đã gửi NCC',
+          notes: notes || 'Yêu cầu chào giá cạnh tranh toàn mạng lưới'
+        });
       });
 
       // Cập nhật trạng thái đề xuất nếu có
       const pairKey = `${activeRfqDraft.sku}-${activeRfqDraft.wh}`;
       if (Store.proposals[pairKey]) {
-        Store.proposals[pairKey].status = 'Đang chờ NCC báo giá';
+        Store.proposals[pairKey].status = `Đang chờ ${targetSups.length} NCC báo giá`;
         Store.proposals[pairKey].hasActiveRfq = true;
-        Store.proposals[pairKey].rfqId = rfqId;
+        Store.proposals[pairKey].rfqId = createdIds[0];
       }
 
       closeModal('rfqModal');
-      pushNotification('RFQ_SENT', rfqId,
-        `Đã gửi Yêu cầu Báo giá ${rfqId} (${activeRfqDraft.sku} - ${qty}) tới ${sup}.`
+      pushNotification('RFQ_SENT', createdIds.join(', '),
+        `Đã gửi Yêu cầu Báo giá cạnh tranh (${activeRfqDraft.sku} - ${qty} sp) tới ${targetSups.length} Nhà cung cấp.`
       );
-      logAction('SEND_RFQ', rfqId,
-        `Yêu cầu báo giá ${qty} ${activeRfqDraft.sku} tới NCC ${sup} cho kho ${activeRfqDraft.wh}. Hạn báo giá: ${fmtDateVN(validUntil)}`
+      logAction('SEND_RFQ', createdIds.join(', '),
+        `Yêu cầu báo giá ${qty} ${activeRfqDraft.sku} tới ${targetSups.length} NCC (${targetSups.join(', ')}) cho kho ${activeRfqDraft.wh}. Hạn báo giá: ${fmtDateVN(validUntil)}`
       );
-      showToast(`Đã gửi thành công Yêu cầu Báo giá ${rfqId}`, 'success');
+      showToast(`Đã gửi thành công RFQ tới ${targetSups.length} Nhà cung cấp!`, 'success');
 
       if (typeof switchWarehouse === 'function' && Store.ui && Store.ui.activeWh !== activeRfqDraft.wh) {
         switchWarehouse(activeRfqDraft.wh);
@@ -3760,28 +3789,25 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
             </div>
           </div>
 
-          <!-- OPTION B: RFQ SUPPLIER -->
+          <!-- OPTION B: RFQ ALL SUPPLIERS -->
           <div style="border:2px solid ${ctx.selectedPlan === 'B' ? 'var(--navy-accent)' : 'var(--border-color)'};border-radius:8px;padding:14px;background:#FFFFFF;position:relative;cursor:pointer;" onclick="selectModalPlan('B')">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
               <span class="status-pill status-pill-high">
-                ${!srcSafe ? 'Khuyến nghị khi thiếu nguồn nội bộ' : 'Dự phòng'}
+                ${!srcSafe ? 'Khuyến nghị: Chào giá cạnh tranh toàn bộ NCC' : 'Dự phòng: Gửi chào giá toàn bộ NCC'}
               </span>
               <input type="radio" name="planSelect" value="B" ${ctx.selectedPlan === 'B' ? 'checked' : ''}>
             </div>
-            <strong style="font-size:13.5px;color:var(--navy-main);">Phương án B: Yêu cầu Báo giá Nhà cung cấp (RFQ)</strong>
-            <div class="form-row" style="margin-top:10px;margin-bottom:8px;">
-              <label class="form-lbl" style="font-size:11.5px;">Nhà cung cấp:</label>
-              <select class="form-ctrl" id="modalSupplier" style="font-size:12px;" onclick="event.stopPropagation()" onchange="onModalSupplierChange(this.value)">
-                ${Object.keys(SUPPLIERS).map(s =>
-                  `<option value="${s}" ${s === ctx.supplier ? 'selected' : ''}>${s} - ${SUPPLIERS[s].name}</option>`
-                ).join('')}
-              </select>
+            <strong style="font-size:13.5px;color:var(--navy-main);">Phương án B: Yêu cầu Báo giá Tất cả Nhà cung cấp (RFQ)</strong>
+            <div style="font-size:11.5px;color:var(--text-main);margin-top:8px;margin-bottom:6px;">
+              Gửi đồng thời tới <strong>toàn bộ ${Object.keys(SUPPLIERS).filter(s => !ctx.sku.cat || SUPPLIERS[s].cat === ctx.sku.cat).length} NCC</strong> trong ngành hàng để so sánh báo giá tốt nhất:
+            </div>
+            <div style="background:#F8FAFC;border:1px solid #E2E8F0;padding:6px 10px;border-radius:4px;font-size:11px;line-height:1.5;margin-bottom:8px;">
+              ${Object.keys(SUPPLIERS).filter(s => !ctx.sku.cat || SUPPLIERS[s].cat === ctx.sku.cat).map(s => `• <strong>${s}</strong>: ${SUPPLIERS[s].name} (Lead: ~${SUPPLIERS[s].leadDays} ngày)`).join('<br>')}
             </div>
             <div style="font-size:11.5px;color:var(--text-main);line-height:1.6;background:#F8FAFC;padding:8px;border-radius:4px;">
-              • Thời gian giao hàng (Lead time): <strong>${supLead} ngày</strong> (Đến ngày: ${fmtDateVN(addDays(Store.currentDate, supLead))})<br>
-              • Giá vốn mua dự kiến: <strong>${fmtVND(ctx.sku.cogs)}/${ctx.sku.unit}</strong><br>
-              • Tổng giá trị dự kiến: <strong>${fmtVND(supCost)}</strong><br>
-              • Trạng thái lệnh: <strong>Tạo RFQ báo giá (chưa tăng tồn kho)</strong>
+              • Đơn giá vốn tham chiếu (COGS): <strong>${fmtVND(ctx.sku.cogs)}/${ctx.sku.unit}</strong><br>
+              • Dự toán ngân sách tạm tính: <strong>${fmtVND(supCost)}</strong> <em>(Chờ NCC phản hồi báo giá chính thức)</em><br>
+              • Trạng thái lệnh: <strong>Gửi RFQ đồng loạt cho toàn bộ NCC có mặt hàng</strong>
             </div>
           </div>
         </div>
@@ -3872,32 +3898,38 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
         renderAllViews();
 
       } else {
-        // Thực thi Gửi RFQ tới NCC
-        const rfqId = padSeq('RFQ');
+        // Thực thi Gửi RFQ đồng loạt tới TẤT CẢ Nhà cung cấp có mặt hàng
+        const matchingSups = Object.keys(SUPPLIERS).filter(s => !ctx.sku.cat || SUPPLIERS[s].cat === ctx.sku.cat);
+        const targetSups = matchingSups.length > 0 ? matchingSups : [ctx.supplier];
         const validUntil = addDays(Store.currentDate, 7);
+        const createdIds = [];
 
-        Store.rfqs.unshift({
-          id: rfqId,
-          date: Store.currentDate,
-          sku: ctx.skuCode,
-          wh: ctx.toWh,
-          sup: ctx.supplier,
-          qty: ctx.customQty,
-          validUntil: validUntil,
-          status: 'Đã gửi NCC',
-          notes: 'Tạo từ màn hình so sánh bổ sung tích hợp'
+        targetSups.forEach(sCode => {
+          const rfqId = padSeq('RFQ');
+          createdIds.push(rfqId);
+          Store.rfqs.unshift({
+            id: rfqId,
+            date: Store.currentDate,
+            sku: ctx.skuCode,
+            wh: ctx.toWh,
+            sup: sCode,
+            qty: ctx.customQty,
+            validUntil: validUntil,
+            status: 'Đã gửi NCC',
+            notes: 'Tạo từ màn hình so sánh bổ sung (chùm NCC)'
+          });
         });
 
         if (Store.proposals[pairKey]) {
-          Store.proposals[pairKey].status = 'Đang chờ NCC báo giá';
+          Store.proposals[pairKey].status = `Đang chờ ${targetSups.length} NCC báo giá`;
           Store.proposals[pairKey].hasActiveRfq = true;
-          Store.proposals[pairKey].rfqId = rfqId;
+          Store.proposals[pairKey].rfqId = createdIds[0];
         }
 
         closeModal('transferModal');
-        pushNotification('RFQ_SENT', rfqId, `Đã gửi Yêu cầu Báo giá ${rfqId} (${ctx.skuCode} - ${ctx.customQty}) tới NCC ${ctx.supplier}.`);
-        logAction('SEND_RFQ', rfqId, `Yêu cầu báo giá ${ctx.customQty} ${ctx.skuCode} tới NCC ${ctx.supplier} cho kho ${ctx.toWh}`);
-        showToast(`Đã gửi Yêu cầu Báo giá ${rfqId} tới NCC ${ctx.supplier}`, 'success');
+        pushNotification('RFQ_SENT', createdIds.join(', '), `Đã gửi RFQ (${ctx.skuCode} - ${ctx.customQty}) tới ${targetSups.length} NCC.`);
+        logAction('SEND_RFQ', createdIds.join(', '), `Yêu cầu báo giá ${ctx.customQty} ${ctx.skuCode} tới ${targetSups.length} NCC cho kho ${ctx.toWh}`);
+        showToast(`Đã gửi Yêu cầu Báo giá tới ${targetSups.length} Nhà cung cấp!`, 'success');
         if (typeof switchWarehouse === 'function' && Store.ui && Store.ui.activeWh !== ctx.toWh) {
           switchWarehouse(ctx.toWh);
         }
@@ -5096,12 +5128,12 @@ function renderParamsView() {
   if (whSel && whSel.children.length === 0) {
     whSel.innerHTML = WAREHOUSES.map(w => `<option value="${w.code}">${w.name} (${w.code})</option>`).join('');
   }
-  if (whSel && whSel.value !== activeWh) {
+  if (whSel && !whSel.value) {
     whSel.value = activeWh;
   }
 
-  const curSku = skuSel ? skuSel.value : 'TLM-045';
-  const curWh  = whSel  ? whSel.value  : activeWh;
+  const curSku = skuSel && skuSel.value ? skuSel.value : 'TLM-045';
+  const curWh  = whSel && whSel.value ? whSel.value : activeWh;
 
   // 2. Interactive Step Calculation Box (#paramStepCalc)
   renderStepCalculator(curSku, curWh);
@@ -5295,6 +5327,14 @@ function renderStepCalculator(skuCode, whCode) {
       </div>
     </div>
   `;
+}
+
+function updateParamInteractiveCalc() {
+  const skuSel = document.getElementById('paramSkuSelect');
+  const whSel  = document.getElementById('paramWhSelect');
+  const curSku = skuSel ? skuSel.value : 'TLM-045';
+  const curWh  = whSel  ? whSel.value  : 'HCM';
+  renderStepCalculator(curSku, curWh);
 }
 
 // --- END src/js/views/params.js ---
@@ -5870,7 +5910,7 @@ function advanceToDate(targetDate) {
   }
 
   renderAllViews();
-  showToast(`Đã chuyển tới ngày ${fmtDateVN(Store.currentDate)} thành công!`, 'success');
+  // Toast removed per user request
 }
 
 function stepDays(days) {

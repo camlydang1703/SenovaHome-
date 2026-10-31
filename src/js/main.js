@@ -223,7 +223,7 @@ function advanceToDate(targetDate) {
   }
 
   renderAllViews();
-  showToast(`Đã chuyển tới ngày ${fmtDateVN(Store.currentDate)} thành công!`, 'success');
+  // Toast removed per user request
 }
 
 function stepDays(days) {

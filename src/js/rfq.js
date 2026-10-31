@@ -21,6 +21,7 @@
         qty: qty
       };
 
+      const matchingSups = Object.keys(SUPPLIERS).filter(s => !sku.cat || SUPPLIERS[s].cat === sku.cat);
       const body = document.getElementById('rfqModalBody');
       if (body) {
         body.innerHTML = `
@@ -37,18 +38,23 @@
             <input type="text" class="form-ctrl" value="${wh.name} (${wh.code})" readonly style="background:#F1F5F9;">
           </div>
           <div class="form-row">
-            <label class="form-lbl">Nhà cung cấp gửi yêu cầu:</label>
-            <select class="form-ctrl" id="rfqModalSup">
-              ${Object.keys(SUPPLIERS)
-                .filter(s => !sku.cat || SUPPLIERS[s].cat === sku.cat)
-                .map(s =>
-                  `<option value="${s}" ${s === sup ? 'selected' : ''}>${s} - ${SUPPLIERS[s].name} (${SUPPLIERS[s].cat})</option>`
-                ).join('')}
-            </select>
+            <label class="form-lbl">Danh sách Nhà cung cấp nhận RFQ (Gửi chùm toàn bộ để so sánh giá):</label>
+            <div style="background:#F8FAFC;border:1px solid var(--border-subtle);border-radius:6px;padding:8px 12px;font-size:12px;">
+              ${matchingSups.map(s => `
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #E2E8F0;">
+                  <strong>✓ ${s} - ${SUPPLIERS[s].name}</strong>
+                  <span style="color:var(--text-muted);">Lead time: ~${SUPPLIERS[s].leadDays} ngày</span>
+                </div>
+              `).join('')}
+            </div>
           </div>
           <div class="form-row">
             <label class="form-lbl">Số lượng yêu cầu báo giá (${sku.unit}):</label>
-            <input type="number" class="form-ctrl" id="rfqModalQty" min="1" value="${qty}">
+            <input type="number" class="form-ctrl" id="rfqModalQty" min="1" value="${qty}" oninput="document.getElementById('rfqBudgetEst').value = fmtNum(this.value * ${sku.cogs}) + ' đ (Chờ NCC báo giá)'">
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Dự toán ngân sách tạm tính (tham chiếu theo COGS ${fmtNum(sku.cogs)} đ/sp):</label>
+            <input type="text" class="form-ctrl" id="rfqBudgetEst" value="${fmtNum(qty * sku.cogs)} đ (Chờ NCC báo giá)" readonly style="background:#F1F5F9;font-weight:600;color:var(--navy-main);">
           </div>
           <div class="form-row">
             <label class="form-lbl">Thời hạn hiệu lực báo giá:</label>
@@ -65,7 +71,10 @@
 
     function sendRfqOrder() {
       if (!activeRfqDraft) return;
-      const sup = document.getElementById('rfqModalSup') ? document.getElementById('rfqModalSup').value : activeRfqDraft.sup;
+      const skuObj = SKUS.find(s => s.code === activeRfqDraft.sku) || {};
+      const matchingSups = Object.keys(SUPPLIERS).filter(s => !skuObj.cat || SUPPLIERS[s].cat === skuObj.cat);
+      const targetSups = matchingSups.length > 0 ? matchingSups : [activeRfqDraft.sup];
+
       const qty = parseInt(document.getElementById('rfqModalQty') ? document.getElementById('rfqModalQty').value : 0, 10) || activeRfqDraft.qty;
       const notes = document.getElementById('rfqModalNotes') ? document.getElementById('rfqModalNotes').value : '';
 
@@ -74,37 +83,41 @@
         return;
       }
 
-      const rfqId = padSeq('RFQ');
       const validUntil = addDays(Store.currentDate, 7);
+      const createdIds = [];
 
-      Store.rfqs.unshift({
-        id: rfqId,
-        date: Store.currentDate,
-        sku: activeRfqDraft.sku,
-        wh: activeRfqDraft.wh,
-        sup: sup,
-        qty: qty,
-        validUntil: validUntil,
-        status: 'Đã gửi NCC',
-        notes: notes
+      targetSups.forEach(sCode => {
+        const rfqId = padSeq('RFQ');
+        createdIds.push(rfqId);
+        Store.rfqs.unshift({
+          id: rfqId,
+          date: Store.currentDate,
+          sku: activeRfqDraft.sku,
+          wh: activeRfqDraft.wh,
+          sup: sCode,
+          qty: qty,
+          validUntil: validUntil,
+          status: 'Đã gửi NCC',
+          notes: notes || 'Yêu cầu chào giá cạnh tranh toàn mạng lưới'
+        });
       });
 
       // Cập nhật trạng thái đề xuất nếu có
       const pairKey = `${activeRfqDraft.sku}-${activeRfqDraft.wh}`;
       if (Store.proposals[pairKey]) {
-        Store.proposals[pairKey].status = 'Đang chờ NCC báo giá';
+        Store.proposals[pairKey].status = `Đang chờ ${targetSups.length} NCC báo giá`;
         Store.proposals[pairKey].hasActiveRfq = true;
-        Store.proposals[pairKey].rfqId = rfqId;
+        Store.proposals[pairKey].rfqId = createdIds[0];
       }
 
       closeModal('rfqModal');
-      pushNotification('RFQ_SENT', rfqId,
-        `Đã gửi Yêu cầu Báo giá ${rfqId} (${activeRfqDraft.sku} - ${qty}) tới ${sup}.`
+      pushNotification('RFQ_SENT', createdIds.join(', '),
+        `Đã gửi Yêu cầu Báo giá cạnh tranh (${activeRfqDraft.sku} - ${qty} sp) tới ${targetSups.length} Nhà cung cấp.`
       );
-      logAction('SEND_RFQ', rfqId,
-        `Yêu cầu báo giá ${qty} ${activeRfqDraft.sku} tới NCC ${sup} cho kho ${activeRfqDraft.wh}. Hạn báo giá: ${fmtDateVN(validUntil)}`
+      logAction('SEND_RFQ', createdIds.join(', '),
+        `Yêu cầu báo giá ${qty} ${activeRfqDraft.sku} tới ${targetSups.length} NCC (${targetSups.join(', ')}) cho kho ${activeRfqDraft.wh}. Hạn báo giá: ${fmtDateVN(validUntil)}`
       );
-      showToast(`Đã gửi thành công Yêu cầu Báo giá ${rfqId}`, 'success');
+      showToast(`Đã gửi thành công RFQ tới ${targetSups.length} Nhà cung cấp!`, 'success');
 
       if (typeof switchWarehouse === 'function' && Store.ui && Store.ui.activeWh !== activeRfqDraft.wh) {
         switchWarehouse(activeRfqDraft.wh);

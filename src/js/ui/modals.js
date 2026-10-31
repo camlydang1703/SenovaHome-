@@ -415,28 +415,25 @@
             </div>
           </div>
 
-          <!-- OPTION B: RFQ SUPPLIER -->
+          <!-- OPTION B: RFQ ALL SUPPLIERS -->
           <div style="border:2px solid ${ctx.selectedPlan === 'B' ? 'var(--navy-accent)' : 'var(--border-color)'};border-radius:8px;padding:14px;background:#FFFFFF;position:relative;cursor:pointer;" onclick="selectModalPlan('B')">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
               <span class="status-pill status-pill-high">
-                ${!srcSafe ? 'Khuyến nghị khi thiếu nguồn nội bộ' : 'Dự phòng'}
+                ${!srcSafe ? 'Khuyến nghị: Chào giá cạnh tranh toàn bộ NCC' : 'Dự phòng: Gửi chào giá toàn bộ NCC'}
               </span>
               <input type="radio" name="planSelect" value="B" ${ctx.selectedPlan === 'B' ? 'checked' : ''}>
             </div>
-            <strong style="font-size:13.5px;color:var(--navy-main);">Phương án B: Yêu cầu Báo giá Nhà cung cấp (RFQ)</strong>
-            <div class="form-row" style="margin-top:10px;margin-bottom:8px;">
-              <label class="form-lbl" style="font-size:11.5px;">Nhà cung cấp:</label>
-              <select class="form-ctrl" id="modalSupplier" style="font-size:12px;" onclick="event.stopPropagation()" onchange="onModalSupplierChange(this.value)">
-                ${Object.keys(SUPPLIERS).map(s =>
-                  `<option value="${s}" ${s === ctx.supplier ? 'selected' : ''}>${s} - ${SUPPLIERS[s].name}</option>`
-                ).join('')}
-              </select>
+            <strong style="font-size:13.5px;color:var(--navy-main);">Phương án B: Yêu cầu Báo giá Tất cả Nhà cung cấp (RFQ)</strong>
+            <div style="font-size:11.5px;color:var(--text-main);margin-top:8px;margin-bottom:6px;">
+              Gửi đồng thời tới <strong>toàn bộ ${Object.keys(SUPPLIERS).filter(s => !ctx.sku.cat || SUPPLIERS[s].cat === ctx.sku.cat).length} NCC</strong> trong ngành hàng để so sánh báo giá tốt nhất:
+            </div>
+            <div style="background:#F8FAFC;border:1px solid #E2E8F0;padding:6px 10px;border-radius:4px;font-size:11px;line-height:1.5;margin-bottom:8px;">
+              ${Object.keys(SUPPLIERS).filter(s => !ctx.sku.cat || SUPPLIERS[s].cat === ctx.sku.cat).map(s => `• <strong>${s}</strong>: ${SUPPLIERS[s].name} (Lead: ~${SUPPLIERS[s].leadDays} ngày)`).join('<br>')}
             </div>
             <div style="font-size:11.5px;color:var(--text-main);line-height:1.6;background:#F8FAFC;padding:8px;border-radius:4px;">
-              • Thời gian giao hàng (Lead time): <strong>${supLead} ngày</strong> (Đến ngày: ${fmtDateVN(addDays(Store.currentDate, supLead))})<br>
-              • Giá vốn mua dự kiến: <strong>${fmtVND(ctx.sku.cogs)}/${ctx.sku.unit}</strong><br>
-              • Tổng giá trị dự kiến: <strong>${fmtVND(supCost)}</strong><br>
-              • Trạng thái lệnh: <strong>Tạo RFQ báo giá (chưa tăng tồn kho)</strong>
+              • Đơn giá vốn tham chiếu (COGS): <strong>${fmtVND(ctx.sku.cogs)}/${ctx.sku.unit}</strong><br>
+              • Dự toán ngân sách tạm tính: <strong>${fmtVND(supCost)}</strong> <em>(Chờ NCC phản hồi báo giá chính thức)</em><br>
+              • Trạng thái lệnh: <strong>Gửi RFQ đồng loạt cho toàn bộ NCC có mặt hàng</strong>
             </div>
           </div>
         </div>
@@ -527,32 +524,38 @@
         renderAllViews();
 
       } else {
-        // Thực thi Gửi RFQ tới NCC
-        const rfqId = padSeq('RFQ');
+        // Thực thi Gửi RFQ đồng loạt tới TẤT CẢ Nhà cung cấp có mặt hàng
+        const matchingSups = Object.keys(SUPPLIERS).filter(s => !ctx.sku.cat || SUPPLIERS[s].cat === ctx.sku.cat);
+        const targetSups = matchingSups.length > 0 ? matchingSups : [ctx.supplier];
         const validUntil = addDays(Store.currentDate, 7);
+        const createdIds = [];
 
-        Store.rfqs.unshift({
-          id: rfqId,
-          date: Store.currentDate,
-          sku: ctx.skuCode,
-          wh: ctx.toWh,
-          sup: ctx.supplier,
-          qty: ctx.customQty,
-          validUntil: validUntil,
-          status: 'Đã gửi NCC',
-          notes: 'Tạo từ màn hình so sánh bổ sung tích hợp'
+        targetSups.forEach(sCode => {
+          const rfqId = padSeq('RFQ');
+          createdIds.push(rfqId);
+          Store.rfqs.unshift({
+            id: rfqId,
+            date: Store.currentDate,
+            sku: ctx.skuCode,
+            wh: ctx.toWh,
+            sup: sCode,
+            qty: ctx.customQty,
+            validUntil: validUntil,
+            status: 'Đã gửi NCC',
+            notes: 'Tạo từ màn hình so sánh bổ sung (chùm NCC)'
+          });
         });
 
         if (Store.proposals[pairKey]) {
-          Store.proposals[pairKey].status = 'Đang chờ NCC báo giá';
+          Store.proposals[pairKey].status = `Đang chờ ${targetSups.length} NCC báo giá`;
           Store.proposals[pairKey].hasActiveRfq = true;
-          Store.proposals[pairKey].rfqId = rfqId;
+          Store.proposals[pairKey].rfqId = createdIds[0];
         }
 
         closeModal('transferModal');
-        pushNotification('RFQ_SENT', rfqId, `Đã gửi Yêu cầu Báo giá ${rfqId} (${ctx.skuCode} - ${ctx.customQty}) tới NCC ${ctx.supplier}.`);
-        logAction('SEND_RFQ', rfqId, `Yêu cầu báo giá ${ctx.customQty} ${ctx.skuCode} tới NCC ${ctx.supplier} cho kho ${ctx.toWh}`);
-        showToast(`Đã gửi Yêu cầu Báo giá ${rfqId} tới NCC ${ctx.supplier}`, 'success');
+        pushNotification('RFQ_SENT', createdIds.join(', '), `Đã gửi RFQ (${ctx.skuCode} - ${ctx.customQty}) tới ${targetSups.length} NCC.`);
+        logAction('SEND_RFQ', createdIds.join(', '), `Yêu cầu báo giá ${ctx.customQty} ${ctx.skuCode} tới ${targetSups.length} NCC cho kho ${ctx.toWh}`);
+        showToast(`Đã gửi Yêu cầu Báo giá tới ${targetSups.length} Nhà cung cấp!`, 'success');
         if (typeof switchWarehouse === 'function' && Store.ui && Store.ui.activeWh !== ctx.toWh) {
           switchWarehouse(ctx.toWh);
         }

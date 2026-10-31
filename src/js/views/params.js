@@ -21,12 +21,12 @@ function renderParamsView() {
   if (whSel && whSel.children.length === 0) {
     whSel.innerHTML = WAREHOUSES.map(w => `<option value="${w.code}">${w.name} (${w.code})</option>`).join('');
   }
-  if (whSel && whSel.value !== activeWh) {
+  if (whSel && !whSel.value) {
     whSel.value = activeWh;
   }
 
-  const curSku = skuSel ? skuSel.value : 'TLM-045';
-  const curWh  = whSel  ? whSel.value  : activeWh;
+  const curSku = skuSel && skuSel.value ? skuSel.value : 'TLM-045';
+  const curWh  = whSel && whSel.value ? whSel.value : activeWh;
 
   // 2. Interactive Step Calculation Box (#paramStepCalc)
   renderStepCalculator(curSku, curWh);
@@ -220,4 +220,12 @@ function renderStepCalculator(skuCode, whCode) {
       </div>
     </div>
   `;
+}
+
+function updateParamInteractiveCalc() {
+  const skuSel = document.getElementById('paramSkuSelect');
+  const whSel  = document.getElementById('paramWhSelect');
+  const curSku = skuSel ? skuSel.value : 'TLM-045';
+  const curWh  = whSel  ? whSel.value  : 'HCM';
+  renderStepCalculator(curSku, curWh);
 }
