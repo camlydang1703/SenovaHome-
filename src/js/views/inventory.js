@@ -15,12 +15,12 @@ function renderInventoryView() {
     cardTitle.textContent = `Chi tiết Quản trị Tồn kho: ${whObj.name} (11 SKU)`;
   }
 
-  // Sync dropdown with active warehouse
+  // Sync dropdown with active warehouse — ALWAYS force to activeWh
   const whFilterEl = document.getElementById('invWhFilter');
-  if (whFilterEl && whFilterEl.value !== activeWh && whFilterEl.value !== 'ALL') {
+  if (whFilterEl) {
     whFilterEl.value = activeWh;
   }
-  const whFilter  = (whFilterEl && whFilterEl.value) ? whFilterEl.value : activeWh;
+  const whFilter = activeWh;
   const catFilter = document.getElementById('invCatFilter') ? document.getElementById('invCatFilter').value : 'ALL';
   const stFilter  = document.getElementById('invStatusFilter') ? document.getElementById('invStatusFilter').value : 'ALL';
   const search    = document.getElementById('invSearch') ? document.getElementById('invSearch').value.trim().toLowerCase() : '';
@@ -126,12 +126,7 @@ function renderInventoryView() {
       key: 'warn7',
       header: 'Cảnh báo 7N',
       align: 'center',
-      render: r => `
-        <div class="risk-badge">
-          <span class="${r.warn7.tagClass}">${r.warn7.label}</span>
-          <span class="risk-sub">${r.warn7.subText}</span>
-        </div>
-      `
+      render: r => `<span class="risk-tag ${r.warn7.tagClass}" title="${r.warn7.subText.replace(/"/g,'&quot;')}">${r.warn7.label}</span>`
     },
     {
       key: 'dos',
@@ -165,10 +160,14 @@ function renderInventoryView() {
       align: 'center',
       render: r => {
         if (r.status === 'HIGH') {
-          return `<button class="btn-table" onclick="openOverstockModal('${r.sku.code}', '${r.wh.code}')">Xả tồn</button>`;
+          return `<button class="btn-table btn-action-xaton" onclick="openOverstockModal('${r.sku.code}','${r.wh.code}')">Xả tồn</button>
+                  <button class="btn-table-sec btn-action-detail" onclick="openSkuDetailModal('${r.sku.code}','${r.wh.code}')">Chi tiết</button>`;
         }
-        const btnLabel = r.status === 'LOW' ? 'Bổ sung' : 'Chi tiết';
-        return `<button class="btn-table" onclick="openTransferCompareModal('${r.sku.code}', '${r.wh.code}')">${btnLabel}</button>`;
+        if (r.status === 'LOW') {
+          return `<button class="btn-table btn-action-bosung" onclick="openReplenishModal('${r.sku.code}','${r.wh.code}')">Bổ sung</button>
+                  <button class="btn-table-sec btn-action-detail" onclick="openSkuDetailModal('${r.sku.code}','${r.wh.code}')">Chi tiết</button>`;
+        }
+        return `<button class="btn-table-sec btn-action-detail" onclick="openSkuDetailModal('${r.sku.code}','${r.wh.code}')">Chi tiết</button>`;
       }
     }
   ];

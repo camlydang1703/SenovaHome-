@@ -778,5 +778,241 @@
       runSelfTests();
     }
 
+    // ============================================================
+    // openSkuDetailModal – Hiển thị full thông tin SKU tại kho (read-only)
+    // ============================================================
+    function openSkuDetailModal(skuCode, whCode) {
+      const sku  = SKUS.find(s => s.code === skuCode) || SKUS[0];
+      const wh   = WAREHOUSES.find(w => w.code === whCode) || WAREHOUSES[0];
+      const p    = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
+      const st   = (Store.stock[whCode] && Store.stock[whCode][skuCode]) || { on_hand:0, in_transit:0, committed:0 };
+      const eff  = st.on_hand + st.in_transit - st.committed;
+      const status = getStatus(eff, p);
+      const baseP  = (Store.baseParams && Store.baseParams[skuCode] && Store.baseParams[skuCode][whCode]) || p;
+      const warn7  = calcLookaheadWarning(st, p, Store.currentDate, skuCode, whCode);
+      const dailyRate = Math.max(0.1, p.f_next / 7.0);
+      const dos = Math.round(eff / dailyRate * 10) / 10;
+
+      const statusLabel = status === 'LOW' ? '<span class="status-pill status-pill-low">Dưới MIN</span>'
+                        : status === 'HIGH' ? '<span class="status-pill status-pill-high">Vượt MAX</span>'
+                        : '<span class="status-pill status-pill-ok">Bình thường</span>';
+
+      const sup = SUPPLIERS.find(s => s.code === sku.sup);
+
+      document.getElementById('skuDetailTitle').textContent = `Chi tiết: ${sku.code} – ${sku.name} | ${wh.name}`;
+      document.getElementById('skuDetailBody').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">📦 Thông tin SKU</h4>
+            <table style="font-size:12.5px;width:100%;border-collapse:collapse;">
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Mã SKU</td><td><strong>${sku.code}</strong></td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Tên sản phẩm</td><td>${sku.name}</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Ngành hàng</td><td>${sku.cat}</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Giá vốn (COGS)</td><td>${fmtNum(sku.cogs)} đ/sp</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Trọng số (%)</td><td>${(sku.wt*100).toFixed(0)}%</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">NCC chính</td><td>${sup ? sup.name : sku.sup}</td></tr>
+            </table>
+          </div>
+          <div>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">🏪 Tồn kho tại ${wh.name}</h4>
+            <table style="font-size:12.5px;width:100%;border-collapse:collapse;">
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Tồn vật lý</td><td><strong>${fmtNum(st.on_hand)} sp</strong></td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Đang về (in_transit)</td><td style="color:var(--navy-accent);">+${fmtNum(st.in_transit)} sp</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Đã cam kết</td><td style="color:var(--status-yellow);">-${fmtNum(st.committed)} sp</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;font-weight:700;">Tồn khả dụng (I)</td><td><strong style="color:var(--navy-main);">${fmtNum(eff)} sp</strong></td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Số ngày còn bán</td><td>${dos} ngày</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Trạng thái</td><td>${statusLabel}</td></tr>
+            </table>
+          </div>
+          <div>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">📊 Tham số Min/Max</h4>
+            <table style="font-size:12.5px;width:100%;border-collapse:collapse;">
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Nhu cầu dự báo (F)</td><td>${p.f_next.toFixed(1)} sp/tuần</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Lead time (L)</td><td>${p.lead_time.toFixed(2)} tuần</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Sigma lỗi (σ)</td><td>${p.sigma.toFixed(2)}</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Tồn an toàn (SS)</td><td>${p.ss.toFixed(1)} sp</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;color:var(--status-red);">MIN (ROP – Gốc)</td><td style="color:var(--status-red);">${baseP.rop} sp</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;color:var(--status-red);">MIN (ROP – AI hôm nay)</td><td style="color:var(--status-red);font-weight:700;">${p.rop} sp</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;color:var(--status-yellow);">MAX (Qmax – Gốc)</td><td style="color:var(--status-yellow);">${baseP.qmax} sp</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;color:var(--status-yellow);">MAX (Qmax – AI hôm nay)</td><td style="color:var(--status-yellow);font-weight:700;">${p.qmax} sp</td></tr>
+            </table>
+          </div>
+          <div>
+            <h4 style="margin:0 0 8px;color:var(--navy-main);font-size:13px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;">⚠️ Cảnh báo 7 ngày tới</h4>
+            <div style="margin-bottom:8px;"><span class="risk-tag ${warn7.tagClass}">${warn7.label}</span></div>
+            <p style="font-size:12px;color:var(--text-muted);margin:4px 0;">${warn7.subText}</p>
+            <p style="font-size:12px;margin:8px 0 0;"><strong>Đề xuất:</strong> ${warn7.recommendation || 'Không cần hành động ngay.'}</p>
+          </div>
+        </div>
+      `;
+      openModal('skuDetailModal');
+    }
+
+    // ============================================================
+    // openReplenishModal – Modal 2 option: RFQ vs Chuyển kho (LOW status)
+    // ============================================================
+    let _replenishCtx = null;
+
+    function openReplenishModal(skuCode, whCode) {
+      const sku  = SKUS.find(s => s.code === skuCode) || SKUS[0];
+      const wh   = WAREHOUSES.find(w => w.code === whCode) || WAREHOUSES[0];
+      const p    = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
+      const st   = (Store.stock[whCode] && Store.stock[whCode][skuCode]) || { on_hand:0, in_transit:0, committed:0 };
+      const eff  = st.on_hand + st.in_transit - st.committed;
+      const qNeed = Math.max(1, p.qmax - eff);
+
+      // Tìm kho nguồn tốt nhất
+      let bestSrc = null, maxSurplus = -Infinity;
+      WAREHOUSES.forEach(w => {
+        if (w.code !== whCode) {
+          const sP  = calcSKUParams(skuCode, w.code, Store.currentDate, Store.history);
+          const sSt = Store.stock[w.code] && Store.stock[w.code][skuCode] ? Store.stock[w.code][skuCode] : { on_hand:0, in_transit:0, committed:0 };
+          const sEff = sSt.on_hand + sSt.in_transit - sSt.committed;
+          const surplus = sEff - sP.rop;
+          if (surplus > maxSurplus) { maxSurplus = surplus; bestSrc = w.code; }
+        }
+      });
+      if (!bestSrc) bestSrc = WAREHOUSES.find(w => w.code !== whCode)?.code || whCode;
+
+      const supObj = SUPPLIERS.find(s => s.code === sku.sup);
+      const estTransferDays = 2;
+      const estRfqDays = supObj ? supObj.lead_days || 7 : 7;
+
+      _replenishCtx = { skuCode, whCode, sku, wh, p, st, eff, qNeed, sourceWh: bestSrc, supplier: sku.sup, selectedMode: maxSurplus > 10 ? 'TRANSFER' : 'RFQ', qty: qNeed };
+
+      document.getElementById('replenishModalTitle').textContent = `Bổ sung: ${sku.code} – ${sku.name} | ${wh.name}`;
+      _renderReplenishModal(estTransferDays, estRfqDays, maxSurplus);
+      openModal('replenishModal');
+    }
+
+    function _renderReplenishModal(estTransferDays, estRfqDays, maxSurplus) {
+      const ctx = _replenishCtx;
+      if (!ctx) return;
+      const body = document.getElementById('replenishModalBody');
+      if (!body) return;
+
+      const transferOptions = WAREHOUSES.filter(w => w.code !== ctx.whCode).map(w => {
+        const sSt = Store.stock[w.code] && Store.stock[w.code][ctx.skuCode] ? Store.stock[w.code][ctx.skuCode] : { on_hand:0, in_transit:0, committed:0 };
+        const sEff = sSt.on_hand + sSt.in_transit - sSt.committed;
+        const sP = calcSKUParams(ctx.skuCode, w.code, Store.currentDate, Store.history);
+        const surp = sEff - sP.rop;
+        return `<option value="${w.code}" ${w.code===ctx.sourceWh?'selected':''} ${surp<=0?'style="color:gray;"':''}>${w.name} (dư ${surp>0?'+':''}${Math.round(surp)} sp)</option>`;
+      }).join('');
+
+      const supOptions = SUPPLIERS.filter(s => s.skus && s.skus.includes(ctx.skuCode)).map(s =>
+        `<option value="${s.code}" ${s.code===ctx.supplier?'selected':''}>${s.name} (~${s.lead_days||7} ngày)</option>`
+      ).join('') || `<option value="${ctx.sku.sup}">${ctx.sku.sup}</option>`;
+
+      body.innerHTML = `
+        <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:6px;padding:12px;margin-bottom:14px;font-size:12.5px;">
+          <strong>${ctx.sku.code} – ${ctx.sku.name}</strong> tại <strong>${ctx.wh.name}</strong>
+          | Tồn khả dụng: <strong style="color:var(--status-red);">${fmtNum(ctx.eff)} sp</strong>
+          | ROP: ${ctx.p.rop} sp | Cần bổ sung: <strong>${fmtNum(ctx.qNeed)} sp</strong>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <!-- OPTION A: CHUYỂN KHO -->
+          <div style="border:2px solid ${ctx.selectedMode==='TRANSFER'?'var(--navy-main)':'var(--border-subtle)'};border-radius:8px;padding:14px;cursor:pointer;" onclick="_selectReplenishMode('TRANSFER')" id="repOpt_TRANSFER">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--navy-main);">
+              <input type="radio" name="repMode" value="TRANSFER" ${ctx.selectedMode==='TRANSFER'?'checked':''} style="margin-right:6px;">
+              🏭 Phương án A: Chuyển kho nội bộ
+            </div>
+            <table style="font-size:12px;width:100%;border-collapse:collapse;">
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Kho nguồn</td>
+                <td><select id="repSrcWh" onchange="_replenishCtx.sourceWh=this.value" style="font-size:11.5px;padding:2px;">${transferOptions}</select></td>
+              </tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Dự kiến về</td><td>~${estTransferDays} ngày</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Chi phí vận chuyển</td><td>~${fmtNum(Math.ceil(ctx.qty * 2500))} đ</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Phù hợp khi</td><td style="color:var(--status-green);">Kho khác dư tồn${maxSurplus>10?' ✓':' (ít dư)'}</td></tr>
+            </table>
+          </div>
+
+          <!-- OPTION B: RFQ -->
+          <div style="border:2px solid ${ctx.selectedMode==='RFQ'?'var(--navy-main)':'var(--border-subtle)'};border-radius:8px;padding:14px;cursor:pointer;" onclick="_selectReplenishMode('RFQ')" id="repOpt_RFQ">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--navy-main);">
+              <input type="radio" name="repMode" value="RFQ" ${ctx.selectedMode==='RFQ'?'checked':''} style="margin-right:6px;">
+              📋 Phương án B: Gửi RFQ cho NCC
+            </div>
+            <table style="font-size:12px;width:100%;border-collapse:collapse;">
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Nhà cung cấp</td>
+                <td><select id="repSupplier" onchange="_replenishCtx.supplier=this.value" style="font-size:11.5px;padding:2px;">${supOptions}</select></td>
+              </tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Dự kiến về</td><td>~${estRfqDays} ngày</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Chi phí</td><td>Theo giá NCC</td></tr>
+              <tr><td style="color:var(--text-muted);padding:3px 0;">Phù hợp khi</td><td style="color:var(--status-yellow);">Tất cả kho đều thiếu</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-subtle);border-radius:6px;">
+          <label style="font-size:12.5px;font-weight:600;white-space:nowrap;">Số lượng cần bổ sung:</label>
+          <input type="number" id="repQtyInput" value="${ctx.qty}" min="1" max="9999" style="width:90px;padding:4px 8px;border:1px solid var(--border-subtle);border-radius:4px;font-size:13px;font-weight:700;"
+            onchange="_replenishCtx.qty=Math.max(1,+this.value)">
+          <span style="font-size:12px;color:var(--text-muted);">sp &nbsp;(tối ưu gợi ý: ${fmtNum(ctx.qNeed)} sp để đạt MAX = ${ctx.p.qmax} sp)</span>
+        </div>
+      `;
+    }
+
+    function _selectReplenishMode(mode) {
+      if (!_replenishCtx) return;
+      _replenishCtx.selectedMode = mode;
+      document.querySelectorAll('[id^="repOpt_"]').forEach(el => {
+        el.style.borderColor = el.id === 'repOpt_'+mode ? 'var(--navy-main)' : 'var(--border-subtle)';
+      });
+      const radio = document.querySelector(`input[name="repMode"][value="${mode}"]`);
+      if (radio) radio.checked = true;
+    }
+
+    function confirmReplenish() {
+      const ctx = _replenishCtx;
+      if (!ctx) return;
+
+      // Sync latest user inputs
+      const qtyEl = document.getElementById('repQtyInput');
+      if (qtyEl) ctx.qty = Math.max(1, parseInt(qtyEl.value, 10) || ctx.qNeed);
+      const srcEl = document.getElementById('repSrcWh');
+      if (srcEl) ctx.sourceWh = srcEl.value;
+      const supEl = document.getElementById('repSupplier');
+      if (supEl) ctx.supplier = supEl.value;
+
+      if (ctx.selectedMode === 'TRANSFER') {
+        // Tạo lệnh chuyển kho
+        const srcWh = WAREHOUSES.find(w => w.code === ctx.sourceWh);
+        const srcSt = Store.stock[ctx.sourceWh] && Store.stock[ctx.sourceWh][ctx.skuCode] ? Store.stock[ctx.sourceWh][ctx.skuCode] : { on_hand:0, in_transit:0, committed:0 };
+        const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
+        const srcP = calcSKUParams(ctx.skuCode, ctx.sourceWh, Store.currentDate, Store.history);
+        const avail = Math.max(0, srcEff - srcP.rop);
+        if (avail < 1) {
+          showToast(`⚠️ Kho ${srcWh ? srcWh.name : ctx.sourceWh} không đủ dư tồn để chuyển.`, 'warning');
+          return;
+        }
+        const actualQty = Math.min(ctx.qty, avail);
+        // Dùng API transfers.js nếu có
+        if (typeof initiateTransfer === 'function') {
+          initiateTransfer(ctx.skuCode, ctx.sourceWh, ctx.whCode, actualQty);
+        } else {
+          // Thêm thẳng vào Store.transfers
+          const trid = 'TR-' + Date.now();
+          const arrDate = new Date(Store.currentDate.getTime() + 2 * 86400000);
+          Store.transfers = Store.transfers || [];
+          Store.transfers.push({ id: trid, sku: ctx.skuCode, from: ctx.sourceWh, to: ctx.whCode, qty: actualQty, status: 'Đang vận chuyển', dispatchDate: Store.currentDate.toISOString().slice(0,10), arrivalDate: arrDate.toISOString().slice(0,10) });
+          Store.stock[ctx.sourceWh][ctx.skuCode].on_hand = Math.max(0, srcSt.on_hand - actualQty);
+          Store.stock[ctx.whCode][ctx.skuCode].in_transit = (Store.stock[ctx.whCode][ctx.skuCode].in_transit || 0) + actualQty;
+          pushNotification({ type: 'TRANSFER_CREATED', wh: ctx.whCode, sku: ctx.skuCode, msg: `Lệnh chuyển ${fmtNum(actualQty)} sp ${ctx.skuCode} từ ${ctx.sourceWh} → ${ctx.whCode} đã tạo.` });
+        }
+        showToast(`✅ Đã tạo lệnh chuyển ${fmtNum(actualQty)} sp ${ctx.skuCode} từ ${ctx.sourceWh} → ${ctx.whCode}.`, 'success');
+        closeModal('replenishModal');
+        if (typeof renderAllViews === 'function') renderAllViews();
+      } else {
+        // RFQ: mở modal RFQ
+        closeModal('replenishModal');
+        if (typeof openRfqModal === 'function') {
+          openRfqModal(ctx.skuCode, ctx.whCode, ctx.qty, ctx.supplier);
+        } else {
+          showToast('Chức năng RFQ đang khởi tạo. Vui lòng thử lại.', 'warning');
+        }
+      }
+    }
+
     // ----------------------------------------------------------------------------
 

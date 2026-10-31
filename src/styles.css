@@ -203,7 +203,7 @@
       box-shadow: 0 4px 16px rgba(0,0,0,0.12);
       z-index: 200;
     }
-    .bell-popover.show { display: block; }
+    .bell-popover.show, .bell-popover.active { display: block; }
     .bell-popover-head {
       padding: 10px 14px;
       border-bottom: 1px solid var(--border-subtle);
@@ -646,9 +646,21 @@
       cursor: not-allowed;
     }
     .btn-table-sec {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 26px;
+      padding: 0 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
       background-color: #FFFFFF;
       color: var(--navy-main);
       border: 1px solid var(--navy-border);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease;
+      margin-left: 3px;
     }
     .btn-table-sec:hover {
       background-color: var(--navy-subtle);
@@ -896,10 +908,9 @@
     }
 
     .risk-badge {
-      display: inline-flex;
-      flex-direction: column;
-      gap: 2px;
+      display: inline-block;
       font-size: 11px;
+      white-space: nowrap;
     }
     .risk-tag {
       display: inline-block;

@@ -650,6 +650,35 @@
     </div>
   </div>
 
+  <!-- MODAL: SKU DETAIL -->
+  <div class="modal-overlay" id="skuDetailModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <span id="skuDetailTitle">Chi tiết SKU</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('skuDetailModal')">✕</button>
+      </div>
+      <div class="modal-body" id="skuDetailBody" style="padding:16px 20px;"></div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('skuDetailModal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REPLENISH (Bổ sung – RFQ vs Chuyển kho) -->
+  <div class="modal-overlay" id="replenishModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <span id="replenishModalTitle">Bổ sung Tồn kho</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('replenishModal')">✕</button>
+      </div>
+      <div class="modal-body" id="replenishModalBody" style="padding:16px 20px;"></div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('replenishModal')">Huỷ</button>
+        <button class="btn-large" id="replenishConfirmBtn" onclick="confirmReplenish()">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST TRAY -->
   <div id="toastTray"></div>
   <script>
