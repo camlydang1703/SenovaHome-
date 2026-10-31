@@ -353,6 +353,8 @@
 
       const supLead = ctx.sku.lead;
       const supCost = ctx.customQty * ctx.sku.cogs;
+      const transferCogsVal = ctx.customQty * ctx.sku.cogs;
+      const totalCostPlanA = transferCogsVal + totalFreight;
 
       const baseP = (Store.baseParams && Store.baseParams[ctx.skuCode] && Store.baseParams[ctx.skuCode][ctx.toWh]) || ctx.params;
       const driver = getDriverExplanation(ctx.skuCode, ctx.toWh, Store.currentDate, ctx.params, baseP);
@@ -409,9 +411,9 @@
             </div>
             <div style="font-size:11.5px;color:var(--text-main);line-height:1.6;background:#F8FAFC;padding:8px;border-radius:4px;">
               • Thời gian vận chuyển: <strong>${tDays} ngày</strong> (Đến ngày: ${fmtDateVN(addDays(Store.currentDate, tDays))})<br>
-              • Đơn giá cước: <strong>${fmtVND(unitFreight)}/${ctx.sku.unit}</strong><br>
-              • Chi phí vận chuyển tuyến: <strong>${fmtVND(totalFreight)}</strong><br>
-              • <strong>Tổng chi phí phương án A:</strong> <strong style="color:var(--navy-accent);font-size:12.5px;">${fmtVND(totalFreight)}</strong><br>
+              • Giá vốn hàng chuyển (COGS): <strong>${fmtVND(transferCogsVal)}</strong> (${fmtVND(ctx.sku.cogs)}/${ctx.sku.unit})<br>
+              • Chi phí cước vận chuyển tuyến: <strong>${fmtVND(totalFreight)}</strong> (${fmtVND(unitFreight)}/${ctx.sku.unit})<br>
+              • <strong>Tổng chi phí Phương án A (Giá vốn + Cước):</strong> <strong style="color:var(--navy-accent);font-size:12.5px;">${fmtVND(totalCostPlanA)}</strong><br>
               • Tình trạng kho xuất: ${srcSafe ? '<span style="color:var(--status-green);font-weight:600;">Đủ hàng an toàn (Sau chuyển > ROP)</span>' : '<span style="color:var(--status-red);font-weight:600;">Thiếu hụt hoặc <= ROP</span>'}
             </div>
           </div>

@@ -11,16 +11,16 @@
     ];
 
     const SKUS = [
-      { code: 'TLM-045',  name: 'Tôn lạnh màu 0.45mm',    base: 565, cogs: 150000,  price: 185000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
-      { code: 'TLM-040',  name: 'Tôn lạnh màu 0.40mm',    base: 450, cogs: 134000,  price: 165000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+      { code: 'TLM-045',  name: 'Tôn lạnh màu xanh 0.45mm',    base: 565, cogs: 150000,  price: 185000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+      { code: 'TLM-040',  name: 'Tôn lạnh màu xanh 0.40mm',    base: 450, cogs: 134000,  price: 165000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
       { code: 'TMK-035',  name: 'Tôn mạ kẽm 0.35mm',      base: 280, cogs: 106000,  price: 130000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
-      { code: 'OTK-049',  name: 'Ống thép mạ kẽm Ø49',    base: 245, cogs: 270000,  price: 320000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
-      { code: 'OTK-060',  name: 'Ống thép mạ kẽm Ø60',    base: 170, cogs: 345000,  price: 410000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
-      { code: 'PPR-025',  name: 'Ống nhựa PPR Ø25 4m',    base: 395, cogs: 36000,   price: 48000,   sup: 'SUP-LOTUS',     lead: 14, delay: 3, cat: 'Ống nhựa',   unit: 'cây',   slow: false },
+      { code: 'OTK-049',  name: 'Ống thép mạ kẽm phi 49',    base: 245, cogs: 270000,  price: 320000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
+      { code: 'OTK-060',  name: 'Ống thép mạ kẽm phi 60',    base: 170, cogs: 345000,  price: 410000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
+      { code: 'PPR-025',  name: 'Ống PPR phi 25 dài 4m',    base: 395, cogs: 36000,   price: 48000,   sup: 'SUP-LOTUS',     lead: 14, delay: 3, cat: 'Ống nhựa',   unit: 'cây',   slow: false },
       { code: 'GCH-6060', name: 'Gạch men 60x60',         base: 350, cogs: 205000,  price: 260000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: false },
-      { code: 'SON-18L',  name: 'Sơn ngoại thất 18L',     base: 115, cogs: 1150000, price: 1450000, sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'thùng', slow: false },
+      { code: 'SON-18L',  name: 'Sơn nước ngoại thất 18L',     base: 115, cogs: 1150000, price: 1450000, sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'thùng', slow: false },
       { code: 'GCH-DEC',  name: 'Gạch trang trí 30x60',   base: 15,  cogs: 170000,  price: 220000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: true  },
-      { code: 'TBV-LAV',  name: 'Chậu lavabo sứ',         base: 12,  cogs: 650000,  price: 850000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  },
+      { code: 'TBV-LAV',  name: 'Chậu lavabo',         base: 12,  cogs: 650000,  price: 850000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  },
       { code: 'TBV-VOI',  name: 'Vòi sen cao cấp',        base: 10,  cogs: 480000,  price: 650000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  }
     ];
 

@@ -1687,16 +1687,16 @@ const CSV_DATABASE = {
     ];
 
     const SKUS = [
-      { code: 'TLM-045',  name: 'Tôn lạnh màu 0.45mm',    base: 565, cogs: 150000,  price: 185000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
-      { code: 'TLM-040',  name: 'Tôn lạnh màu 0.40mm',    base: 450, cogs: 134000,  price: 165000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+      { code: 'TLM-045',  name: 'Tôn lạnh màu xanh 0.45mm',    base: 565, cogs: 150000,  price: 185000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+      { code: 'TLM-040',  name: 'Tôn lạnh màu xanh 0.40mm',    base: 450, cogs: 134000,  price: 165000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
       { code: 'TMK-035',  name: 'Tôn mạ kẽm 0.35mm',      base: 280, cogs: 106000,  price: 130000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
-      { code: 'OTK-049',  name: 'Ống thép mạ kẽm Ø49',    base: 245, cogs: 270000,  price: 320000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
-      { code: 'OTK-060',  name: 'Ống thép mạ kẽm Ø60',    base: 170, cogs: 345000,  price: 410000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
-      { code: 'PPR-025',  name: 'Ống nhựa PPR Ø25 4m',    base: 395, cogs: 36000,   price: 48000,   sup: 'SUP-LOTUS',     lead: 14, delay: 3, cat: 'Ống nhựa',   unit: 'cây',   slow: false },
+      { code: 'OTK-049',  name: 'Ống thép mạ kẽm phi 49',    base: 245, cogs: 270000,  price: 320000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
+      { code: 'OTK-060',  name: 'Ống thép mạ kẽm phi 60',    base: 170, cogs: 345000,  price: 410000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
+      { code: 'PPR-025',  name: 'Ống PPR phi 25 dài 4m',    base: 395, cogs: 36000,   price: 48000,   sup: 'SUP-LOTUS',     lead: 14, delay: 3, cat: 'Ống nhựa',   unit: 'cây',   slow: false },
       { code: 'GCH-6060', name: 'Gạch men 60x60',         base: 350, cogs: 205000,  price: 260000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: false },
-      { code: 'SON-18L',  name: 'Sơn ngoại thất 18L',     base: 115, cogs: 1150000, price: 1450000, sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'thùng', slow: false },
+      { code: 'SON-18L',  name: 'Sơn nước ngoại thất 18L',     base: 115, cogs: 1150000, price: 1450000, sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'thùng', slow: false },
       { code: 'GCH-DEC',  name: 'Gạch trang trí 30x60',   base: 15,  cogs: 170000,  price: 220000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: true  },
-      { code: 'TBV-LAV',  name: 'Chậu lavabo sứ',         base: 12,  cogs: 650000,  price: 850000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  },
+      { code: 'TBV-LAV',  name: 'Chậu lavabo',         base: 12,  cogs: 650000,  price: 850000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  },
       { code: 'TBV-VOI',  name: 'Vòi sen cao cấp',        base: 10,  cogs: 480000,  price: 650000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  }
     ];
 
@@ -3959,6 +3959,8 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
 
       const supLead = ctx.sku.lead;
       const supCost = ctx.customQty * ctx.sku.cogs;
+      const transferCogsVal = ctx.customQty * ctx.sku.cogs;
+      const totalCostPlanA = transferCogsVal + totalFreight;
 
       const baseP = (Store.baseParams && Store.baseParams[ctx.skuCode] && Store.baseParams[ctx.skuCode][ctx.toWh]) || ctx.params;
       const driver = getDriverExplanation(ctx.skuCode, ctx.toWh, Store.currentDate, ctx.params, baseP);
@@ -4015,9 +4017,9 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
             </div>
             <div style="font-size:11.5px;color:var(--text-main);line-height:1.6;background:#F8FAFC;padding:8px;border-radius:4px;">
               • Thời gian vận chuyển: <strong>${tDays} ngày</strong> (Đến ngày: ${fmtDateVN(addDays(Store.currentDate, tDays))})<br>
-              • Đơn giá cước: <strong>${fmtVND(unitFreight)}/${ctx.sku.unit}</strong><br>
-              • Chi phí vận chuyển tuyến: <strong>${fmtVND(totalFreight)}</strong><br>
-              • <strong>Tổng chi phí phương án A:</strong> <strong style="color:var(--navy-accent);font-size:12.5px;">${fmtVND(totalFreight)}</strong><br>
+              • Giá vốn hàng chuyển (COGS): <strong>${fmtVND(transferCogsVal)}</strong> (${fmtVND(ctx.sku.cogs)}/${ctx.sku.unit})<br>
+              • Chi phí cước vận chuyển tuyến: <strong>${fmtVND(totalFreight)}</strong> (${fmtVND(unitFreight)}/${ctx.sku.unit})<br>
+              • <strong>Tổng chi phí Phương án A (Giá vốn + Cước):</strong> <strong style="color:var(--navy-accent);font-size:12.5px;">${fmtVND(totalCostPlanA)}</strong><br>
               • Tình trạng kho xuất: ${srcSafe ? '<span style="color:var(--status-green);font-weight:600;">Đủ hàng an toàn (Sau chuyển > ROP)</span>' : '<span style="color:var(--status-red);font-weight:600;">Thiếu hụt hoặc <= ROP</span>'}
             </div>
           </div>
@@ -5698,7 +5700,11 @@ function updateParamInteractiveCalc() {
           const h = Store.history[sku.code] && Store.history[sku.code][wh.code];
           if (h && h[wi]) {
             actSum += h[wi].demand;
-            fcSum  += Math.round(h[wi].deseason * h[wi].sm);
+            // Dự báo AI dựa trên mô hình trung bình động giải mùa vụ (D_SMA4) của 4 tuần trước đó nhân hệ số mùa vụ Sm tuần hiện tại
+            // Đối với các tuần đầu (wi < 4), dùng trung bình lũy kế của các tuần đã qua
+            const prevSlice = wi >= 4 ? h.slice(wi - 4, wi) : h.slice(0, Math.max(1, wi));
+            const sma = prevSlice.reduce((s, x) => s + x.deseason, 0) / prevSlice.length;
+            fcSum += Math.round(sma * h[wi].sm);
           } else {
             actSum += Math.round(sku.base * wh.w);
             fcSum  += Math.round(sku.base * wh.w * 0.98);

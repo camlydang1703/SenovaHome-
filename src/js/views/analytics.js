@@ -64,7 +64,11 @@
           const h = Store.history[sku.code] && Store.history[sku.code][wh.code];
           if (h && h[wi]) {
             actSum += h[wi].demand;
-            fcSum  += Math.round(h[wi].deseason * h[wi].sm);
+            // Dự báo AI dựa trên mô hình trung bình động giải mùa vụ (D_SMA4) của 4 tuần trước đó nhân hệ số mùa vụ Sm tuần hiện tại
+            // Đối với các tuần đầu (wi < 4), dùng trung bình lũy kế của các tuần đã qua
+            const prevSlice = wi >= 4 ? h.slice(wi - 4, wi) : h.slice(0, Math.max(1, wi));
+            const sma = prevSlice.reduce((s, x) => s + x.deseason, 0) / prevSlice.length;
+            fcSum += Math.round(sma * h[wi].sm);
           } else {
             actSum += Math.round(sku.base * wh.w);
             fcSum  += Math.round(sku.base * wh.w * 0.98);
