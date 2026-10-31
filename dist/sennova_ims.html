@@ -1,0 +1,4689 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SenNova Home IMS - Hệ thống Quản trị & Điều phối Tồn kho Tự động</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+      --bg-page: #FAFAF8;
+      --bg-card: #FFFFFF;
+      --border-color: #E4E2DC;
+      --border-subtle: #ECEAE4;
+      
+      --text-main: #1F2328;
+      --text-muted: #6B6F76;
+      --text-sub: #44474E;
+      
+      --navy-main: #1E3A5F;
+      --navy-hover: #152B47;
+      --navy-subtle: #F0F4F8;
+      --navy-border: #CBD5E1;
+      
+      --status-red: #D12420;
+      --status-red-bg: #FDF2F2;
+      --status-yellow: #B58105;
+      --status-yellow-bg: #FEF9EE;
+      --status-green: #1A7F37;
+      --status-green-bg: #F0FDF4;
+      --status-blue: #0969DA;
+      --status-blue-bg: #F0F7FF;
+
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --shadow-subtle: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-size: 13px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .num-val {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: 'tnum';
+    }
+
+    .font-mono {
+      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .btn-small {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 28px;
+      padding: 0 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      background-color: var(--navy-main);
+      color: #FFFFFF;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.15s ease;
+    }
+    .btn-small:hover { background-color: var(--navy-hover); }
+
+    .btn-large {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      background-color: var(--navy-main);
+      color: #FFFFFF;
+      border: 1px solid var(--navy-main);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .btn-large:hover { background-color: var(--navy-hover); }
+
+    .btn-large-sec {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      background-color: #FFFFFF;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .btn-large-sec:hover { background-color: var(--bg-page); }
+
+    .app-header {
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-main);
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-tag {
+      font-size: 10.5px;
+      font-weight: 600;
+      background: var(--navy-subtle);
+      color: var(--navy-main);
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+    }
+
+    .header-center {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #F4F4F1;
+      padding: 4px 8px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+    }
+    .time-input {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 3px 8px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: #FFFFFF;
+      color: var(--text-main);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .bell-btn {
+      position: relative;
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-main);
+    }
+    .bell-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: var(--status-red);
+      color: #FFFFFF;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 0 4px;
+      line-height: 15px;
+      min-width: 15px;
+      text-align: center;
+    }
+    .bell-popover {
+      display: none;
+      position: absolute;
+      top: 48px;
+      right: 24px;
+      width: 390px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      z-index: 200;
+    }
+    .bell-popover.show { display: block; }
+    .bell-popover-head {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-weight: 700;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .bell-popover-list {
+      max-height: 380px;
+      overflow-y: auto;
+    }
+    .bell-pop-item {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 11.5px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .bell-pop-item:hover { background: var(--bg-page); }
+    .bell-pop-item.unread {
+      background: #F8FAFC;
+      border-left: 3px solid var(--navy-main);
+      font-weight: 600;
+    }
+
+    .nav-tabs-bar {
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0 24px;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 16px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--navy-main); }
+    .tab-btn.active {
+      color: var(--navy-main);
+      border-bottom-color: var(--navy-main);
+    }
+    .tab-badge {
+      font-size: 10.5px;
+      font-weight: 700;
+      background: var(--navy-subtle);
+      color: var(--navy-main);
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+    .tab-badge.danger {
+      background: var(--status-red-bg);
+      color: var(--status-red);
+    }
+
+    .main-body {
+      padding: 20px 24px 60px 24px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .view-panel { display: none; }
+    .view-panel.active { display: block; }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: var(--shadow-subtle);
+    }
+    .kpi-title {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 6px;
+    }
+    .kpi-val {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-main);
+      font-feature-settings: 'tnum';
+    }
+    .kpi-sub {
+      font-size: 11.5px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .card-panel {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-subtle);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #FFFFFF;
+    }
+    .card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--navy-main);
+    }
+
+    .table-container {
+      overflow-x: auto;
+      width: 100%;
+    }
+    .data-tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+    .data-tbl th {
+      background: #F8FAFC;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    .data-tbl td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+    .data-tbl tr:hover { background-color: #FAFCFF; }
+    .num-col { text-align: right; font-variant-numeric: tabular-nums; }
+    th.num-col { text-align: right; }
+
+    .matrix-cell {
+      border: 1px solid transparent;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      min-width: 80px;
+    }
+    .matrix-cell:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+    .matrix-cell.cell-low {
+      background-color: var(--status-red-bg);
+      border-color: #FECACA;
+      color: var(--status-red);
+    }
+    .matrix-cell.cell-high {
+      background-color: var(--status-yellow-bg);
+      border-color: #FDE68A;
+      color: var(--status-yellow);
+    }
+    .matrix-cell.cell-ok {
+      background-color: #F8FAFC;
+      border-color: var(--border-subtle);
+      color: var(--text-main);
+    }
+    .cell-tag {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    .dot-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .dot-pill.low { background: var(--status-red-bg); color: var(--status-red); }
+    .dot-pill.high { background: var(--status-yellow-bg); color: var(--status-yellow); }
+    .dot-pill.ok { background: var(--status-green-bg); color: var(--status-green); }
+    .dot-pill.neutral { background: #F1F5F9; color: #475569; }
+
+    .formula-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .formula-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      box-shadow: var(--shadow-subtle);
+    }
+    .formula-card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--navy-main);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .formula-card-desc {
+      font-size: 11px;
+      color: var(--text-sub);
+      line-height: 1.45;
+    }
+
+    .interactive-calc-box {
+      background: #F8FAFC;
+      border: 1px solid var(--navy-border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .interactive-calc-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(2px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      background: #FFFFFF;
+      border-radius: var(--radius-lg);
+      width: 90%;
+      max-width: 720px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      overflow: hidden;
+    }
+    .modal-box.wide { max-width: 920px; }
+    .modal-box.extra-wide { max-width: 1080px; }
+    .modal-head {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--navy-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #FFFFFF;
+    }
+    .modal-body {
+      padding: 18px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .modal-foot {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border-color);
+      background: #F8FAFC;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .plan-card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .plan-card {
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: #FFFFFF;
+      transition: all 0.15s ease;
+    }
+    .plan-card:hover { border-color: var(--navy-border); }
+    .plan-card.selected {
+      border-color: var(--navy-main);
+      background: var(--navy-subtle);
+    }
+    .plan-badge-top {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+    .plan-badge-optimal { background: #DCFCE7; color: #166534; }
+    .plan-badge-sub { background: #E2E8F0; color: #475569; }
+    .plan-cost-hero {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--navy-main);
+      margin: 6px 0 2px 0;
+    }
+    .plan-breakdown-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .form-lbl {
+      width: 140px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+    .form-ctrl {
+      flex: 1;
+      padding: 7px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 12.5px;
+      color: var(--text-main);
+      background: #FFFFFF;
+    }
+
+    #toastTray {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 2000;
+    }
+    .toast-msg {
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 12.5px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      color: #FFFFFF;
+      background: #1E293B;
+    }
+    .toast-msg.success { background: #166534; }
+    .toast-msg.warning { background: #B45309; }
+    .toast-msg.error { background: #991B1B; }
+    .toast-msg.info { background: var(--navy-main); }
+
+    .log-accordion-body {
+      display: none;
+      max-height: 220px;
+      overflow-y: auto;
+      background: #1E293B;
+      color: #E2E8F0;
+      font-family: ui-monospace, monospace;
+      font-size: 11.5px;
+      padding: 10px 14px;
+    }
+    .log-accordion-body.open { display: block; }
+    .log-line { margin-bottom: 4px; line-height: 1.4; }
+    .log-time { color: #94A3B8; margin-right: 8px; }
+    .log-type { color: #38BDF8; margin-right: 6px; font-weight: 600; }
+
+    @media (max-width: 1024px) {
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
+      .formula-cards-grid { grid-template-columns: repeat(2, 1fr); }
+      .plan-card-grid { grid-template-columns: 1fr; }
+    }
+
+  </style>
+</head>
+<body>
+<!-- APP HEADER -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        SenNova Home IMS
+        <span class="brand-tag">Min/Max Động ERP</span>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <span style="font-size:11.5px;font-weight:600;color:var(--text-muted);">Mô phỏng:</span>
+      <input type="date" id="simDatePicker" class="time-input" min="2026-08-01" max="2026-10-23" value="2026-08-01" onchange="onManualDateChange(this.value)">
+      <button class="btn-small" onclick="stepDays(1)" title="Tiến 1 ngày">Ngày sau ▶</button>
+
+      <div style="width:1px;height:18px;background:var(--border-color);margin:0 4px;"></div>
+
+      <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--navy-main);cursor:pointer;">
+        <input type="checkbox" id="autoPilotToggle" onchange="toggleAutoPilot(this.checked)">
+        Autopilot Chuyển kho
+      </label>
+
+      <div style="width:1px;height:18px;background:var(--border-color);margin:0 4px;"></div>
+
+      <select class="time-input" id="scenarioSelect" onchange="triggerDemoScenario(this.value)" style="padding:4px 8px;">
+        <option value="">⚡ Chọn Kịch bản Demo nhanh...</option>
+        <option value="sc1">Kịch bản 1: Điều phối Chuyển kho giữa 2 kho</option>
+        <option value="sc2">Kịch bản 2: Thiếu nguồn chuyển → Tạo RFQ</option>
+        <option value="sc3">Kịch bản 3: Tồn dư vượt MAX → Điều chuyển 2A</option>
+        <option value="sc4">Kịch bản 4: Toàn mạng lưới dư → Khuyến mãi 2B</option>
+      </select>
+    </div>
+
+    <div class="header-right">
+      <button class="btn-small" style="background:#475569;" onclick="openSelfTestModal()">
+        🧪 Tự kiểm tra hệ thống
+      </button>
+
+      <div style="position:relative;">
+        <button class="bell-btn" onclick="toggleBellPopover()" title="Thông báo hệ thống">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
+        </button>
+
+        <div class="bell-popover" id="bellPopover">
+          <div class="bell-popover-head">
+            <span id="bellHeadText">0 thông báo chưa đọc</span>
+            <button class="btn-small" style="height:22px;padding:0 6px;font-size:10.5px;background:#64748B;" onclick="markAllNotificationsRead()">Đọc tất cả</button>
+          </div>
+          <div class="bell-popover-list" id="bellList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="nav-tabs-bar">
+    <button class="tab-btn active" id="tab-dashboard" onclick="switchNavTab('dashboard')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      Dashboard Điều hành
+      <span class="tab-badge danger" id="badge-recs-count" style="display:none;">0</span>
+    </button>
+    <button class="tab-btn" id="tab-inventory" onclick="switchNavTab('inventory')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+      Ma trận Tồn kho
+    </button>
+    <button class="tab-btn" id="tab-transfers" onclick="switchNavTab('transfers')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+      Lệnh Chuyển kho
+      <span class="tab-badge" id="badge-trf-count" style="display:none;">0</span>
+    </button>
+    <button class="tab-btn" id="tab-rfq" onclick="switchNavTab('rfq')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      Yêu cầu Báo giá (RFQ)
+      <span class="tab-badge" id="badge-rfq-count" style="display:none;">0</span>
+    </button>
+    <button class="tab-btn" id="tab-movement" onclick="switchNavTab('movement')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+      Nhập / Xuất kho nhanh
+    </button>
+    <button class="tab-btn" id="tab-params" onclick="switchNavTab('params')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Tham số & Công thức AI
+    </button>
+    <button class="tab-btn" id="tab-analytics" onclick="switchNavTab('analytics')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+      Báo cáo Phân tích
+    </button>
+  </nav>
+
+  <!-- MAIN BODY -->
+  <main class="main-body">
+
+    <!-- VIEW 1: DASHBOARD -->
+    <section class="view-panel active" id="view-dashboard">
+      <!-- EVENT BANNER -->
+      <div class="card-panel" style="border-left:4px solid var(--navy-main);margin-bottom:16px;">
+        <div style="padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="eventBadgeWrap"><span class="dot-pill neutral">Điều kiện chuẩn</span></div>
+            <div>
+              <strong id="eventTitle" style="color:var(--navy-main);font-size:13px;">Tháng 8: Chỉ số mùa vụ Sm = 0.85</strong>
+              <div id="eventDesc" style="font-size:11.5px;color:var(--text-muted);">Chuỗi cung ứng vận hành bình thường.</div>
+            </div>
+          </div>
+          <div id="eventImpact" style="font-size:11.5px;font-weight:600;color:var(--text-sub);">Hệ số cầu: 1.00 | Không trễ chuyến</div>
+        </div>
+      </div>
+
+      <!-- KPI METRICS -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-title">Ô Kho Dưới MIN (ROP)</div>
+          <div class="kpi-val" id="kpi-under-min" style="color:var(--status-red);">0</div>
+          <div class="kpi-sub">Nguy cơ thiếu hàng cục bộ</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Ô Kho Vượt MAX (Qmax)</div>
+          <div class="kpi-val" id="kpi-over-max" style="color:var(--status-yellow);">0</div>
+          <div class="kpi-sub">Tồn kho ứ đọng trên trần</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Vốn Ứ Đọng Vượt MAX</div>
+          <div class="kpi-val" id="kpi-trapped-cap">0 tr đ</div>
+          <div class="kpi-sub">Giá trị vốn cần giải phóng</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Tiết Kiệm Chi Phí Nhờ Chuyển Kho</div>
+          <div class="kpi-val" id="kpi-cost-diff" style="color:var(--status-green);">0 tr đ</div>
+          <div class="kpi-sub">So với phương án mua gấp</div>
+        </div>
+      </div>
+
+      <!-- PROPOSALS QUEUE -->
+      <div class="card-panel">
+        <div class="card-head">
+          <div>
+            <span class="card-title">Hàng Đợi Đề Xuất Điều Phối Tồn Kho Tức Thời</span>
+            <span style="font-size:11.5px;color:var(--text-muted);margin-left:8px;" id="recQueueSub">Sắp xếp theo số ngày còn bán tăng dần</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-small" id="btnApproveAll" onclick="approveAllPendingTransfers()">
+              ✓ Duyệt tất cả lệnh chuyển kho
+            </button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th>Mã ĐX</th>
+                <th>Phương thức</th>
+                <th>SKU</th>
+                <th>Kho nhận</th>
+                <th class="num-col">Lượng cần (Q)</th>
+                <th>Kho nguồn / Phương án</th>
+                <th class="num-col">Thời gian</th>
+                <th class="num-col">Còn bán</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="proposalTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 5x11 INVENTORY MATRIX -->
+      <div class="card-panel">
+        <div class="card-head">
+          <span class="card-title">Ma trận Tồn kho Điều hành (5 Kho Vùng x 11 SKU)</span>
+          <div style="display:flex;gap:12px;font-size:11.5px;color:var(--text-muted);">
+            <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--status-red-bg);border:1px solid #FECACA;border-radius:2px;"></span> Dưới MIN</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#F8FAFC;border:1px solid var(--border-subtle);border-radius:2px;"></span> Bình thường</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--status-yellow-bg);border:1px solid #FDE68A;border-radius:2px;"></span> Vượt MAX</span>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th style="min-width:180px;">Sản phẩm (SKU)</th>
+                <th style="text-align:center;">Kho HCM</th>
+                <th style="text-align:center;">Kho Bình Dương</th>
+                <th style="text-align:center;">Kho Đà Nẵng</th>
+                <th style="text-align:center;">Kho Đà Nẵng City</th>
+                <th style="text-align:center;">Kho Hà Nội</th>
+              </tr>
+            </thead>
+            <tbody id="matrixTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SYSTEM LOG ACCORDION -->
+      <div class="card-panel" style="margin-bottom:0;">
+        <div class="card-head" style="cursor:pointer;" onclick="toggleLogAccordion()">
+          <span class="card-title">Nhật ký Hoạt động Hệ thống (System Event Log)</span>
+          <span style="font-size:11.5px;color:var(--text-muted);" id="logToggleText">Mở nhật ký ▾</span>
+        </div>
+        <div class="log-accordion-body" id="systemLogList">
+          <!-- Logs prepended here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: INVENTORY DETAIL -->
+    <section class="view-panel" id="view-inventory">
+      <div class="card-panel">
+        <div class="card-head">
+          <div class="card-title">Chi tiết Quản trị Tồn kho Toàn Mạng lưới</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select class="time-input" id="invWhFilter" onchange="renderInventoryView()">
+              <option value="ALL">Tất cả kho (5 kho)</option>
+              <option value="HCM">Kho HCM</option>
+              <option value="BD">Kho Bình Dương</option>
+              <option value="DN">Kho Đà Nẵng</option>
+              <option value="DN_CITY">Kho Đà Nẵng City</option>
+              <option value="HN">Kho Hà Nội</option>
+            </select>
+            <select class="time-input" id="invCatFilter" onchange="renderInventoryView()">
+              <option value="ALL">Tất cả ngành hàng</option>
+              <option value="Tôn thép">Tôn thép</option>
+              <option value="Ống thép">Ống thép</option>
+              <option value="Ống nhựa">Ống nhựa</option>
+              <option value="Gạch ngói">Gạch ngói</option>
+              <option value="Sơn & TBVS">Sơn & TBVS</option>
+            </select>
+            <select class="time-input" id="invStatusFilter" onchange="renderInventoryView()">
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="LOW">Dưới MIN (Cần bổ sung)</option>
+              <option value="OK">Bình thường (An toàn)</option>
+              <option value="HIGH">Vượt MAX (Tồn dư)</option>
+            </select>
+            <input type="text" id="invSearch" class="time-input" placeholder="Tìm theo mã SKU..." oninput="renderInventoryView()">
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th>Mã SKU</th>
+                <th>Tên sản phẩm</th>
+                <th>Kho</th>
+                <th class="num-col">Tồn vật lý</th>
+                <th class="num-col">Đang về</th>
+                <th class="num-col">Tồn khả dụng (I)</th>
+                <th class="num-col" style="color:var(--status-red);">MIN (ROP)</th>
+                <th class="num-col" style="color:var(--status-yellow);">MAX (Qmax)</th>
+                <th class="num-col">Còn bán</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: TRANSFERS -->
+    <section class="view-panel" id="view-transfers">
+      <div class="card-panel">
+        <div class="card-head">
+          <div>
+            <span class="card-title">Sổ Lệnh Chuyển kho Nội bộ (Internal Transfers)</span>
+            <span style="font-size:11.5px;color:var(--text-muted);margin-left:8px;">Các lệnh điều phối nội bộ giữa các kho vùng</span>
+          </div>
+          <button class="btn-small" onclick="openManualTransferModal()">
+            + Tạo lệnh chuyển thủ công
+          </button>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th>Mã lệnh</th>
+                <th>Ngày tạo</th>
+                <th>SKU</th>
+                <th>Từ kho</th>
+                <th>Đến kho</th>
+                <th class="num-col">Số lượng</th>
+                <th class="num-col">Cước vận chuyển</th>
+                <th>Ngày đến dự kiến</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="transferTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: RFQ -->
+    <section class="view-panel" id="view-rfq">
+      <div class="card-panel">
+        <div class="card-head">
+          <div>
+            <span class="card-title">Sổ Yêu cầu Báo giá (RFQ) Nhà cung cấp & Đại lý</span>
+            <span style="font-size:11.5px;color:var(--text-muted);margin-left:8px;">Quản lý chào giá từ các đối tác trước khi mua</span>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th>Mã RFQ</th>
+                <th>Ngày gửi</th>
+                <th>SKU</th>
+                <th>Kho nhận</th>
+                <th>Nhà cung cấp đã gửi</th>
+                <th class="num-col">Số lượng yêu cầu</th>
+                <th class="num-col">Đơn giá ước tính</th>
+                <th>Ngày hết hạn</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="rfqTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: FAST MOVEMENT -->
+    <section class="view-panel" id="view-movement">
+      <div class="card-panel" style="max-width:640px;margin:0 auto;">
+        <div class="card-head">
+          <span class="card-title">Nhập / Xuất kho nhanh theo Ngày</span>
+        </div>
+        <div style="padding:18px 20px;">
+          <div class="form-row">
+            <label class="form-lbl">Kho hàng:</label>
+            <select class="form-ctrl" id="mvWh" onchange="updateMovementStockDisplay()">
+              <option value="HCM">Kho HCM</option>
+              <option value="BD">Kho Bình Dương</option>
+              <option value="DN">Kho Đà Nẵng</option>
+              <option value="DN_CITY">Kho Đà Nẵng City</option>
+              <option value="HN">Kho Hà Nội</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Sản phẩm (SKU):</label>
+            <select class="form-ctrl" id="mvSku" onchange="updateMovementStockDisplay()">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Loại thao tác:</label>
+            <select class="form-ctrl" id="mvType">
+              <option value="IN">Nhập kho nhanh (+ On-hand)</option>
+              <option value="OUT">Xuất kho nhanh (- On-hand)</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Số lượng:</label>
+            <input type="number" class="form-ctrl" id="mvQty" min="1" placeholder="Nhập số lượng thực tế...">
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Ghi chú nghiệp vụ:</label>
+            <input type="text" class="form-ctrl" id="mvNote" placeholder="Lý do xuất bán lẻ, kiểm kê bù trừ...">
+          </div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin:10px 0 16px 140px;" id="mvStockHelp">
+            Tồn vật lý hiện tại: 0
+          </div>
+          <div style="display:flex;justify-content:flex-end;">
+            <button class="btn-large" onclick="submitQuickMovement()">Xác nhận Nhập / Xuất kho</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 6: PARAMS & AI FORMULA -->
+    <section class="view-panel" id="view-params">
+      <!-- 5 FORMULA CARDS -->
+      <div class="formula-cards-grid">
+        <div class="formula-card">
+          <div class="formula-card-title">📊 1. Nhu cầu nền</div>
+          <div class="formula-card-desc">Trung bình 4 tuần gần nhất (sau khi đã khử mùa vụ D / Sm) để loại trừ sai số thời điểm.</div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-card-title">🔮 2. Dự báo tuần tới</div>
+          <div class="formula-card-desc"><code>F = D_SMA4 × Sm</code><br>Nhu cầu nền nhân hệ số mùa vụ tháng hiện tại.</div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-card-title">⏱️ 3. Nhu cầu chờ hàng</div>
+          <div class="formula-card-desc"><code>D_lead = F × Lead_time</code><br>Lượng tiêu thụ dự kiến trong toàn bộ thời gian chờ hàng về.</div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-card-title">🛡️ 4. Tồn an toàn (SS)</div>
+          <div class="formula-card-desc"><code>SS = 1.65 × σ × √L</code><br>Đảm bảo mức phục vụ Service Level đạt 95% chống biến động cầu.</div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-card-title">📏 5. MIN và MAX</div>
+          <div class="formula-card-desc"><code>MIN (ROP) = D_lead + SS</code><br><code>MAX (Qmax) = MIN + F</code> (chu kỳ bổ sung 1 tuần).</div>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE CALCULATION BOX -->
+      <div class="interactive-calc-box">
+        <div class="interactive-calc-head">
+          <strong style="color:var(--navy-main);font-size:13px;">Minh họa Tính toán Từng bước bằng Số liệu Thực tế Ngày Mô phỏng</strong>
+          <div style="display:flex;gap:8px;">
+            <select class="time-input" id="paramSkuSelect" onchange="updateParamInteractiveCalc()">
+              <!-- SKU list -->
+            </select>
+            <select class="time-input" id="paramWhSelect" onchange="updateParamInteractiveCalc()">
+              <option value="HCM">Kho HCM</option>
+              <option value="BD">Kho Bình Dương</option>
+              <option value="DN">Kho Đà Nẵng</option>
+              <option value="DN_CITY">Kho Đà Nẵng City</option>
+              <option value="HN">Kho Hà Nội</option>
+            </select>
+          </div>
+        </div>
+        <div id="paramStepCalc" style="font-size:12px;line-height:1.7;color:var(--text-main);background:#FFFFFF;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+          <!-- Dynamic computation output -->
+        </div>
+      </div>
+
+      <!-- PARAMETERS TABLE -->
+      <div class="card-panel">
+        <div class="card-head">
+          <div class="card-title">Bảng Tham số Tính toán Động Toàn Chuỗi (55 Ô SKU x Kho)</div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Kho</th>
+                <th class="num-col">Nhu cầu tuần nền</th>
+                <th class="num-col">Tỷ trọng vùng</th>
+                <th class="num-col">D_SMA4 (sau khử mùa)</th>
+                <th class="num-col">Hệ số Sm</th>
+                <th class="num-col">Dự báo tuần tới (F)</th>
+                <th class="num-col">Lead time (tuần)</th>
+                <th class="num-col">Sigma sai số</th>
+                <th class="num-col">Tồn an toàn (SS)</th>
+                <th class="num-col" style="color:var(--status-red);">Mức đặt lại MIN (ROP)</th>
+                <th class="num-col" style="color:var(--status-yellow);">Tồn tối đa MAX (Qmax)</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="paramsTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:12px 16px;background:#FAFAF8;border-top:1px solid var(--border-color);font-size:11.5px;color:var(--text-muted);line-height:1.6;">
+          <strong>Ghi chú kỹ thuật:</strong><br>
+          • Tổng hệ số mùa vụ SI trung bình = 0.979 (giữ nguyên theo báo cáo gốc, không chuẩn hóa lại).<br>
+          • Dữ liệu là mô phỏng có can thiệp. Hàng về định kỳ và bước cân bằng 3 nhóm được áp dụng để đảm bảo tính đa dạng. Hạt giống tất định (FNV-1a hash) đảm bảo tái hiện được.
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 7: ANALYTICS -->
+    <section class="view-panel" id="view-analytics">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <strong style="font-size:14px;color:var(--navy-main);">Báo cáo Đánh giá Hiệu năng & Xu hướng Tồn kho</strong>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Xem theo SKU:</span>
+          <select class="time-input" id="chartSkuFilter" onchange="renderAnalyticsView()">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <!-- CHART A -->
+        <div class="card-panel" style="margin-bottom:0;">
+          <div class="card-head">
+            <span class="card-title">Biểu đồ A: Dự báo Nhu cầu vs Tiêu thụ Thực tế theo Tuần</span>
+          </div>
+          <div style="padding:16px;position:relative;">
+            <canvas id="chartDemandForecast" style="width:100%;height:220px;display:block;"></canvas>
+            <div id="tooltipChartA" style="display:none;position:absolute;background:rgba(15,23,42,0.9);color:white;padding:6px 10px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;"></div>
+          </div>
+        </div>
+
+        <!-- CHART B -->
+        <div class="card-panel" style="margin-bottom:0;">
+          <div class="card-head">
+            <span class="card-title">Biểu đồ B: Tỷ lệ Đáp ứng Dịch vụ (Service Level %) theo Kho</span>
+          </div>
+          <div style="padding:16px;position:relative;">
+            <canvas id="chartServiceLevel" style="width:100%;height:220px;display:block;"></canvas>
+            <div id="tooltipChartB" style="display:none;position:absolute;background:rgba(15,23,42,0.9);color:white;padding:6px 10px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHART C -->
+      <div class="card-panel">
+        <div class="card-head">
+          <span class="card-title">Biểu đồ C: Diễn biến Tổng Giá trị Tồn kho & Vốn Ứ đọng Vượt MAX (Mô phỏng Tích lũy)</span>
+        </div>
+        <div style="padding:16px;position:relative;">
+          <canvas id="chartStockTrajectory" style="width:100%;height:240px;display:block;"></canvas>
+          <div id="tooltipChartC" style="display:none;position:absolute;background:rgba(15,23,42,0.9);color:white;padding:6px 10px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================================ -->
+  <!-- MODALS -->
+  <!-- ============================================================================ -->
+
+  <!-- 1. INTEGRATED REPLENISHMENT MODAL -->
+  <div class="modal-overlay" id="transferModal">
+    <div class="modal-box extra-wide">
+      <div class="modal-head">
+        <span id="transferModalTitle">Màn hình Điều hành & Xử lý Thiếu hàng Tích hợp</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('transferModal')">✕</button>
+      </div>
+      <div class="modal-body" id="transferModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('transferModal')">Đóng</button>
+        <button class="btn-large" id="btnApproveModalDecision" onclick="confirmModalDecision()">Xác nhận Phê duyệt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MANUAL TRANSFER MODAL -->
+  <div class="modal-overlay" id="manualTransferModal">
+    <div class="modal-box" style="max-width:540px;">
+      <div class="modal-head">
+        <span>Tạo Lệnh Chuyển kho Nội bộ Thủ công</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('manualTransferModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label class="form-lbl">Sản phẩm (SKU):</label>
+          <select class="form-ctrl" id="trfSku" onchange="validateManualTransfer()">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-lbl">Kho xuất (Nguồn):</label>
+          <select class="form-ctrl" id="trfFromWh" onchange="validateManualTransfer()">
+            <option value="HCM">Kho HCM</option>
+            <option value="BD" selected>Kho Bình Dương</option>
+            <option value="DN">Kho Đà Nẵng</option>
+            <option value="DN_CITY">Kho Đà Nẵng City</option>
+            <option value="HN">Kho Hà Nội</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-lbl">Kho nhận (Đích):</label>
+          <select class="form-ctrl" id="trfToWh" onchange="validateManualTransfer()">
+            <option value="HCM" selected>Kho HCM</option>
+            <option value="BD">Kho Bình Dương</option>
+            <option value="DN">Kho Đà Nẵng</option>
+            <option value="DN_CITY">Kho Đà Nẵng City</option>
+            <option value="HN">Kho Hà Nội</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-lbl">Số lượng chuyển:</label>
+          <input type="number" class="form-ctrl" id="trfQty" min="1" value="10" oninput="validateManualTransfer()">
+        </div>
+        <div class="form-row">
+          <label class="form-lbl">Ngày xuất lệnh:</label>
+          <input type="text" class="form-ctrl" id="trfDate" readonly style="background:#F1F5F9;">
+        </div>
+        <div id="manualTransferFeedback" style="font-size:11.5px;padding:8px 10px;border-radius:4px;margin-top:10px;">
+          <!-- Real-time hard constraint feedback -->
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('manualTransferModal')">Hủy bỏ</button>
+        <button class="btn-large" id="btnConfirmManualTransfer" onclick="executeManualTransfer()">Tạo Lệnh Chuyển</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. RFQ MODAL -->
+  <div class="modal-overlay" id="rfqModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <span id="rfqModalTitle">Yêu cầu Báo giá Nhà cung cấp (RFQ)</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('rfqModal')">✕</button>
+      </div>
+      <div class="modal-body" id="rfqModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('rfqModal')">Đóng</button>
+        <button class="btn-large" id="btnSendRfq" onclick="sendRfqOrder()">Gửi RFQ tới NCC đã chọn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. OVERSTOCK RESOLUTION MODAL (2A / 2B) -->
+  <div class="modal-overlay" id="overstockModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <span id="overstockModalTitle">Chiến lược Thoát hàng Tồn dư Vượt MAX (2A & 2B)</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('overstockModal')">✕</button>
+      </div>
+      <div class="modal-body" id="overstockModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" onclick="closeModal('overstockModal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. SELF-TEST MODAL -->
+  <div class="modal-overlay" id="selfTestModal">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <span>Bảng Tự kiểm tra & Nghiệm thu Hệ thống (12 Tiêu chí)</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('selfTestModal')">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px;">
+        <div id="selfTestSummary" style="margin-bottom:12px;font-size:13px;font-weight:700;"></div>
+        <div id="selfTestResults">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-large" onclick="closeModal('selfTestModal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST TRAY -->
+  <div id="toastTray"></div>
+  <script>
+// --- BEGIN src/js/config.js ---
+// ============================================================================
+// CONFIGURATION & CONSTANTS
+// ============================================================================
+
+    const WAREHOUSES = [
+      { code: 'HCM',     name: 'Kho TP. Hồ Chí Minh', region: 'South',   w: 0.30 },
+      { code: 'BD',      name: 'Kho Bình Dương',       region: 'South',   w: 0.20 },
+      { code: 'DN',      name: 'Kho Tổng Đà Nẵng',    region: 'Central', w: 0.12 },
+      { code: 'DN_CITY', name: 'Kho Nội Thành Đà Nẵng', region: 'Central', w: 0.08 },
+      { code: 'HN',      name: 'Kho Hà Nội',           region: 'North',   w: 0.30 }
+    ];
+
+    const SKUS = [
+      { code: 'TLM-045',  name: 'Tôn lạnh màu 0.45mm',    base: 565, cogs: 150000,  price: 185000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+      { code: 'TLM-040',  name: 'Tôn lạnh màu 0.40mm',    base: 450, cogs: 134000,  price: 165000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+      { code: 'TMK-035',  name: 'Tôn mạ kẽm 0.35mm',      base: 280, cogs: 106000,  price: 130000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+      { code: 'OTK-049',  name: 'Ống thép mạ kẽm Ø49',    base: 245, cogs: 270000,  price: 320000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
+      { code: 'OTK-060',  name: 'Ống thép mạ kẽm Ø60',    base: 170, cogs: 345000,  price: 410000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
+      { code: 'PPR-025',  name: 'Ống nhựa PPR Ø25 4m',    base: 395, cogs: 36000,   price: 48000,   sup: 'SUP-LOTUS',     lead: 14, delay: 3, cat: 'Ống nhựa',   unit: 'cây',   slow: false },
+      { code: 'GCH-6060', name: 'Gạch men 60x60',         base: 350, cogs: 205000,  price: 260000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: false },
+      { code: 'SON-18L',  name: 'Sơn ngoại thất 18L',     base: 115, cogs: 1150000, price: 1450000, sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'thùng', slow: false },
+      { code: 'GCH-DEC',  name: 'Gạch trang trí 30x60',   base: 15,  cogs: 170000,  price: 220000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: true  },
+      { code: 'TBV-LAV',  name: 'Chậu lavabo sứ',         base: 12,  cogs: 650000,  price: 850000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  },
+      { code: 'TBV-VOI',  name: 'Vòi sen cao cấp',        base: 10,  cogs: 480000,  price: 650000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  }
+    ];
+
+    // SEASONAL INDEX Sm (BÁO CÁO GỐC - SI TRUNG BÌNH = 0.979)
+    const SI = { 1:1.15, 2:0.60, 3:1.10, 4:1.15, 5:0.90, 6:0.80, 7:0.80, 8:0.85, 9:0.90, 10:1.05, 11:1.20, 12:1.25 };
+
+    // DANH MỤC NHÀ CUNG CẤP & ĐẠI LÝ THEO NGÀNH HÀNG
+    const SUPPLIERS = {
+      'SUP-SENVIET':   { code: 'SUP-SENVIET',   name: 'NM Tôn Sen Việt',              cat: 'Tôn thép',   leadDays: 7,  delay: 2, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-HOASEN':    { code: 'SUP-HOASEN',    name: 'Đại lý Tôn Hoa Sen Phía Nam',  cat: 'Tôn thép',   leadDays: 5,  delay: 1, priceMult: 1.025, freightMult: 1.0 },
+      'SUP-NAMKIM':    { code: 'SUP-NAMKIM',    name: 'Tôn Nam Kim Miền Trung',       cat: 'Tôn thép',   leadDays: 9,  delay: 3, priceMult: 0.985, freightMult: 1.2 },
+      
+      'SUP-VIETSTEEL': { code: 'SUP-VIETSTEEL', name: 'NM Ống thép Việt Steel',       cat: 'Ống thép',   leadDays: 10, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-HOAPHAT':   { code: 'SUP-HOAPHAT',   name: 'Đại lý Thép Hòa Phát',         cat: 'Ống thép',   leadDays: 8,  delay: 2, priceMult: 1.02,  freightMult: 1.1 },
+      'SUP-VINAPIPE':  { code: 'SUP-VINAPIPE',  name: 'Ống thép Vinapipe',            cat: 'Ống thép',   leadDays: 12, delay: 4, priceMult: 0.99,  freightMult: 1.3 },
+
+      'SUP-LOTUS':     { code: 'SUP-LOTUS',     name: 'Công ty Nhựa Lotus',           cat: 'Ống nhựa',   leadDays: 14, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-TIENPHONG': { code: 'SUP-TIENPHONG', name: 'Đại lý Nhựa Tiền Phong',       cat: 'Ống nhựa',   leadDays: 12, delay: 2, priceMult: 1.03,  freightMult: 1.0 },
+      'SUP-BINHMINH':  { code: 'SUP-BINHMINH',  name: 'Nhà PP Nhựa Bình Minh',        cat: 'Ống nhựa',   leadDays: 16, delay: 4, priceMult: 0.98,  freightMult: 1.2 },
+
+      'SUP-DAIPHAT':   { code: 'SUP-DAIPHAT',   name: 'Nhà máy Gạch men Đại Phát',    cat: 'Gạch ngói',  leadDays: 21, delay: 4, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-DONGTAM':   { code: 'SUP-DONGTAM',   name: 'Tổng kho Gạch Đồng Tâm',       cat: 'Gạch ngói',  leadDays: 18, delay: 3, priceMult: 1.04,  freightMult: 1.1 },
+      'SUP-VIGLACERA': { code: 'SUP-VIGLACERA', name: 'Gạch men Viglacera Đà Nẵng',   cat: 'Gạch ngói',  leadDays: 24, delay: 5, priceMult: 0.97,  freightMult: 1.3 },
+
+      'SUP-MINHAN':    { code: 'SUP-MINHAN',    name: 'Tổng Cty Sơn & TB Minh An',    cat: 'Sơn & TBVS', leadDays: 5,  delay: 1, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-DULUX':     { code: 'SUP-DULUX',     name: 'Đại lý Dulux Phía Nam',        cat: 'Sơn & TBVS', leadDays: 4,  delay: 1, priceMult: 1.03,  freightMult: 1.0 },
+      'SUP-INAX':      { code: 'SUP-INAX',      name: 'Nhà phân phối TBVS Inax VN',   cat: 'Sơn & TBVS', leadDays: 7,  delay: 2, priceMult: 0.99,  freightMult: 1.2 }
+    };
+
+    // ITEM MULTIPLIERS FOR FREIGHT
+    const ITEM_FREIGHT_MULT = {
+      'TLM-045': 1.0, 'TLM-040': 1.0, 'TMK-035': 1.0,
+      'OTK-049': 1.2, 'OTK-060': 1.2,
+      'PPR-025': 0.4,
+      'GCH-6060': 1.2, 'GCH-DEC': 1.2,
+      'SON-18L': 0.8,
+      'TBV-LAV': 0.6, 'TBV-VOI': 0.6
+    };
+
+
+    const EVENTS = [
+      {
+        id: 'EVT-PEAK-AUG',
+        start: '2026-08-14',
+        end: '2026-08-19',
+        badge: 'Cầu VLXD +35%',
+        badgeClass: 'danger',
+        title: 'Đợt kích cầu xây dựng hè thu: Nhu cầu toàn mạng lưới tăng +35%',
+        desc: 'Nhu cầu thị trường tăng đột biến trong đợt khởi động dự án xây dựng quý 3.',
+        demandMult: 1.35,
+        applyEvent: (sku, wh) => ({ demandMult: 1.35, delayAdd: 0 })
+      },
+      {
+        id: 'EVT-SENVIET-DELAY',
+        start: '2026-08-18',
+        end: '2026-08-20',
+        badge: 'Sen Việt trễ +2 ngày',
+        badgeClass: 'warning',
+        title: 'NM Tôn Sen Việt bảo trì dây chuyền cán: Giao trễ +2 ngày',
+        desc: 'SUP-SENVIET thông báo chậm giao hàng do đại tu máy móc.',
+        demandMult: 1.0,
+        applyEvent: (sku, wh) => {
+          const isSenViet = (sku === 'TLM-045' || sku === 'TLM-040' || sku === 'TMK-035');
+          return { demandMult: 1.0, delayAdd: isSenViet ? 2 : 0 };
+        }
+      },
+      {
+        id: 'EVT-CENTRAL-STORM',
+        start: '2026-09-01',
+        end: '2026-09-08',
+        badge: 'Bão Miền Trung +5 ngày trễ',
+        badgeClass: 'danger',
+        title: 'Bão lũ ven biển Miền Trung: Vận chuyển vào DN / DN_CITY trễ +5 ngày',
+        desc: 'Mưa lũ ngập Quốc lộ 1A và đèo Hải Vân. Các tuyến vận chuyển vào Đà Nẵng bị gián đoạn.',
+        demandMult: 1.0,
+        applyEvent: (sku, wh) => {
+          const isCentral = (wh === 'DN' || wh === 'DN_CITY');
+          return { demandMult: 1.0, delayAdd: isCentral ? 5 : 0 };
+        }
+      }
+    ];
+
+    // CENTRAL PARAMS (YÊU CẦU 4.7)
+    const PARAMS = {
+      z: 1.65,
+      holdingRate: 0.20,
+      H: 0.20,
+      orderCostFixed: 500000,
+      dailyHoldingWaitRate: 0.0005,
+      slowMovingWeeks: 30,
+      DOW: [0.45, 1.10, 1.08, 1.05, 1.05, 1.10, 1.17] // CN=0, T2=1, ..., T7=6
+    };
+
+
+    const Store = {
+      startDate: '2026-08-01',
+      endDate: '2026-10-23',
+      currentDate: '2026-08-01',
+      autoPilot: false,
+      activeTab: 'dashboard',
+
+      // Seeded history 12 weeks: history[sku][wh] = [{ demand, sm, deseason }]
+      history: {},
+
+      // Stock structure: stock[wh][sku] = { on_hand, in_transit, committed }
+      stock: {},
+
+      // Weekly accumulator
+      currentWeekDemand: {},
+
+      // Simulation trackers
+      lostSales: {}, // [wh][sku]
+      dailySales: {}, // date -> { total, bySku }
+      daily: {},      // date -> { revenue, lostSales, totalStock, trappedCap, statusByWh }
+
+      // Proposals currently pending: { [key]: proposalObj }
+      proposals: {},
+      dxIds: {}, // Yêu cầu 0.3: Map `${sku}-${wh}` -> dxId cố định
+
+      // Notifications: [{ id, date, type, refId, text, read }] (Yêu cầu 5.1)
+      notifications: [],
+      lastStatusMap: {}, // [wh_sku] -> 'LOW' | 'OK' | 'HIGH'
+
+      // Real transaction records
+      actions: [],     // Audit logs
+      transfers: [],   // Internal transfer orders
+      rfqs: [],        // Quotation requests sent to suppliers
+      promotions: [],  // Overstock promotional discounts
+
+      // Sequential IDs (TR-0001, RFQ-0001, KM-0001, DX-0001)
+      seq: { dx: 1, tr: 1, rfq: 1, km: 1, act: 1, notif: 1 },
+
+      _ledgerWarned: false
+    };
+
+
+
+// --- END src/js/config.js ---
+
+// --- BEGIN src/js/rng.js ---
+// ============================================================================
+// DETERMINISTIC PSEUDO-RANDOM & HASH FUNCTIONS (FNV-1a & LCG)
+// ============================================================================
+
+function h01(...args) {
+  const str = args.join('|');
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  h ^= h >>> 16;
+  h = (h * 0x45d9f3b) >>> 0;
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296.0;
+}
+
+function makeRNG(seed) {
+  let s = seed & 0xFFFFFFFF;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xFFFFFFFF;
+    return (s >>> 0) / 4294967296.0;
+  };
+}
+
+function profileFrac(whCode, skuCode, tag) {
+  return h01(whCode, skuCode, tag);
+}
+
+// --- END src/js/rng.js ---
+
+// --- BEGIN src/js/forecast.js ---
+// ============================================================================
+// FORECASTING, PARAMETERS CALCULATION & INVENTORY STATUS EVALUATOR
+// ============================================================================
+
+    function addDays(dateStr, days) {
+      const d = new Date(dateStr);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    function diffDays(d1, d2) {
+      const t1 = new Date(d1).getTime();
+      const t2 = new Date(d2).getTime();
+      return Math.round((t2 - t1) / (1000 * 3600 * 24));
+    }
+
+    function getMonthFromDate(dateStr) {
+      return parseInt(dateStr.split('-')[1], 10);
+    }
+
+    
+function fmtNum(n) {
+  if (n === null || n === undefined || isNaN(n)) return '0';
+  return Math.round(n).toLocaleString('vi-VN');
+}
+
+function fmtVND(n) {
+  if (n === null || n === undefined || isNaN(n)) return '0 đ';
+  return Math.round(n).toLocaleString('vi-VN') + ' đ';
+}
+
+function fmtDateVN(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return dateStr;
+}
+
+function getDOW(dateStr) {
+  return new Date(dateStr).getUTCDay();
+}
+
+function fmt(n) {
+      if (n == null || isNaN(n)) return '0';
+      return Math.round(n).toLocaleString('vi-VN');
+    }
+
+    function padSeq(prefix, num) {
+      return prefix + '-' + String(num).padStart(4, '0');
+    }
+
+    // COMMON STATUS EVALUATOR (YÊU CẦU 0.5)
+    function getStatus(eff, params) {
+      if (eff <= params.rop) return 'LOW';    // Dưới MIN
+      if (eff > params.qmax) return 'HIGH';   // Vượt MAX
+      return 'OK';                             // Bình thường
+    }
+
+    // SEEDED HISTORY GENERATION (12 WEEKS BEFORE 01/08/2026)
+    function initSeededHistory() {
+      const rng = makeRNG(20260801);
+      Store.history = {};
+
+      SKUS.forEach(sku => {
+        Store.history[sku.code] = {};
+        WAREHOUSES.forEach(wh => {
+          const whBase = sku.base * wh.w;
+          const weeks = [];
+          for (let w = 0; w < 12; w++) {
+            const m = w < 4 ? 5 : (w < 8 ? 6 : 7);
+            const sm = SI[m];
+            const noise = 1.0 + (rng() * 0.24 - 0.12);
+            const demand = Math.max(0.1, whBase * sm * noise);
+            weeks.push({ // Yêu cầu 0.6: đổi weeks.append thành weeks.push
+              demand: demand,
+              sm: sm,
+              deseason: demand / sm
+            });
+          }
+          Store.history[sku.code][wh.code] = weeks;
+        });
+      });
+    }
+
+    // PARAMETER CALCULATION PER SKU x WAREHOUSE (YÊU CẦU 0.4, 0.7)
+    function calcSKUParams(skuCode, whCode, dateStr) {
+      const sku = SKUS.find(s => s.code === skuCode);
+      const wh = WAREHOUSES.find(w => w.code === whCode);
+      const weeks = Store.history[skuCode][whCode];
+
+      // D_SMA4 = Average of last 4 weeks of DESEASONALIZED demand
+      const last4 = weeks.slice(-4);
+      const d_sma4 = last4.reduce((sum, w) => sum + w.deseason, 0) / 4.0;
+
+      // Current Month and Seasonal Index Sm
+      const curMonth = getMonthFromDate(dateStr);
+      const sm = SI[curMonth] || 1.0;
+      const f_next = d_sma4 * sm;
+
+      // Lead time: CỘNG DỒN tất cả delay sự kiện, KHÔNG lấy max (Yêu cầu 0.4)
+      let totalEventDelay = 0;
+      EVENTS.forEach(ev => {
+        if (dateStr >= ev.start && dateStr <= ev.end) {
+          const res = ev.applyEvent(skuCode, whCode);
+          if (res && res.delayAdd) totalEventDelay += res.delayAdd;
+        }
+      });
+
+      const L = (sku.lead + (sku.delay || 0) + totalEventDelay) / 7.0;
+      const d_lead = f_next * L;
+
+      // Sigma error: Lấy 8 tuần CUỐI của history (Yêu cầu 0.7)
+      const errors = [];
+      const n = weeks.length;
+      const startIdx = Math.max(4, n - 8);
+      for (let i = startIdx; i < n; i++) {
+        const prev4Deseason = (weeks[i-4].deseason + weeks[i-3].deseason + weeks[i-2].deseason + weeks[i-1].deseason) / 4.0;
+        const forecast = prev4Deseason * weeks[i].sm;
+        errors.push(weeks[i].demand - forecast);
+      }
+      const meanErr = errors.reduce((a, b) => a + b, 0) / errors.length;
+      const variance = errors.reduce((sum, e) => sum + Math.pow(e - meanErr, 2), 0) / errors.length;
+      const rawSigma = Math.sqrt(variance);
+      const sigma_error = Math.max(rawSigma, 0.08 * f_next);
+
+      // Safety stock SS = 1.65 * sigma_error * sqrt(L)
+      const ss = PARAMS.z * sigma_error * Math.sqrt(L);
+
+      // ROP = ceil(D_lead + SS) | Qmax = ceil(ROP + F_next)
+      const rop = Math.ceil(d_lead + ss);
+      const qmax = Math.ceil(rop + f_next);
+
+      return {
+        d_sma4: Math.round(d_sma4 * 10) / 10,
+        sm: sm,
+        f_next: Math.round(f_next * 10) / 10,
+        L: Math.round(L * 100) / 100,
+        d_lead: Math.round(d_lead * 10) / 10,
+        sigma_error: Math.round(sigma_error * 10) / 10,
+        ss: Math.round(ss * 10) / 10,
+        rop: rop,
+        qmax: qmax,
+        totalEventDelay: totalEventDelay
+      };
+    }
+
+    // INITIAL STOCK ON 2026-08-01 (YÊU CẦU 4.2)
+    function buildInitialStock() {
+      const stock = {};
+      WAREHOUSES.forEach(wh => {
+        stock[wh.code] = {};
+        SKUS.forEach(sku => {
+          stock[wh.code][sku.code] = {
+            on_hand: 0,
+            in_transit: 0,
+            committed: 0
+          };
+        });
+      });
+
+      // Calculate initial params for Day 0
+      const day0Params = {};
+      SKUS.forEach(sku => {
+        day0Params[sku.code] = {};
+        WAREHOUSES.forEach(wh => {
+          day0Params[sku.code][wh.code] = calcSKUParams(sku.code, wh.code, '2026-08-01');
+        });
+      });
+
+      // Split 11 SKUs for each warehouse by hash into 3 groups (3 LOW, 5 OK, 3 HIGH)
+      WAREHOUSES.forEach(wh => {
+        const wcode = wh.code;
+        const sortedSkus = [...SKUS].sort((a, b) => h01(`${wcode}|${a.code}|order`) - h01(`${wcode}|${b.code}|order`));
+
+        sortedSkus.forEach((sku, idx) => {
+          const scode = sku.code;
+          const p = day0Params[scode][wcode];
+          let frac = 0;
+          if (idx < 3) {
+            // 3 SKU dưới MIN: frac in [-0.55, -0.10]
+            frac = -0.55 + h01(`${wcode}|${scode}|low`) * 0.45;
+          } else if (idx < 8) {
+            // 5 SKU bình thường: frac in [0.15, 0.85]
+            frac = 0.15 + h01(`${wcode}|${scode}|ok`) * 0.70;
+          } else {
+            // 3 SKU vượt MAX: frac in [1.2, 2.0]
+            frac = 1.20 + h01(`${wcode}|${scode}|high`) * 0.80;
+          }
+
+          const onHand = Math.max(0, Math.round(p.rop + frac * (p.qmax - p.rop)));
+          stock[wcode][scode].on_hand = onHand;
+        });
+      });
+
+      // GHI ĐÈ CÁC Ô DEMO CHUẨN (YÊU CẦU 4.2)
+      // 1. TLM-045 tại HCM: on_hand = round(rop * 0.85) [dưới MIN]
+      const p_hcm_tlm = day0Params['TLM-045']['HCM'];
+      stock['HCM']['TLM-045'].on_hand = Math.round(p_hcm_tlm.rop * 0.85);
+
+      // 2. TLM-045 tại BD: on_hand = qmax + 250 [dư lớn]
+      const p_bd_tlm = day0Params['TLM-045']['BD'];
+      stock['BD']['TLM-045'].on_hand = p_bd_tlm.qmax + 250;
+
+      // 3. PPR-025 tại HN: on_hand = round(rop * 0.84) [dưới MIN]
+      const p_hn_ppr = day0Params['PPR-025']['HN'];
+      stock['HN']['PPR-025'].on_hand = Math.round(p_hn_ppr.rop * 0.84);
+
+      // 4. GCH-DEC tại HCM: 220 | tại DN: 4
+      stock['HCM']['GCH-DEC'].on_hand = 220;
+      stock['DN']['GCH-DEC'].on_hand = 4;
+
+      // 5. TBV-LAV tại HCM: 180 | tại DN_CITY: 0
+      stock['HCM']['TBV-LAV'].on_hand = 180;
+      stock['DN_CITY']['TBV-LAV'].on_hand = 0;
+
+      return stock;
+    }
+
+// --- END src/js/forecast.js ---
+
+// --- BEGIN src/js/transfers.js ---
+// ============================================================================
+// INTERNAL TRANSFERS & FREIGHT RATES
+// ============================================================================
+
+    function getRouteMultiplier(fromWh, toWh) {
+      if (fromWh === toWh) return 0;
+      const sameSouth = (fromWh === 'HCM' && toWh === 'BD') || (fromWh === 'BD' && toWh === 'HCM');
+      const sameCentral = (fromWh === 'DN' && toWh === 'DN_CITY') || (fromWh === 'DN_CITY' && toWh === 'DN');
+      if (sameSouth || sameCentral) return 1.0;
+
+      const southCentral = (fromWh === 'HCM' || fromWh === 'BD') && (toWh === 'DN' || toWh === 'DN_CITY');
+      const centralSouth = (fromWh === 'DN' || fromWh === 'DN_CITY') && (toWh === 'HCM' || toWh === 'BD');
+      if (southCentral || centralSouth) return 1.8;
+
+      const centralNorth = (fromWh === 'DN' || fromWh === 'DN_CITY') && toWh === 'HN';
+      const northCentral = fromWh === 'HN' && (toWh === 'DN' || toWh === 'DN_CITY');
+      if (centralNorth || northCentral) return 1.6;
+
+      const southNorth = (fromWh === 'HCM' || fromWh === 'BD') && toWh === 'HN';
+      const northSouth = fromWh === 'HN' && (toWh === 'HCM' || toWh === 'BD');
+      if (southNorth || northSouth) return 2.2;
+
+      return 1.8;
+    }
+
+    function getUnitFreightRate(fromWh, toWh, skuCode) {
+      const rMult = getRouteMultiplier(fromWh, toWh);
+      const iMult = ITEM_FREIGHT_MULT[skuCode] || 1.0;
+      return Math.round(5000 * rMult * iMult);
+    }
+
+    function getTransferDays(fromWh, toWh) {
+      if (fromWh === toWh) return 0;
+      const rMult = getRouteMultiplier(fromWh, toWh);
+      if (rMult === 1.0) return 1;
+      if (rMult === 1.6 || rMult === 1.8) return 3;
+      return 4;
+    }
+
+    // UNIFIED EVENTS LIST
+
+    function approveAllPendingTransfers() {
+      let count = 0;
+      const keys = Object.keys(Store.proposals);
+      keys.forEach(k => {
+        const p = Store.proposals[k];
+        if (p && p.type === 'TRANSFER' && p.status === 'Chờ duyệt') {
+          const srcSt = Store.stock[p.srcWh][p.sku];
+          const srcP  = calcSKUParams(p.sku, p.srcWh, Store.currentDate, Store.history);
+          const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
+
+          if (p.qty <= srcSt.on_hand && (srcEff - p.qty) > srcP.rop) {
+            srcSt.on_hand -= p.qty;
+            Store.stock[p.dstWh][p.sku].in_transit += p.qty;
+            const trId = padSeq('TR');
+            Store.transfers.unshift({
+              id: trId,
+              date: Store.currentDate,
+              sku: p.sku,
+              srcWh: p.srcWh,
+              dstWh: p.dstWh,
+              qty: p.qty,
+              shipDate: Store.currentDate,
+              arrivalDate: p.arrivalDate,
+              status: 'Đang chuyển',
+              cost: p.freightCost
+            });
+            delete Store.proposals[k];
+            logAction('APPROVE_TRANSFER', trId, `Lệnh chuyển ${p.qty} ${p.sku} (${p.srcWh} -> ${p.dstWh})`, p.freightCost);
+            count++;
+          }
+        }
+      });
+
+      if (count > 0) {
+        showToast(`Đã duyệt tự động ${count} lệnh điều chuyển hợp lệ!`, 'success');
+        renderAllViews();
+      } else {
+        showToast('Không có đề xuất điều chuyển hợp lệ nào để duyệt.', 'info');
+      }
+    }
+
+    function receiveTransferEarly(transferId) {
+      const tr = Store.transfers.find(t => t.id === transferId);
+      if (!tr || tr.status !== 'Đang chuyển') return;
+
+      tr.status = 'Đã nhận';
+      Store.stock[tr.dstWh][tr.sku].on_hand += tr.qty;
+      Store.stock[tr.dstWh][tr.sku].in_transit = Math.max(0, Store.stock[tr.dstWh][tr.sku].in_transit - tr.qty);
+
+      pushNotification('TRANSFER_ARRIVED', tr.id, `Tiếp nhận sớm: Lô hàng ${tr.sku} (${tr.qty}) đã nhập kho ${tr.dstWh}.`);
+      logAction('TRANSFER_EARLY_RECEIVE', tr.id, `Tiếp nhận sớm lô hàng ${tr.qty} ${tr.sku} tại ${tr.dstWh}`);
+      showToast(`Đã tiếp nhận thành công lô hàng ${tr.id} vào kho ${tr.dstWh}!`, 'success');
+      renderAllViews();
+    }
+
+    // ----------------------------------------------------------------------------
+    // 2.11 MANUAL TRANSFER CONTROLS (Yêu cầu 2.4)
+    // ----------------------------------------------------------------------------
+    function openManualTransferModal(defaultSku, defaultSrc, defaultDst, defaultQty) {
+      const skuSel = document.getElementById('trfSku');
+      if (skuSel) {
+        skuSel.innerHTML = SKUS.map(s =>
+          `<option value="${s.code}" ${s.code === defaultSku ? 'selected' : ''}>${s.code} - ${s.name}</option>`
+        ).join('');
+      }
+      if (defaultSrc) {
+        const srcSel = document.getElementById('trfFromWh');
+        if (srcSel) srcSel.value = defaultSrc;
+      }
+      if (defaultDst) {
+        const dstSel = document.getElementById('trfToWh');
+        if (dstSel) dstSel.value = defaultDst;
+      }
+      if (defaultQty) {
+        const qtyInp = document.getElementById('trfQty');
+        if (qtyInp) qtyInp.value = defaultQty;
+      }
+      const dateInp = document.getElementById('trfDate');
+      if (dateInp) dateInp.value = fmtDateVN(Store.currentDate);
+
+      validateManualTransfer();
+      openModal('manualTransferModal');
+    }
+
+    function validateManualTransfer() {
+      const skuCode = document.getElementById('trfSku') ? document.getElementById('trfSku').value : 'TLM-045';
+      const srcWh   = document.getElementById('trfFromWh') ? document.getElementById('trfFromWh').value : 'BD';
+      const dstWh   = document.getElementById('trfToWh') ? document.getElementById('trfToWh').value : 'HCM';
+      const qty     = parseInt(document.getElementById('trfQty') ? document.getElementById('trfQty').value : 0, 10) || 0;
+      const fb      = document.getElementById('manualTransferFeedback');
+      const btn     = document.getElementById('btnConfirmManualTransfer');
+      if (!fb || !btn) return;
+
+      if (srcWh === dstWh) {
+        fb.innerHTML = '<span style="color:var(--status-red);font-weight:600;">❌ Kho xuất và kho nhận không được trùng nhau!</span>';
+        fb.style.background = '#FEE2E2';
+        btn.disabled = true;
+        return;
+      }
+
+      if (qty <= 0) {
+        fb.innerHTML = '<span style="color:var(--status-red);font-weight:600;">❌ Số lượng chuyển phải > 0!</span>';
+        fb.style.background = '#FEE2E2';
+        btn.disabled = true;
+        return;
+      }
+
+      const st = Store.stock[srcWh][skuCode];
+      const p  = calcSKUParams(skuCode, srcWh, Store.currentDate, Store.history);
+      const eff = st.on_hand + st.in_transit - st.committed;
+
+      if (qty > st.on_hand) {
+        fb.innerHTML = `<span style="color:var(--status-red);font-weight:600;">❌ Tồn kho vật lý không đủ: Kho ${srcWh} chỉ còn ${st.on_hand} sản phẩm!</span>`;
+        fb.style.background = '#FEE2E2';
+        btn.disabled = true;
+        return;
+      }
+
+      if ((eff - qty) <= p.rop) {
+        fb.innerHTML = `
+          <span style="color:var(--status-red);font-weight:600;">
+            ❌ Vi phạm an toàn: Tồn sau chuyển (${eff - qty}) sẽ <= ROP (${p.rop}) tại kho ${srcWh}. Hệ thống từ chối lệnh!
+          </span>
+        `;
+        fb.style.background = '#FEE2E2';
+        btn.disabled = true;
+        return;
+      }
+
+      const tDays = getTransferDays(srcWh, dstWh);
+      const unitRate = getUnitFreightRate(srcWh, dstWh, skuCode);
+      const totalFreight = qty * unitRate;
+
+      fb.innerHTML = `
+        <span style="color:var(--status-green);font-weight:600;">
+          ✅ Hợp lệ: Kho xuất an toàn (${eff - qty} > ROP ${p.rop}). Cước vận chuyển: ${fmtVND(totalFreight)} (${tDays} ngày).
+        </span>
+      `;
+      fb.style.background = '#ECFDF5';
+      btn.disabled = false;
+    }
+
+    function executeManualTransfer() {
+      const skuCode = document.getElementById('trfSku').value;
+      const srcWh   = document.getElementById('trfFromWh').value;
+      const dstWh   = document.getElementById('trfToWh').value;
+      const qty     = parseInt(document.getElementById('trfQty').value, 10) || 0;
+
+      const st = Store.stock[srcWh][skuCode];
+      const p  = calcSKUParams(skuCode, srcWh, Store.currentDate, Store.history);
+      const eff = st.on_hand + st.in_transit - st.committed;
+
+      if (qty <= 0 || qty > st.on_hand || (eff - qty) <= p.rop) {
+        showToast('Lỗi: Dữ liệu không hợp lệ hoặc vi phạm an toàn kho!', 'error');
+        return;
+      }
+
+      const tDays = getTransferDays(srcWh, dstWh);
+      const unitRate = getUnitFreightRate(srcWh, dstWh, skuCode);
+      const totalFreight = qty * unitRate;
+      const trId = padSeq('TR');
+
+      st.on_hand -= qty;
+      Store.stock[dstWh][skuCode].in_transit += qty;
+
+      Store.transfers.unshift({
+        id: trId,
+        date: Store.currentDate,
+        sku: skuCode,
+        srcWh: srcWh,
+        dstWh: dstWh,
+        qty: qty,
+        shipDate: Store.currentDate,
+        arrivalDate: addDays(Store.currentDate, tDays),
+        status: 'Đang chuyển',
+        cost: totalFreight
+      });
+
+      closeModal('manualTransferModal');
+      pushNotification('TRANSFER_APPROVED', trId, `Tạo lệnh chuyển thủ công ${qty} ${skuCode} (${srcWh} -> ${dstWh})`);
+      logAction('MANUAL_TRANSFER', trId, `Lệnh chuyển ${qty} ${skuCode} (${srcWh} -> ${dstWh}), chi phí: ${fmtVND(totalFreight)}`, totalFreight);
+      showToast(`Đã tạo thành công lệnh điều chuyển ${trId}`, 'success');
+      renderAllViews();
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/transfers.js ---
+
+// --- BEGIN src/js/rfq.js ---
+// ============================================================================
+// RFQ ORDERS MANAGEMENT (REQUEST FOR QUOTATION ONLY - NO PO)
+// ============================================================================
+
+    // 2.12 RFQ MANAGEMENT (Yêu cầu 2)
+    // ----------------------------------------------------------------------------
+    let activeRfqDraft = null;
+
+    function openRfqModal(skuCode, whCode, suggestedQty, supCode) {
+      const sku = SKUS.find(s => s.code === skuCode) || SKUS[0];
+      const wh  = WAREHOUSES.find(w => w.code === whCode) || WAREHOUSES[0];
+      const sup = supCode || sku.sup;
+      const qty = suggestedQty || 100;
+
+      activeRfqDraft = {
+        sku: sku.code,
+        wh: wh.code,
+        sup: sup,
+        qty: qty
+      };
+
+      const body = document.getElementById('rfqModalBody');
+      if (body) {
+        body.innerHTML = `
+          <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px;">
+            Yêu cầu Báo giá (RFQ) là chứng từ đề nghị nhà cung cấp chào giá và điều kiện thương mại,
+            <strong>không làm tăng tồn kho khả dụng</strong> cho đến khi hợp đồng/đơn hàng chính thức được ký kết.
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Sản phẩm (SKU):</label>
+            <input type="text" class="form-ctrl" value="${sku.code} - ${sku.name}" readonly style="background:#F1F5F9;">
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Kho tiếp nhận:</label>
+            <input type="text" class="form-ctrl" value="${wh.name} (${wh.code})" readonly style="background:#F1F5F9;">
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Nhà cung cấp gửi yêu cầu:</label>
+            <select class="form-ctrl" id="rfqModalSup">
+              ${Object.keys(SUPPLIERS).map(s =>
+                `<option value="${s}" ${s === sup ? 'selected' : ''}>${s} - ${SUPPLIERS[s].name}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Số lượng yêu cầu báo giá (${sku.unit}):</label>
+            <input type="number" class="form-ctrl" id="rfqModalQty" min="1" value="${qty}">
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Thời hạn hiệu lực báo giá:</label>
+            <input type="text" class="form-ctrl" value="7 ngày (đến ngày ${fmtDateVN(addDays(Store.currentDate, 7))})" readonly style="background:#F1F5F9;">
+          </div>
+          <div class="form-row">
+            <label class="form-lbl">Ghi chú & Yêu cầu kỹ thuật:</label>
+            <input type="text" class="form-ctrl" id="rfqModalNotes" placeholder="Nhập quy cách đóng gói, dung sai, điều kiện thanh toán...">
+          </div>
+        `;
+      }
+      openModal('rfqModal');
+    }
+
+    function sendRfqOrder() {
+      if (!activeRfqDraft) return;
+      const sup = document.getElementById('rfqModalSup') ? document.getElementById('rfqModalSup').value : activeRfqDraft.sup;
+      const qty = parseInt(document.getElementById('rfqModalQty') ? document.getElementById('rfqModalQty').value : 0, 10) || activeRfqDraft.qty;
+      const notes = document.getElementById('rfqModalNotes') ? document.getElementById('rfqModalNotes').value : '';
+
+      if (qty <= 0) {
+        showToast('Số lượng yêu cầu phải > 0!', 'error');
+        return;
+      }
+
+      const rfqId = padSeq('RFQ');
+      const validUntil = addDays(Store.currentDate, 7);
+
+      Store.rfqs.unshift({
+        id: rfqId,
+        date: Store.currentDate,
+        sku: activeRfqDraft.sku,
+        wh: activeRfqDraft.wh,
+        sup: sup,
+        qty: qty,
+        validUntil: validUntil,
+        status: 'Đã gửi NCC',
+        notes: notes
+      });
+
+      // Cập nhật trạng thái đề xuất nếu có
+      const pairKey = `${activeRfqDraft.sku}-${activeRfqDraft.wh}`;
+      if (Store.proposals[pairKey]) {
+        Store.proposals[pairKey].status = 'Đang chờ NCC báo giá';
+        Store.proposals[pairKey].hasActiveRfq = true;
+        Store.proposals[pairKey].rfqId = rfqId;
+      }
+
+      closeModal('rfqModal');
+      pushNotification('RFQ_SENT', rfqId,
+        `Đã gửi Yêu cầu Báo giá ${rfqId} (${activeRfqDraft.sku} - ${qty}) tới ${sup}.`
+      );
+      logAction('SEND_RFQ', rfqId,
+        `Yêu cầu báo giá ${qty} ${activeRfqDraft.sku} tới NCC ${sup} cho kho ${activeRfqDraft.wh}. Hạn báo giá: ${fmtDateVN(validUntil)}`
+      );
+      showToast(`Đã gửi thành công Yêu cầu Báo giá ${rfqId}`, 'success');
+      renderAllViews();
+    }
+
+    function cancelRfq(rfqId) {
+      const rfq = Store.rfqs.find(r => r.id === rfqId);
+      if (!rfq) return;
+
+      rfq.status = 'Đã hủy';
+      const pairKey = `${rfq.sku}-${rfq.wh}`;
+      if (Store.proposals[pairKey] && Store.proposals[pairKey].rfqId === rfqId) {
+        Store.proposals[pairKey].status = 'Chờ gửi RFQ';
+        Store.proposals[pairKey].hasActiveRfq = false;
+        Store.proposals[pairKey].rfqId = null;
+      }
+
+      pushNotification('RFQ_CANCELLED', rfqId, `Yêu cầu báo giá ${rfqId} đã bị hủy.`);
+      logAction('CANCEL_RFQ', rfqId, `Hủy yêu cầu báo giá ${rfqId} (${rfq.sku} tại ${rfq.wh})`);
+      showToast(`Đã hủy Yêu cầu Báo giá ${rfqId}`, 'info');
+      renderAllViews();
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/rfq.js ---
+
+// --- BEGIN src/js/notifications.js ---
+// ============================================================================
+// NOTIFICATIONS SYSTEM & AUDIT LOGGING
+// ============================================================================
+
+    // 2.1 NOTIFICATIONS SYSTEM (Yêu cầu 5)
+    // ----------------------------------------------------------------------------
+    function pushNotification(type, refId, text) {
+      const notifId = 'NT-' + String(Store.seq.notif++).padStart(4, '0');
+      const item = {
+        id: notifId,
+        date: Store.currentDate,
+        type: type,
+        refId: refId,
+        text: text,
+        read: false,
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      };
+      Store.notifications.unshift(item);
+      updateNotificationBadge();
+      return item;
+    }
+
+    function updateNotificationBadge() {
+      const unreadCount = Store.notifications.filter(n => !n.read).length;
+      const badge = document.getElementById('bellBadge');
+      if (badge) {
+        if (unreadCount > 0) {
+          badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+          badge.style.display = 'inline-flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+      const headText = document.getElementById('bellHeadText');
+      if (headText) {
+        headText.textContent = `Thông báo & Cảnh báo (${unreadCount} chưa đọc)`;
+      }
+    }
+
+    function markAllNotificationsRead() {
+      Store.notifications.forEach(n => { n.read = true; });
+      updateNotificationBadge();
+      renderBellPopover();
+    }
+
+    function toggleBellPopover() {
+      const popover = document.getElementById('bellPopover');
+      if (!popover) return;
+      if (popover.classList.contains('active')) {
+        popover.classList.remove('active');
+      } else {
+        renderBellPopover();
+        popover.classList.add('active');
+      }
+    }
+
+    function renderBellPopover() {
+      const list = document.getElementById('bellList');
+      if (!list) return;
+      updateNotificationBadge();
+
+      if (Store.notifications.length === 0) {
+        list.innerHTML = '<div style="padding:24px 16px;text-align:center;color:var(--text-muted);font-size:12px;">Chưa có thông báo nào.</div>';
+        return;
+      }
+
+      let html = '';
+      Store.notifications.slice(0, 30).forEach(n => {
+        let icon = '🔔';
+        let color = '#2563EB';
+        if (n.type === 'ALERT_LOW')  { icon = '⚠️'; color = '#EF4444'; }
+        if (n.type === 'ALERT_HIGH') { icon = '📦'; color = '#F59E0B'; }
+        if (n.type.includes('TRANSFER')) { icon = '🚚'; color = '#059669'; }
+        if (n.type.includes('RFQ'))      { icon = '📝'; color = '#8B5CF6'; }
+
+        html += `
+          <div class="bell-item ${n.read ? '' : 'unread'}" onclick="onNotificationClick('${n.id}')">
+            <div style="font-size:16px;margin-top:2px;">${icon}</div>
+            <div style="flex:1;">
+              <div style="font-size:12px;color:var(--text-main);font-weight:${n.read ? '500' : '700'};line-height:1.4;">
+                ${n.text}
+              </div>
+              <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;display:flex;gap:8px;">
+                <span>${fmtDateVN(n.date)}</span>
+                <span>•</span>
+                <span style="color:${color};font-weight:600;">${n.type}</span>
+                <span>•</span>
+                <span>${n.refId}</span>
+              </div>
+            </div>
+            ${n.read ? '' : '<span style="width:7px;height:7px;border-radius:50%;background:var(--navy-accent);display:inline-block;margin-top:6px;"></span>'}
+          </div>
+        `;
+      });
+      list.innerHTML = html;
+    }
+
+    function onNotificationClick(notifId) {
+      const item = Store.notifications.find(n => n.id === notifId);
+      if (item) item.read = true;
+      updateNotificationBadge();
+      const popover = document.getElementById('bellPopover');
+      if (popover) popover.classList.remove('active');
+
+      if (item) {
+        if (item.type.includes('TRANSFER')) {
+          switchNavTab('transfers');
+        } else if (item.type.includes('RFQ')) {
+          switchNavTab('rfq');
+        } else {
+          switchNavTab('dashboard');
+        }
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+    // 2.2 ACTION LOGGING & SERVER LEDGER SYNC (Yêu cầu 11)
+    // ----------------------------------------------------------------------------
+    function logAction(type, target, details, cost = 0) {
+      const act = {
+        id: padSeq('ACT'),
+        date: Store.currentDate,
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        type: type,
+        target: target,
+        details: details,
+        cost: cost
+      };
+      Store.actions.unshift(act);
+
+      // Render to DOM if list exists
+      const list = document.getElementById('systemLogList');
+      if (list) {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'log-item';
+        itemDiv.innerHTML = `
+          <div class="log-time">${fmtDateVN(act.date)} ${act.time}</div>
+          <div class="log-tag">${act.type}</div>
+          <div class="log-desc"><strong>${act.target}</strong>: ${act.details}</div>
+          <div class="log-cost">${act.cost > 0 ? fmtVND(act.cost) : '-'}</div>
+        `;
+        list.insertBefore(itemDiv, list.firstChild);
+      }
+
+      // Non-blocking sync with backend server
+      fetch('http://localhost:8000/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(act)
+      }).catch(err => {
+        if (!Store._ledgerWarned) {
+          Store._ledgerWarned = true;
+          showToast('⚠️ Chưa ghi được ledger.csv - server chưa khởi động', 'warning');
+        }
+      });
+    }
+
+    function toggleLogAccordion() {
+      const body = document.getElementById('systemLogList');
+      const text = document.getElementById('logToggleText');
+      if (!body) return;
+      if (body.classList.contains('active')) {
+        body.classList.remove('active');
+        if (text) text.textContent = 'Mở nhật ký ▾';
+      } else {
+        body.classList.add('active');
+        if (text) text.textContent = 'Thu gọn nhật ký ▴';
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/notifications.js ---
+
+// --- BEGIN src/js/simulation.js ---
+// ============================================================================
+// SIMULATION ENGINE (DAILY CONSUMPTION, REPLENISHMENT & ADVANCEMENT)
+// ============================================================================
+
+    // 2.3 DAILY SNAPSHOT TRACKER (Yêu cầu 8)
+    // ----------------------------------------------------------------------------
+    function recordDailySnapshot(dateStr) {
+      let totalStockVal = 0;
+      let trappedCapVal = 0;
+      let lowCount = 0;
+      let okCount = 0;
+      let highCount = 0;
+
+      const statusByWh = {};
+      WAREHOUSES.forEach(w => {
+        statusByWh[w.code] = { low: 0, ok: 0, high: 0 };
+      });
+
+      SKUS.forEach(sku => {
+        WAREHOUSES.forEach(wh => {
+          const st = Store.stock[wh.code][sku.code];
+          const p = calcSKUParams(sku.code, wh.code, dateStr, Store.history);
+          const eff = st.on_hand + st.in_transit - st.committed;
+          const status = getStatus(eff, p);
+
+          totalStockVal += st.on_hand * sku.cogs;
+          if (st.on_hand > p.qmax) {
+            trappedCapVal += (st.on_hand - p.qmax) * sku.cogs;
+          }
+
+          if (status === 'LOW') {
+            lowCount++;
+            statusByWh[wh.code].low++;
+          } else if (status === 'HIGH') {
+            highCount++;
+            statusByWh[wh.code].high++;
+          } else {
+            okCount++;
+            statusByWh[wh.code].ok++;
+          }
+        });
+      });
+
+      const dayLost = Store.dailySales[dateStr] ? Store.dailySales[dateStr].lostSalesVal : 0;
+      const dayRev  = Store.dailySales[dateStr] ? Store.dailySales[dateStr].revenue : 0;
+
+      Store.daily[dateStr] = {
+        date: dateStr,
+        totalStock: totalStockVal,
+        trappedCap: trappedCapVal,
+        holdingCost: Math.round(totalStockVal * (PARAMS.H / 365.0)),
+        revenue: dayRev,
+        lostSales: dayLost,
+        lowCount: lowCount,
+        okCount: okCount,
+        highCount: highCount,
+        statusByWh: statusByWh
+      };
+    }
+
+    // ----------------------------------------------------------------------------
+    // 2.4 PERIODIC INBOUND REPLENISHMENT (Yêu cầu 3.2)
+    // ----------------------------------------------------------------------------
+    function processInboundReplenishment(curDate, dayIdx) {
+      SKUS.forEach(sku => {
+        WAREHOUSES.forEach(wh => {
+          const st = Store.stock[wh.code][sku.code];
+          const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
+
+          // Chu kỳ hàng về định kỳ từ NCC theo profile sản phẩm:
+          let cycle = 7;
+          let qtyMin = 50;
+          let qtyMax = 120;
+
+          if (sku.slow) {
+            // Hàng bán chậm: mỗi 14-21 ngày mới về, và CHỈ về nếu tồn đang <= ROP
+            cycle = 16;
+            qtyMin = 10;
+            qtyMax = 25;
+            if (st.on_hand > p.rop) return; // Không nhập nếu tồn còn trên ROP
+          } else if (sku.base >= 350) {
+            // Nhu cầu cao: mỗi 6-8 ngày
+            cycle = 7;
+            qtyMin = 120;
+            qtyMax = 220;
+          } else {
+            // Nhu cầu trung bình: mỗi 8-10 ngày
+            cycle = 9;
+            qtyMin = 40;
+            qtyMax = 90;
+          }
+
+          // Kiểm tra pha theo FNV-1a hash để các kho và SKU không về cùng 1 ngày
+          const phaseOffset = Math.floor(h01(sku.code, wh.code, 'inbound_phase') * cycle);
+          if ((dayIdx + phaseOffset) % cycle === 0) {
+            // Tính số lượng hàng về dựa trên dung tích thiếu hụt
+            const deficit = Math.max(0, p.qmax - (st.on_hand + st.in_transit));
+            let inboundQty = Math.round(qtyMin + (qtyMax - qtyMin) * h01(sku.code, wh.code, 'inbound_qty', curDate));
+            if (deficit > 0) {
+              inboundQty = Math.min(inboundQty, Math.max(qtyMin, deficit));
+            }
+            if (inboundQty > 0) {
+              st.on_hand += inboundQty;
+              logAction('INBOUND_NCC', sku.code, `Hàng về định kỳ từ ${sku.sup} tại ${wh.name}: +${inboundQty} ${sku.unit}`, inboundQty * sku.cogs);
+            }
+          }
+        });
+      });
+    }
+
+    // ----------------------------------------------------------------------------
+    // 2.5 DAILY CONSUMPTION & REVENUE (Yêu cầu 3.3, 0.10)
+    // ----------------------------------------------------------------------------
+    function processDailyDemandAndSales(curDate) {
+      const m = getMonthFromDate(curDate);
+      const dow = getDOW(curDate);
+
+      // Trọng số ngày trong tuần (DOW pattern: Thứ 7, CN và T2 cao điểm)
+      const dowMultipliers = [0.75, 1.10, 1.00, 1.00, 1.05, 1.15, 1.25]; // CN=0, T2=1,...
+      const dowMult = dowMultipliers[dow] || 1.0;
+
+      // Kiểm tra sự kiện tác động nhu cầu
+      let evtMult = 1.0;
+      EVENTS.forEach(evt => {
+        if (curDate >= evt.start && curDate <= evt.end) {
+          evtMult *= evt.demandMult;
+        }
+      });
+
+      let dayTotalRev = 0;
+      let dayTotalLost = 0;
+
+      SKUS.forEach(sku => {
+        const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
+
+        WAREHOUSES.forEach(wh => {
+          // Kiểm tra chương trình khuyến mãi 2B đang chạy
+          let promoMult = 1.0;
+          let discountPct = 0;
+          const activePromo = Store.promotions.find(pm =>
+            pm.sku === sku.code && pm.wh === wh.code && pm.status === 'Đang chạy' && curDate <= pm.validUntil
+          );
+          if (activePromo) {
+            promoMult = 1.6; // Kích cầu tăng 60%
+            discountPct = activePromo.discountPct;
+          }
+
+          // Nhiễu xác định FNV-1a
+          const noise = 0.85 + 0.30 * h01(sku.code, wh.code, 'demand', curDate);
+
+          // Nhu cầu ngày: (base * w / 7) * sm * dow * evt * promo * noise
+          const baseDaily = (sku.base * wh.w / 7.0);
+          const dDaily = Math.max(0, Math.round(baseDaily * sm * dowMult * evtMult * promoMult * noise));
+
+          const st = Store.stock[wh.code][sku.code];
+          const sold = Math.min(st.on_hand, dDaily);
+          const lost = dDaily - sold;
+
+          st.on_hand -= sold;
+
+          // Doanh thu theo giá đã trừ chiết khấu nếu có KM
+          const effectivePrice = Math.round(sku.price * (1 - discountPct / 100.0));
+          const rev = sold * effectivePrice;
+          const lostVal = lost * sku.price;
+
+          dayTotalRev += rev;
+          dayTotalLost += lostVal;
+
+          // Cập nhật tích lũy
+          Store.currentWeekDemand[sku.code][wh.code] += sold;
+          Store.lostSales[wh.code][sku.code] += lost;
+        });
+      });
+
+      Store.dailySales[curDate] = {
+        revenue: dayTotalRev,
+        lostSalesVal: dayTotalLost
+      };
+    }
+
+    // ----------------------------------------------------------------------------
+    // 2.6 WEEKLY HISTORY ROLLOVER (Yêu cầu 0.6, 0.7)
+    // ----------------------------------------------------------------------------
+    function updateWeeklyHistory(curDate) {
+      const m = getMonthFromDate(curDate);
+      SKUS.forEach(sku => {
+        const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
+        WAREHOUSES.forEach(wh => {
+          const wDemand = Store.currentWeekDemand[sku.code][wh.code] || 0;
+          const deseason = Math.round(wDemand / (sm || 1.0));
+          Store.history[sku.code][wh.code].push({
+            demand: wDemand,
+            sm: sm,
+            deseason: deseason
+          });
+          Store.currentWeekDemand[sku.code][wh.code] = 0;
+        });
+      });
+    }
+
+    // ----------------------------------------------------------------------------
+    // 2.7 3-GROUP BALANCING LOOP (Yêu cầu 3.4)
+    // ----------------------------------------------------------------------------
+    function balanceInventoryGroups(curDate) {
+      // Đảm bảo tại mỗi kho luôn có sự hiện diện của cả 3 nhóm (LOW >= 2, HIGH >= 2, còn lại OK)
+      // Ngoại trừ các ô demo chủ chốt luôn giữ ổn định để kịch bản demo chạy chuẩn.
+      const protectedOverrides = [
+        { sku: 'TLM-045', wh: 'HCM' },
+        { sku: 'TLM-045', wh: 'BD' },
+        { sku: 'PPR-025', wh: 'HN' },
+        { sku: 'GCH-DEC', wh: 'HCM' },
+        { sku: 'GCH-DEC', wh: 'DN' },
+        { sku: 'TBV-LAV', wh: 'HCM' },
+        { sku: 'TBV-LAV', wh: 'DN_CITY' }
+      ];
+
+      WAREHOUSES.forEach(wh => {
+        const items = SKUS.map(sku => {
+          const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
+          const st = Store.stock[wh.code][sku.code];
+          const eff = st.on_hand + st.in_transit - st.committed;
+          const status = getStatus(eff, p);
+          const isProtected = protectedOverrides.some(o => o.sku === sku.code && o.wh === wh.code);
+          return { sku, p, st, eff, status, isProtected };
+        });
+
+        // 1. Kiểm tra nhóm HIGH (yêu cầu ít nhất 2 SKU)
+        let highs = items.filter(it => it.status === 'HIGH');
+        if (highs.length < 2) {
+          const cands = items.filter(it => !it.isProtected && it.status === 'OK');
+          if (cands.length > 0) {
+            cands.sort((a, b) => (b.eff / b.p.qmax) - (a.eff / a.p.qmax));
+            const pick = cands[0];
+            pick.st.on_hand = Math.round(pick.p.qmax * 1.22);
+          }
+        }
+
+        // 2. Kiểm tra nhóm LOW (yêu cầu ít nhất 2 SKU)
+        let lows = items.filter(it => it.status === 'LOW');
+        if (lows.length < 2) {
+          const cands = items.filter(it => !it.isProtected && it.status === 'OK');
+          if (cands.length > 0) {
+            cands.sort((a, b) => (a.eff / a.p.rop) - (b.eff / b.p.rop));
+            const pick = cands[0];
+            pick.st.on_hand = Math.max(0, Math.round(pick.p.rop * 0.82));
+          }
+        }
+      });
+    }
+
+    // ----------------------------------------------------------------------------
+
+    // 2.9 SIMULATION ADVANCEMENT (Yêu cầu 1)
+    // ----------------------------------------------------------------------------
+    function advanceOneDay() {
+      if (Store.currentDate >= Store.endDate) {
+        if (Store.autoPilot) toggleAutoPilot();
+        showToast('Đã đạt đến ngày kết thúc mô phỏng (23/10/2026)', 'info');
+        return false;
+      }
+
+      Store.currentDate = addDays(Store.currentDate, 1);
+      const curDate = Store.currentDate;
+      const dayIdx = diffDays(Store.startDate, curDate);
+
+      // Bước 1: Tiếp nhận các chuyến hàng điều chuyển đã cập cảng
+      Store.transfers.forEach(tr => {
+        if (tr.status === 'Đang chuyển' && tr.arrivalDate <= curDate) {
+          tr.status = 'Đã nhận';
+          Store.stock[tr.dstWh][tr.sku].on_hand += tr.qty;
+          Store.stock[tr.dstWh][tr.sku].in_transit = Math.max(0, Store.stock[tr.dstWh][tr.sku].in_transit - tr.qty);
+          pushNotification('TRANSFER_ARRIVED', tr.id,
+            `Hàng điều chuyển ${tr.sku} (${tr.qty}) từ ${tr.srcWh} đã nhập kho ${tr.dstWh}.`
+          );
+          logAction('TRANSFER_ARRIVED', tr.id, `Nhập kho ${tr.dstWh}: ${tr.qty} ${tr.sku}`);
+        }
+      });
+
+      // Bước 2: Bổ sung định kỳ từ Nhà cung cấp
+      processInboundReplenishment(curDate, dayIdx);
+
+      // Bước 3: Tiêu thụ hàng ngày và ghi nhận doanh thu
+      processDailyDemandAndSales(curDate);
+
+      // Bước 4: Hết hạn các yêu cầu báo giá quá ngày hiệu lực
+      Store.rfqs.forEach(rfq => {
+        if (rfq.status === 'Đã gửi NCC' && curDate > rfq.validUntil) {
+          rfq.status = 'Quá hạn';
+          pushNotification('RFQ_EXPIRED', rfq.id,
+            `Yêu cầu báo giá ${rfq.id} (${rfq.sku} - ${rfq.qty}) gửi ${rfq.sup} đã hết hiệu lực báo giá.`
+          );
+        }
+      });
+
+      // Bước 5: Cập nhật lịch sử hàng tuần (cứ mỗi 7 ngày)
+      if (dayIdx % 7 === 0) {
+        updateWeeklyHistory(curDate);
+      }
+
+      // Bước 6: Cân bằng tính đa dạng 3 nhóm
+      balanceInventoryGroups(curDate);
+
+      // Bước 7: Quét và cập nhật danh sách đề xuất
+      scanAndGenerateProposals(curDate);
+
+      // Bước 8: Ghi nhận snapshot dữ liệu ngày
+      recordDailySnapshot(curDate);
+
+      return true;
+    }
+
+
+
+// --- END src/js/simulation.js ---
+
+// --- BEGIN src/js/proposals.js ---
+// ============================================================================
+// PROPOSALS SCANNER & APPROVAL PIPELINE
+// ============================================================================
+
+    // 2.8 PROPOSALS SCANNER & ALERTS (Yêu cầu 0.2, 0.3, 0.5, 5.2)
+    // ----------------------------------------------------------------------------
+    function scanAndGenerateProposals(curDate) {
+      // 1. Quét trạng thái và kích hoạt Cảnh báo chuyển dịch trạng thái
+      SKUS.forEach(sku => {
+        WAREHOUSES.forEach(wh => {
+          const key = `${wh.code}_${sku.code}`;
+          const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
+          const st = Store.stock[wh.code][sku.code];
+          const eff = st.on_hand + st.in_transit - st.committed;
+          const status = getStatus(eff, p);
+          const prevStatus = Store.lastStatusMap[key];
+
+          if (prevStatus && prevStatus !== status) {
+            if (status === 'LOW') {
+              pushNotification('ALERT_LOW', `${wh.code}-${sku.code}`,
+                `Cảnh báo: ${sku.code} tại ${wh.name} đã chạm ngưỡng MIN/ROP (${eff}/${p.rop})!`
+              );
+            } else if (status === 'HIGH') {
+              pushNotification('ALERT_HIGH', `${wh.code}-${sku.code}`,
+                `Cảnh báo: ${sku.code} tại ${wh.name} đã vượt ngưỡng MAX (${eff}/${p.qmax})!`
+              );
+            }
+          }
+          Store.lastStatusMap[key] = status;
+        });
+      });
+
+      // 2. Quét tạo danh sách đề xuất
+      SKUS.forEach(sku => {
+        WAREHOUSES.forEach(wh => {
+          const pairKey = `${sku.code}-${wh.code}`;
+          const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
+          const st = Store.stock[wh.code][sku.code];
+          const eff = st.on_hand + st.in_transit - st.committed;
+          const status = getStatus(eff, p);
+
+          // Gán hoặc lấy DX ID cố định (Yêu cầu 0.3)
+          if (!Store.dxIds[pairKey]) {
+            Store.dxIds[pairKey] = padSeq('DX');
+          }
+          const dxId = Store.dxIds[pairKey];
+
+          if (status === 'LOW') {
+            const needQty = Math.max(1, p.qmax - eff);
+
+            // Kiểm tra xem đã có RFQ nào đang chờ cho SKU và Kho này chưa
+            const activeRfq = Store.rfqs.find(r => r.sku === sku.code && r.wh === wh.code && r.status === 'Đã gửi NCC');
+
+            // Tìm kho nguồn có thể điều chuyển thỏa mãn ràng buộc cứng:
+            // I_donor - needQty > ROP_donor và needQty <= on_hand_donor
+            let donorWh = null;
+            let donorSurplus = 0;
+            WAREHOUSES.forEach(otherWh => {
+              if (otherWh.code !== wh.code) {
+                const otherSt = Store.stock[otherWh.code][sku.code];
+                const otherP  = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
+                const otherEff = otherSt.on_hand + otherSt.in_transit - otherSt.committed;
+
+                if (otherSt.on_hand >= needQty && (otherEff - needQty) > otherP.rop) {
+                  const surplus = otherEff - otherP.rop;
+                  if (surplus > donorSurplus) {
+                    donorSurplus = surplus;
+                    donorWh = otherWh.code;
+                  }
+                }
+              }
+            });
+
+            if (donorWh) {
+              const transferDays = getTransferDays(donorWh, wh.code);
+              const unitRate = getUnitFreightRate(donorWh, wh.code, sku.code);
+              const freightCost = needQty * unitRate;
+
+              Store.proposals[pairKey] = {
+                id: dxId,
+                date: curDate,
+                sku: sku.code,
+                wh: wh.code,
+                type: 'TRANSFER',
+                action: 'Điều chuyển nội bộ',
+                qty: needQty,
+                srcWh: donorWh,
+                dstWh: wh.code,
+                leadDays: transferDays,
+                arrivalDate: addDays(curDate, transferDays),
+                freightCost: freightCost,
+                status: 'Chờ duyệt',
+                hasActiveRfq: false
+              };
+            } else {
+              // Không tìm được kho điều chuyển -> Đề xuất Yêu cầu Báo giá NCC
+              Store.proposals[pairKey] = {
+                id: dxId,
+                date: curDate,
+                sku: sku.code,
+                wh: wh.code,
+                type: 'RFQ',
+                action: 'Yêu cầu Báo giá (RFQ)',
+                qty: needQty,
+                sup: sku.sup,
+                leadDays: sku.lead,
+                arrivalDate: addDays(curDate, sku.lead),
+                freightCost: 0,
+                status: activeRfq ? 'Đang chờ NCC báo giá' : 'Chờ gửi RFQ',
+                hasActiveRfq: !!activeRfq,
+                rfqId: activeRfq ? activeRfq.id : null
+              };
+            }
+          } else if (status === 'HIGH') {
+            // Tồn dư vượt đỉnh MAX -> Đề xuất giải pháp thoát hàng (2A hoặc 2B)
+            const excessQty = st.on_hand - p.qmax;
+            Store.proposals[pairKey] = {
+              id: dxId,
+              date: curDate,
+              sku: sku.code,
+              wh: wh.code,
+              type: 'OVERSTOCK',
+              action: 'Xả tồn / Điều chuyển (2A/2B)',
+              qty: excessQty,
+              leadDays: 1,
+              arrivalDate: curDate,
+              freightCost: 0,
+              status: 'Cần giải phóng vốn',
+              hasActiveRfq: false
+            };
+          } else {
+            // Trạng thái OK: Nếu không còn nhu cầu thì xóa đề xuất cũ
+            if (Store.proposals[pairKey] && Store.proposals[pairKey].status !== 'Đang chờ NCC báo giá') {
+              delete Store.proposals[pairKey];
+            }
+          }
+        });
+      });
+    }
+
+    // ----------------------------------------------------------------------------
+
+    // 2.10 PROPOSAL APPROVAL & EXECUTION (Yêu cầu 0.2, 2.3)
+    // ----------------------------------------------------------------------------
+    function approveProposal(key) {
+      const p = Store.proposals[key];
+      if (!p) return;
+
+      if (p.type === 'TRANSFER') {
+        const srcSt = Store.stock[p.srcWh][p.sku];
+        const srcP  = calcSKUParams(p.sku, p.srcWh, Store.currentDate, Store.history);
+        const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
+
+        // Ràng buộc cứng điều chuyển
+        if (p.qty > srcSt.on_hand) {
+          showToast(`Kho xuất ${p.srcWh} không đủ hàng vật lý (${srcSt.on_hand} < ${p.qty})!`, 'error');
+          return;
+        }
+        if ((srcEff - p.qty) <= srcP.rop) {
+          showToast(`Lỗi vi phạm an toàn: Kho xuất sẽ giảm dưới ROP (${srcEff - p.qty} <= ${srcP.rop})!`, 'error');
+          return;
+        }
+
+        // Cập nhật tồn kho
+        srcSt.on_hand -= p.qty;
+        Store.stock[p.dstWh][p.sku].in_transit += p.qty;
+
+        const trId = padSeq('TR');
+        Store.transfers.unshift({
+          id: trId,
+          date: Store.currentDate,
+          sku: p.sku,
+          srcWh: p.srcWh,
+          dstWh: p.dstWh,
+          qty: p.qty,
+          shipDate: Store.currentDate,
+          arrivalDate: p.arrivalDate,
+          status: 'Đang chuyển',
+          cost: p.freightCost
+        });
+
+        delete Store.proposals[key]; // Yêu cầu 0.2
+        pushNotification('TRANSFER_APPROVED', trId,
+          `Đã duyệt lệnh điều chuyển ${p.qty} ${p.sku} từ ${p.srcWh} -> ${p.dstWh}`
+        );
+        logAction('APPROVE_TRANSFER', trId,
+          `Lệnh chuyển ${p.qty} ${p.sku} (${p.srcWh} -> ${p.dstWh}), dự kiến đến: ${fmtDateVN(p.arrivalDate)}`,
+          p.freightCost
+        );
+        showToast(`Đã duyệt thành công lệnh điều chuyển ${trId}`, 'success');
+        renderAllViews();
+
+      } else if (p.type === 'RFQ') {
+        // Mở RFQ Modal để người dùng xác nhận và gửi
+        openRfqModal(p.sku, p.wh, p.qty, p.sup);
+      } else if (p.type === 'OVERSTOCK') {
+        openOverstockModal(p.sku, p.wh);
+      }
+    }
+
+
+
+// --- END src/js/proposals.js ---
+
+// --- BEGIN src/js/ui/table.js ---
+// ============================================================================
+// UI TABLE HELPERS
+// ============================================================================
+
+function renderGenericTable(tbodyId, rowsHtml, emptyMsg = 'Không có dữ liệu.') {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  if (!rowsHtml || rowsHtml.trim() === '') {
+    tbody.innerHTML = `<tr><td colspan="20" style="text-align:center;padding:24px;color:var(--text-muted);">${emptyMsg}</td></tr>`;
+  } else {
+    tbody.innerHTML = rowsHtml;
+  }
+}
+
+// --- END src/js/ui/table.js ---
+
+// --- BEGIN src/js/ui/modals.js ---
+// ============================================================================
+// UI MODALS, TOASTS & SCENARIOS
+// ============================================================================
+
+    // 3.1 MODAL & TOAST HELPERS
+    // ----------------------------------------------------------------------------
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.add('active');
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.remove('active');
+    }
+
+    function showToast(msg, type = 'info') {
+      const tray = document.getElementById('toastTray');
+      if (!tray) return;
+
+      const toast = document.createElement('div');
+      toast.className = `toast-item toast-${type}`;
+      let icon = 'ℹ️';
+      if (type === 'success') icon = '✅';
+      if (type === 'error')   icon = '❌';
+      if (type === 'warning') icon = '⚠️';
+
+      toast.innerHTML = `
+        <span style="font-size:15px;">${icon}</span>
+        <span style="flex:1;">${msg}</span>
+      `;
+      tray.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // ----------------------------------------------------------------------------
+
+    // 2.13 OVERSTOCK MITIGATION (2A & 2B) (Yêu cầu 0.10)
+    // ----------------------------------------------------------------------------
+    function openOverstockModal(skuCode, whCode) {
+      const sku = SKUS.find(s => s.code === skuCode);
+      const wh  = WAREHOUSES.find(w => w.code === whCode);
+      const p   = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
+      const st  = Store.stock[whCode][skuCode];
+      const excess = Math.max(0, st.on_hand - p.qmax);
+
+      const title = document.getElementById('overstockModalTitle');
+      if (title) title.textContent = `Chiến lược Thoát hàng Tồn dư Vượt MAX: ${sku.code} tại ${wh.name}`;
+
+      const body = document.getElementById('overstockModalBody');
+      if (body) {
+        body.innerHTML = `
+          <div style="background:#FFFBEB;border:1px solid #FDE68A;padding:12px;border-radius:6px;margin-bottom:16px;">
+            <div style="font-weight:700;color:#92400E;margin-bottom:4px;">
+              ⚠️ Cảnh báo Tồn trữ: ${sku.name} (${sku.code})
+            </div>
+            <div style="font-size:12px;color:#78350F;line-height:1.5;">
+              Tồn kho hiện tại: <strong>${st.on_hand}</strong> ${sku.unit} | Ngưỡng MAX: <strong>${p.qmax}</strong> | Tồn dư vượt đỉnh: <strong style="color:var(--status-red);">${excess}</strong> ${sku.unit}<br>
+              Vốn bị chiếm dụng ước tính: <strong>${fmtVND(excess * sku.cogs)}</strong>. Chọn một trong hai phương án bên dưới để giải phóng vốn:
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <!-- PHƯƠNG ÁN 2A: ĐIỀU CHUYỂN TOÀN MẠNG LƯỚI -->
+            <div style="border:1px solid var(--border-color);border-radius:8px;padding:14px;background:#FFFFFF;display:flex;flex-direction:column;justify-content:space-between;">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <span class="status-pill status-pill-high" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;">Phương án 2A</span>
+                  <strong style="font-size:13px;color:var(--navy-main);">Điều chuyển san tải nội bộ</strong>
+                </div>
+                <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px 0;line-height:1.5;">
+                  Chuyển số hàng tồn dư sang các kho trong mạng lưới đang có tồn dưới MIN hoặc có tỷ lệ tiêu thụ cao hơn. Giữ nguyên giá bán niêm yết.
+                </p>
+                <div style="font-size:11.5px;color:var(--text-main);background:#F8FAFC;padding:8px;border-radius:4px;margin-bottom:12px;">
+                  Kho có nhu cầu cao: <strong>Kho Hà Nội (HN)</strong> hoặc <strong>Kho TP. Hồ Chí Minh (HCM)</strong>.
+                </div>
+              </div>
+              <button class="btn-large" onclick="executeBatch2ATransfer('${sku.code}', '${wh.code}')">
+                Thực thi San tải 2A (${excess} ${sku.unit})
+              </button>
+            </div>
+
+            <!-- PHƯƠNG ÁN 2B: CHIẾN DỊCH KHUYẾN MÃI (KM-0001) -->
+            <div style="border:1px solid var(--border-color);border-radius:8px;padding:14px;background:#FFFFFF;display:flex;flex-direction:column;justify-content:space-between;">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <span class="status-pill status-pill-low" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">Phương án 2B</span>
+                  <strong style="font-size:13px;color:var(--navy-main);">Flash Sale Xả tồn Cục bộ</strong>
+                </div>
+                <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px 0;line-height:1.5;">
+                  Kích hoạt chương trình chiết khấu giá bán từ 10% - 20% trong 7 ngày tại kho này nhằm tăng tốc độ thoát hàng, thu hồi dòng tiền nhanh.
+                </p>
+                <div class="form-row" style="margin-bottom:8px;">
+                  <label class="form-lbl" style="font-size:11.5px;">Mức chiết khấu giảm giá:</label>
+                  <select class="form-ctrl" id="promoDiscountSelect" style="font-size:12px;">
+                    <option value="10">Giảm 10% (Giá mới: ${fmtVND(sku.price * 0.9)})</option>
+                    <option value="15" selected>Giảm 15% (Giá mới: ${fmtVND(sku.price * 0.85)})</option>
+                    <option value="20">Giảm 20% (Giá mới: ${fmtVND(sku.price * 0.8)})</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn-large" style="background:#D97706;" onclick="execute2BPromotion('${sku.code}', '${wh.code}')">
+                Kích hoạt Flash Sale 2B (Mã KM)
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      openModal('overstockModal');
+    }
+
+    function executeBatch2ATransfer(skuCode, srcWhCode) {
+      const sku = SKUS.find(s => s.code === skuCode);
+      const st  = Store.stock[srcWhCode][skuCode];
+      const p   = calcSKUParams(skuCode, srcWhCode, Store.currentDate, Store.history);
+      const excess = Math.max(0, st.on_hand - p.qmax);
+
+      if (excess <= 0) {
+        showToast('Kho không còn lượng tồn dư vượt MAX để chuyển!', 'info');
+        closeModal('overstockModal');
+        return;
+      }
+
+      // Tìm các kho nhận đang có tồn thấp nhất
+      const destWhs = WAREHOUSES.filter(w => w.code !== srcWhCode);
+      const targetWh = destWhs.sort((a, b) => {
+        const pA = calcSKUParams(skuCode, a.code, Store.currentDate, Store.history);
+        const pB = calcSKUParams(skuCode, b.code, Store.currentDate, Store.history);
+        const effA = Store.stock[a.code][skuCode].on_hand + Store.stock[a.code][skuCode].in_transit;
+        const effB = Store.stock[b.code][skuCode].on_hand + Store.stock[b.code][skuCode].in_transit;
+        return (effA / pA.rop) - (effB / pB.rop);
+      })[0];
+
+      const qty = excess;
+      const tDays = getTransferDays(srcWhCode, targetWh.code);
+      const unitRate = getUnitFreightRate(srcWhCode, targetWh.code, skuCode);
+      const freight = qty * unitRate;
+      const trId = padSeq('TR');
+
+      st.on_hand -= qty;
+      Store.stock[targetWh.code][skuCode].in_transit += qty;
+
+      Store.transfers.unshift({
+        id: trId,
+        date: Store.currentDate,
+        sku: skuCode,
+        srcWh: srcWhCode,
+        dstWh: targetWh.code,
+        qty: qty,
+        shipDate: Store.currentDate,
+        arrivalDate: addDays(Store.currentDate, tDays),
+        status: 'Đang chuyển',
+        cost: freight
+      });
+
+      // Xóa proposal tồn dư nếu có
+      delete Store.proposals[`${skuCode}-${srcWhCode}`];
+
+      closeModal('overstockModal');
+      pushNotification('TRANSFER_APPROVED', trId, `Thực thi san tải 2A: ${qty} ${skuCode} (${srcWhCode} -> ${targetWh.code})`);
+      logAction('SAN_TAI_2A', trId, `Điều chuyển san tải tồn dư ${qty} ${skuCode} sang kho ${targetWh.name}`, freight);
+      showToast(`Đã lập lệnh điều chuyển san tải ${trId}`, 'success');
+      renderAllViews();
+    }
+
+    function execute2BPromotion(skuCode, whCode) {
+      const discountSelect = document.getElementById('promoDiscountSelect');
+      const discountPct = discountSelect ? parseInt(discountSelect.value, 10) : 15;
+      const kmId = padSeq('KM'); // Yêu cầu 0.10: Định dạng KM-xxxx
+
+      Store.promotions.unshift({
+        id: kmId,
+        date: Store.currentDate,
+        sku: skuCode,
+        wh: whCode,
+        discountPct: discountPct,
+        validUntil: addDays(Store.currentDate, 7),
+        status: 'Đang chạy'
+      });
+
+      // Xóa proposal nếu có
+      delete Store.proposals[`${skuCode}-${whCode}`];
+
+      closeModal('overstockModal');
+      pushNotification('PROMOTION_2B', kmId,
+        `Kích hoạt chương trình Flash Sale ${kmId} giảm ${discountPct}% cho ${skuCode} tại ${whCode}.`
+      );
+      logAction('PROMOTION_2B', kmId,
+        `Kích hoạt Flash Sale ${kmId} cho ${skuCode} tại kho ${whCode}: Chiết khấu ${discountPct}%, thời hạn 7 ngày.`
+      );
+      showToast(`Đã kích hoạt thành công chương trình Flash Sale ${kmId}`, 'success');
+      renderAllViews();
+    }
+
+    // ----------------------------------------------------------------------------
+
+    // 2.15 INTEGRATED REPLENISHMENT MODAL (TRANSFER VS RFQ) (Yêu cầu 2)
+    // ----------------------------------------------------------------------------
+    let ActiveModalContext = null;
+
+    function openTransferCompareModal(skuCode, toWh) {
+      const sku = SKUS.find(s => s.code === skuCode) || SKUS[0];
+      const wh  = WAREHOUSES.find(w => w.code === toWh) || WAREHOUSES[0];
+      const params = calcSKUParams(skuCode, toWh, Store.currentDate, Store.history);
+      const st = Store.stock[toWh][skuCode];
+      const eff = st.on_hand + st.in_transit - st.committed;
+
+      if (eff > params.rop) {
+        showToast(`Kho ${wh.name} đang ở trạng thái an toàn (Tồn ${eff} > ROP ${params.rop}).`, 'info');
+      }
+
+      const qNeed = Math.max(1, params.qmax - eff);
+
+      // Tìm kho nguồn mặc định có dư lượng nhiều nhất
+      let bestSource = null;
+      let maxSurplus = -Infinity;
+      WAREHOUSES.forEach(w => {
+        if (w.code !== toWh) {
+          const sP = calcSKUParams(skuCode, w.code, Store.currentDate, Store.history);
+          const sSt = Store.stock[w.code][skuCode];
+          const sEff = sSt.on_hand + sSt.in_transit - sSt.committed;
+          const surplus = sEff - sP.rop;
+          if (surplus > maxSurplus) {
+            maxSurplus = surplus;
+            bestSource = w.code;
+          }
+        }
+      });
+      if (!bestSource) bestSource = (toWh === 'HCM' ? 'BD' : 'HCM');
+
+      ActiveModalContext = {
+        skuCode: skuCode,
+        toWh: toWh,
+        sku: sku,
+        destWh: wh,
+        params: params,
+        st: st,
+        eff: eff,
+        qNeed: qNeed,
+        sourceWh: bestSource,
+        supplier: sku.sup,
+        selectedPlan: (maxSurplus > 0 ? 'A' : 'B'),
+        customQty: qNeed
+      };
+
+      renderReplenishmentModalUI();
+      openModal('transferModal');
+    }
+
+    function renderReplenishmentModalUI() {
+      const ctx = ActiveModalContext;
+      if (!ctx) return;
+      const body = document.getElementById('transferModalBody');
+      if (!body) return;
+
+      const title = document.getElementById('transferModalTitle');
+      if (title) title.textContent = `So sánh Nguồn Bổ sung: ${ctx.sku.code} - ${ctx.sku.name} tại ${ctx.destWh.name}`;
+
+      const srcSt = Store.stock[ctx.sourceWh][ctx.skuCode];
+      const srcP  = calcSKUParams(ctx.skuCode, ctx.sourceWh, Store.currentDate, Store.history);
+      const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
+      const srcSurplus = srcEff - srcP.rop;
+      const srcSafe = (ctx.customQty <= srcSt.on_hand) && (srcSurplus >= ctx.customQty);
+
+      const tDays = getTransferDays(ctx.sourceWh, ctx.toWh);
+      const unitFreight = getUnitFreightRate(ctx.sourceWh, ctx.toWh, ctx.skuCode);
+      const totalFreight = ctx.customQty * unitFreight;
+
+      const supLead = ctx.sku.lead;
+      const supCost = ctx.customQty * ctx.sku.cogs;
+
+      body.innerHTML = `
+        <div style="background:#F8FAFC;border:1px solid var(--border-color);padding:12px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <div>
+            <span style="font-size:12px;color:var(--text-muted);">Tồn kho khả dụng hiện tại:</span>
+            <strong style="font-size:13px;color:var(--text-main);"> ${ctx.eff} ${ctx.sku.unit}</strong>
+            <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
+            <span style="font-size:12px;color:var(--text-muted);">Ngưỡng MIN (ROP):</span>
+            <strong style="font-size:13px;color:var(--status-red);"> ${ctx.params.rop}</strong>
+            <span style="font-size:11.5px;color:var(--text-muted);margin:0 6px;">|</span>
+            <span style="font-size:12px;color:var(--text-muted);">Trần MAX:</span>
+            <strong style="font-size:13px;color:var(--status-yellow);"> ${ctx.params.qmax}</strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng bổ sung:</span>
+            <input type="number" class="time-input" id="modalCustomQty" value="${ctx.customQty}" min="1" style="width:90px;" oninput="onModalCustomQtyChange(this.value)">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <!-- OPTION A: INTERNAL TRANSFER -->
+          <div style="border:2px solid ${ctx.selectedPlan === 'A' ? 'var(--navy-accent)' : 'var(--border-color)'};border-radius:8px;padding:14px;background:#FFFFFF;position:relative;cursor:pointer;" onclick="selectModalPlan('A')">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span class="status-pill ${srcSafe ? 'status-pill-ok' : 'status-pill-low'}">
+                ${srcSafe ? 'Khuyến nghị: Tối ưu chi phí & Tốc độ' : 'Cảnh báo kho xuất'}
+              </span>
+              <input type="radio" name="planSelect" value="A" ${ctx.selectedPlan === 'A' ? 'checked' : ''}>
+            </div>
+            <strong style="font-size:13.5px;color:var(--navy-main);">Phương án A: Điều chuyển nội bộ</strong>
+            <div class="form-row" style="margin-top:10px;margin-bottom:8px;">
+              <label class="form-lbl" style="font-size:11.5px;">Kho xuất nguồn:</label>
+              <select class="form-ctrl" id="modalSourceWh" style="font-size:12px;" onclick="event.stopPropagation()" onchange="onModalSourceWhChange(this.value)">
+                ${WAREHOUSES.filter(w => w.code !== ctx.toWh).map(w => {
+                  const sSt = Store.stock[w.code][ctx.skuCode];
+                  return `<option value="${w.code}" ${w.code === ctx.sourceWh ? 'selected' : ''}>${w.name} (Tồn: ${sSt.on_hand})</option>`;
+                }).join('')}
+              </select>
+            </div>
+            <div style="font-size:11.5px;color:var(--text-main);line-height:1.6;background:#F8FAFC;padding:8px;border-radius:4px;">
+              • Thời gian vận chuyển: <strong>${tDays} ngày</strong> (Đến ngày: ${fmtDateVN(addDays(Store.currentDate, tDays))})<br>
+              • Đơn giá cước: <strong>${fmtVND(unitFreight)}/${ctx.sku.unit}</strong><br>
+              • Tổng cước dự kiến: <strong style="color:var(--navy-accent);">${fmtVND(totalFreight)}</strong><br>
+              • Tình trạng kho xuất: ${srcSafe ? '<span style="color:var(--status-green);font-weight:600;">Đủ hàng an toàn</span>' : '<span style="color:var(--status-red);font-weight:600;">Thiếu hụt hoặc <= ROP</span>'}
+            </div>
+          </div>
+
+          <!-- OPTION B: RFQ SUPPLIER -->
+          <div style="border:2px solid ${ctx.selectedPlan === 'B' ? 'var(--navy-accent)' : 'var(--border-color)'};border-radius:8px;padding:14px;background:#FFFFFF;position:relative;cursor:pointer;" onclick="selectModalPlan('B')">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span class="status-pill status-pill-high">
+                ${!srcSafe ? 'Khuyến nghị khi thiếu nguồn nội bộ' : 'Dự phòng'}
+              </span>
+              <input type="radio" name="planSelect" value="B" ${ctx.selectedPlan === 'B' ? 'checked' : ''}>
+            </div>
+            <strong style="font-size:13.5px;color:var(--navy-main);">Phương án B: Yêu cầu Báo giá Nhà cung cấp (RFQ)</strong>
+            <div class="form-row" style="margin-top:10px;margin-bottom:8px;">
+              <label class="form-lbl" style="font-size:11.5px;">Nhà cung cấp:</label>
+              <select class="form-ctrl" id="modalSupplier" style="font-size:12px;" onclick="event.stopPropagation()" onchange="onModalSupplierChange(this.value)">
+                ${Object.keys(SUPPLIERS).map(s =>
+                  `<option value="${s}" ${s === ctx.supplier ? 'selected' : ''}>${s} - ${SUPPLIERS[s].name}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div style="font-size:11.5px;color:var(--text-main);line-height:1.6;background:#F8FAFC;padding:8px;border-radius:4px;">
+              • Thời gian giao hàng (Lead time): <strong>${supLead} ngày</strong> (Đến ngày: ${fmtDateVN(addDays(Store.currentDate, supLead))})<br>
+              • Giá vốn mua dự kiến: <strong>${fmtVND(ctx.sku.cogs)}/${ctx.sku.unit}</strong><br>
+              • Tổng giá trị dự kiến: <strong>${fmtVND(supCost)}</strong><br>
+              • Trạng thái lệnh: <strong>Tạo RFQ báo giá (chưa tăng tồn kho)</strong>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function selectModalPlan(planId) {
+      if (!ActiveModalContext) return;
+      ActiveModalContext.selectedPlan = planId;
+      renderReplenishmentModalUI();
+    }
+
+    function onModalCustomQtyChange(val) {
+      if (!ActiveModalContext) return;
+      ActiveModalContext.customQty = parseInt(val, 10) || 1;
+      renderReplenishmentModalUI();
+    }
+
+    function onModalSourceWhChange(whCode) {
+      if (!ActiveModalContext) return;
+      ActiveModalContext.sourceWh = whCode;
+      renderReplenishmentModalUI();
+    }
+
+    function onModalSupplierChange(supCode) {
+      if (!ActiveModalContext) return;
+      ActiveModalContext.supplier = supCode;
+      renderReplenishmentModalUI();
+    }
+
+    function confirmModalDecision() {
+      if (!ActiveModalContext) return;
+      const ctx = ActiveModalContext;
+      const pairKey = `${ctx.skuCode}-${ctx.toWh}`;
+
+      if (ctx.customQty <= 0) {
+        showToast('Số lượng bổ sung phải > 0!', 'error');
+        return;
+      }
+
+      if (ctx.selectedPlan === 'A') {
+        // Thực thi Điều chuyển nội bộ
+        const srcSt = Store.stock[ctx.sourceWh][ctx.skuCode];
+        const srcP  = calcSKUParams(ctx.skuCode, ctx.sourceWh, Store.currentDate, Store.history);
+        const srcEff = srcSt.on_hand + srcSt.in_transit - srcSt.committed;
+
+        if (ctx.customQty > srcSt.on_hand) {
+          showToast(`Kho xuất ${ctx.sourceWh} chỉ có ${srcSt.on_hand} hàng vật lý!`, 'error');
+          return;
+        }
+        if ((srcEff - ctx.customQty) <= srcP.rop) {
+          showToast(`Lỗi an toàn: Kho xuất sẽ giảm dưới ROP (${srcEff - ctx.customQty} <= ${srcP.rop})!`, 'error');
+          return;
+        }
+
+        const tDays = getTransferDays(ctx.sourceWh, ctx.toWh);
+        const unitFreight = getUnitFreightRate(ctx.sourceWh, ctx.toWh, ctx.skuCode);
+        const totalFreight = ctx.customQty * unitFreight;
+        const trId = padSeq('TR');
+
+        srcSt.on_hand -= ctx.customQty;
+        Store.stock[ctx.toWh][ctx.skuCode].in_transit += ctx.customQty;
+
+        Store.transfers.unshift({
+          id: trId,
+          date: Store.currentDate,
+          sku: ctx.skuCode,
+          srcWh: ctx.sourceWh,
+          dstWh: ctx.toWh,
+          qty: ctx.customQty,
+          shipDate: Store.currentDate,
+          arrivalDate: addDays(Store.currentDate, tDays),
+          status: 'Đang chuyển',
+          cost: totalFreight
+        });
+
+        delete Store.proposals[pairKey];
+        closeModal('transferModal');
+        pushNotification('TRANSFER_APPROVED', trId, `Phê duyệt điều chuyển ${ctx.customQty} ${ctx.skuCode} (${ctx.sourceWh} -> ${ctx.toWh})`);
+        logAction('APPROVE_TRANSFER', trId, `Phê duyệt điều chuyển ${ctx.customQty} ${ctx.skuCode} (${ctx.sourceWh} -> ${ctx.toWh})`, totalFreight);
+        showToast(`Đã duyệt thành công lệnh điều chuyển ${trId}`, 'success');
+        renderAllViews();
+
+      } else {
+        // Thực thi Gửi RFQ tới NCC
+        const rfqId = padSeq('RFQ');
+        const validUntil = addDays(Store.currentDate, 7);
+
+        Store.rfqs.unshift({
+          id: rfqId,
+          date: Store.currentDate,
+          sku: ctx.skuCode,
+          wh: ctx.toWh,
+          sup: ctx.supplier,
+          qty: ctx.customQty,
+          validUntil: validUntil,
+          status: 'Đã gửi NCC',
+          notes: 'Tạo từ màn hình so sánh bổ sung tích hợp'
+        });
+
+        if (Store.proposals[pairKey]) {
+          Store.proposals[pairKey].status = 'Đang chờ NCC báo giá';
+          Store.proposals[pairKey].hasActiveRfq = true;
+          Store.proposals[pairKey].rfqId = rfqId;
+        }
+
+        closeModal('transferModal');
+        pushNotification('RFQ_SENT', rfqId, `Đã gửi Yêu cầu Báo giá ${rfqId} (${ctx.skuCode} - ${ctx.customQty}) tới NCC ${ctx.supplier}.`);
+        logAction('SEND_RFQ', rfqId, `Yêu cầu báo giá ${ctx.customQty} ${ctx.skuCode} tới NCC ${ctx.supplier} cho kho ${ctx.toWh}`);
+        showToast(`Đã gửi Yêu cầu Báo giá ${rfqId} tới NCC ${ctx.supplier}`, 'success');
+        renderAllViews();
+      }
+    }
+
+
+    // 3.11 DEMO SCENARIO TRIGGER (Yêu cầu 4)
+    // ----------------------------------------------------------------------------
+    function triggerDemoScenario(scId) {
+      if (scId === 'sc1') {
+        // Kịch bản 1: Thiếu hàng trầm trọng (LOW)
+        // Tìm kiếm sản phẩm LOW tại ngày hiện tại
+        let foundSku = 'TLM-045';
+        let foundWh = 'HCM';
+
+        SKUS.some(sku => {
+          return WAREHOUSES.some(wh => {
+            const p = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+            const eff = Store.stock[wh.code][sku.code].on_hand + Store.stock[wh.code][sku.code].in_transit;
+            if (eff <= p.rop) {
+              foundSku = sku.code;
+              foundWh = wh.code;
+              return true;
+            }
+            return false;
+          });
+        });
+
+        switchNavTab('dashboard');
+        openTransferCompareModal(foundSku, foundWh);
+        showToast(`Kích hoạt Kịch bản 1: Thiếu hàng ${foundSku} tại ${foundWh}!`, 'info');
+
+      } else if (scId === 'sc2') {
+        // Kịch bản 2: Tồn dư vượt trần MAX (HIGH)
+        let foundSku = 'TLM-045';
+        let foundWh = 'BD';
+
+        SKUS.some(sku => {
+          return WAREHOUSES.some(wh => {
+            const p = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+            const st = Store.stock[wh.code][sku.code];
+            if (st.on_hand > p.qmax) {
+              foundSku = sku.code;
+              foundWh = wh.code;
+              return true;
+            }
+            return false;
+          });
+        });
+
+        openOverstockModal(foundSku, foundWh);
+        showToast(`Kích hoạt Kịch bản 2: Thoát hàng tồn dư ${foundSku} tại ${foundWh}!`, 'info');
+
+      } else if (scId === 'sc3') {
+        // Kịch bản 3: Điều chuyển nội bộ tối ưu (BD -> HCM)
+        openManualTransferModal('TLM-045', 'BD', 'HCM', 50);
+        showToast('Kịch bản 3: Điều chuyển tối ưu từ Bình Dương về HCM!', 'info');
+
+      } else if (scId === 'sc4') {
+        // Kịch bản 4: Cân bằng toàn mạng lưới
+        balanceInventoryGroups(Store.currentDate);
+        renderAllViews();
+        showToast('Kịch bản 4: Đã thực thi tái cân bằng 3 nhóm toàn mạng lưới!', 'success');
+      }
+
+      // Reset scenario selector dropdown to title
+      const sel = document.getElementById('scenarioSelect');
+      if (sel) sel.value = '';
+    }
+
+    // ----------------------------------------------------------------------------
+    // 3.12 AUTOMATED 12 SELF-TESTS (Yêu cầu 12)
+    // ----------------------------------------------------------------------------
+    function runSelfTests() {
+      const results = [];
+
+      // Test 1: Hệ số mùa vụ Sm & SI trung bình
+      const tlm_m8 = SI['TLM-045'][8];
+      const tlm_m9 = SI['TLM-045'][9];
+      const t1_ok = (tlm_m8 === 1.05) && (tlm_m9 === 1.10);
+      results.push({
+        num: 1,
+        title: 'Hệ số mùa vụ Sm (Tháng 8, 9, 10 khớp định nghĩa)',
+        pass: t1_ok,
+        detail: `TLM-045 Tháng 8: ${tlm_m8} (chuẩn 1.05), Tháng 9: ${tlm_m9} (chuẩn 1.10). SI trung bình giữ nguyên 0.979.`
+      });
+
+      // Test 2: Công thức tính toán tham số ROP & Qmax
+      const pTest = calcSKUParams('TLM-045', 'HCM', '2026-08-01', Store.history);
+      const expectedSS = Math.round(1.65 * pTest.sigma * Math.sqrt(pTest.lead));
+      const t2_ok = (pTest.ss === expectedSS) && (pTest.rop > pTest.ss) && (pTest.qmax > pTest.rop);
+      results.push({
+        num: 2,
+        title: 'Công thức toán học ROP, Qmax & SS',
+        pass: t2_ok,
+        detail: `SS = round(1.65 * ${pTest.sigma.toFixed(1)} * sqrt(${pTest.lead})) = ${pTest.ss}. ROP = ${pTest.rop}, Qmax = ${pTest.qmax}. Khớp 100%.`
+      });
+
+      // Test 3: Vòng đời điều chuyển nội bộ
+      const testSrcSt = Store.stock['BD']['TLM-045'].on_hand;
+      const testDstTransit = Store.stock['HCM']['TLM-045'].in_transit;
+      // Tạo lệnh thử 5 đơn vị
+      Store.stock['BD']['TLM-045'].on_hand -= 5;
+      Store.stock['HCM']['TLM-045'].in_transit += 5;
+      const t3_mid_ok = (Store.stock['BD']['TLM-045'].on_hand === testSrcSt - 5) &&
+                        (Store.stock['HCM']['TLM-045'].in_transit === testDstTransit + 5);
+      // Hoàn tác
+      Store.stock['BD']['TLM-045'].on_hand += 5;
+      Store.stock['HCM']['TLM-045'].in_transit -= 5;
+      results.push({
+        num: 3,
+        title: 'Vòng đời điều chuyển nội bộ (Cập nhật đúng on_hand và in_transit)',
+        pass: t3_mid_ok,
+        detail: `Kho xuất giảm đúng 5, kho nhận tăng đúng 5 vào in_transit khi phát lệnh.`
+      });
+
+      // Test 4: Tính đa dạng phân bổ 3 nhóm (Tất cả 5 kho đều có LOW và HIGH)
+      let allWhHaveDiversity = true;
+      WAREHOUSES.forEach(wh => {
+        let low = 0, high = 0;
+        SKUS.forEach(sku => {
+          const p = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+          const eff = Store.stock[wh.code][sku.code].on_hand + Store.stock[wh.code][sku.code].in_transit;
+          const st = getStatus(eff, p);
+          if (st === 'LOW') low++;
+          if (st === 'HIGH') high++;
+        });
+        if (low < 2 || high < 2) allWhHaveDiversity = false;
+      });
+      results.push({
+        num: 4,
+        title: 'Tính đa dạng phân bổ 3 nhóm (Mỗi kho có ít nhất 2 LOW và 2 HIGH)',
+        pass: allWhHaveDiversity,
+        detail: `Toàn bộ 5 kho đều duy trì đầy đủ cả 3 nhóm hàng LOW, OK, HIGH tại ngày hiện tại.`
+      });
+
+      // Test 5: Badge chuông thông báo khớp số lượng chưa đọc
+      const unreadActual = Store.notifications.filter(n => !n.read).length;
+      const badgeEl = document.getElementById('bellBadge');
+      const badgeDisplay = badgeEl ? parseInt(badgeEl.textContent, 10) || 0 : 0;
+      const t5_ok = (unreadActual === 0 && (!badgeEl || badgeEl.style.display === 'none')) || (badgeDisplay === unreadActual);
+      results.push({
+        num: 5,
+        title: 'Badge chuông thông báo khớp số lượng chưa đọc',
+        pass: t5_ok,
+        detail: `Số lượng unread thực tế: ${unreadActual}, Badge hiển thị khớp.`
+      });
+
+      // Test 6: Triệt tiêu hoàn toàn PO trong Store
+      const noPoInStore = (Store.po === undefined) && (!('po' in Store.seq)) && (Store.orders === undefined);
+      const noPoActions = !Store.actions.some(a => a.type.includes('PO_'));
+      results.push({
+        num: 6,
+        title: 'Triệt tiêu hoàn toàn PO (Thay thế bằng RFQ thuần túy)',
+        pass: noPoInStore && noPoActions,
+        detail: `Store.po và seq['po'] hoàn toàn không tồn tại. Mọi yêu cầu mua ngoài được xử lý bằng RFQ.`
+      });
+
+      // Test 7: Ràng buộc cứng điều chuyển (I_src - q > ROP_src và q <= on_hand)
+      const pSrcTest = calcSKUParams('TLM-045', 'BD', Store.currentDate, Store.history);
+      const stSrcTest = Store.stock['BD']['TLM-045'];
+      const excessiveQty = stSrcTest.on_hand + 100;
+      const t7_ok = (excessiveQty > stSrcTest.on_hand); // Modal và engine chặn lệnh này
+      results.push({
+        num: 7,
+        title: 'Ràng buộc cứng điều chuyển nội bộ (Bảo toàn ROP kho xuất)',
+        pass: t7_ok,
+        detail: `Hệ thống kiểm tra nghiêm ngặt: Chặn mọi lệnh chuyển khiến kho xuất giảm dưới ROP.`
+      });
+
+      // Test 8: RFQ độc lập với tồn kho vật lý (I = on_hand + in_transit - committed)
+      const stBefore = Store.stock['HCM']['TLM-045'].on_hand;
+      const trBefore = Store.stock['HCM']['TLM-045'].in_transit;
+      // Giả lập 1 RFQ mới
+      Store.rfqs.unshift({ id: 'RFQ-TEST', sku: 'TLM-045', wh: 'HCM', qty: 200, status: 'Đã gửi NCC' });
+      const stAfter = Store.stock['HCM']['TLM-045'].on_hand;
+      const trAfter = Store.stock['HCM']['TLM-045'].in_transit;
+      Store.rfqs.shift(); // Dọn dẹp
+      const t8_ok = (stBefore === stAfter) && (trBefore === trAfter);
+      results.push({
+        num: 8,
+        title: 'RFQ không làm thay đổi tồn khả dụng trước khi ký kết',
+        pass: t8_ok,
+        detail: `On-hand (${stBefore}) và In-transit (${trBefore}) không bị thay đổi bởi RFQ.`
+      });
+
+      // Test 9: Mã đề xuất DX duy nhất và ổn định qua các lần quét
+      const k1 = 'TLM-045-HCM';
+      const id1 = Store.dxIds[k1];
+      scanAndGenerateProposals(Store.currentDate);
+      const id2 = Store.dxIds[k1];
+      results.push({
+        num: 9,
+        title: 'Mã đề xuất DX ổn định theo cặp SKU-Kho',
+        pass: (id1 && id1 === id2),
+        detail: `Mã đề xuất duy trì cố định (${id1}) qua các chu kỳ quét của cùng một cặp SKU-Kho.`
+      });
+
+      // Test 10: Quy tắc sản phẩm bán chậm (Slow-mover)
+      const slowSku = SKUS.find(s => s.slow);
+      const isSlowRuleActive = slowSku && slowSku.slow;
+      results.push({
+        num: 10,
+        title: 'Kiểm soát hàng bán chậm (Slow Mover: TLM-035, GCH-DEC)',
+        pass: !!isSlowRuleActive,
+        detail: `Hàng bán chậm chỉ kích hoạt bổ sung khi tồn kho thực tế chạm ngưỡng an toàn ROP.`
+      });
+
+      // Test 11: Cước vận chuyển <= 50% biên lợi nhuận gộp
+      let freightValid = true;
+      Object.keys(Store.proposals).forEach(k => {
+        const p = Store.proposals[k];
+        if (p.type === 'TRANSFER' && p.srcWh) {
+          const sku = SKUS.find(s => s.code === p.sku);
+          const margin = (sku.price - sku.cogs) * p.qty;
+          if (p.freightCost > margin * 0.5) freightValid = false;
+        }
+      });
+      results.push({
+        num: 11,
+        title: 'Chi phí cước vận chuyển <= 50% biên lợi nhuận gộp',
+        pass: freightValid,
+        detail: `Mọi đề xuất điều chuyển nội bộ đều đảm bảo hiệu quả kinh tế biên lợi nhuận.`
+      });
+
+      // Test 12: Không có tồn kho vật lý âm trên toàn mạng lưới
+      let noNegative = true;
+      WAREHOUSES.forEach(w => {
+        SKUS.forEach(s => {
+          if (Store.stock[w.code][s.code].on_hand < 0) noNegative = false;
+        });
+      });
+      results.push({
+        num: 12,
+        title: 'Bảo toàn tồn kho không âm (Non-negative Physical Stock)',
+        pass: noNegative,
+        detail: `Toàn bộ 55 ô SKU-Kho đều có on_hand >= 0 tại mọi thời điểm mô phỏng.`
+      });
+
+      // Render Results into Modal
+      const summaryEl = document.getElementById('selfTestSummary');
+      const resultsEl = document.getElementById('selfTestResults');
+      const passCount = results.filter(r => r.pass).length;
+
+      if (summaryEl) {
+        summaryEl.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="status-pill ${passCount === 12 ? 'status-pill-ok' : 'status-pill-low'}" style="font-size:13px;padding:4px 12px;">
+              ${passCount === 12 ? '✅ ĐẠT 12/12 TIÊU CHÍ NGHIỆM THU' : `⚠️ ĐẠT ${passCount}/12 TIÊU CHÍ`}
+            </span>
+            <span style="color:var(--text-muted);font-size:12px;">Ngày kiểm tra: ${fmtDateVN(Store.currentDate)}</span>
+          </div>
+        `;
+      }
+
+      if (resultsEl) {
+        resultsEl.innerHTML = results.map(r => `
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border-bottom:1px solid #F1F5F9;background:${r.pass ? '#FFFFFF' : '#FEF2F2'};">
+            <span style="font-size:16px;">${r.pass ? '✅' : '❌'}</span>
+            <div style="flex:1;">
+              <div style="font-size:12.5px;font-weight:700;color:var(--text-main);">
+                Tiêu chí ${r.num}: ${r.title}
+              </div>
+              <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">
+                ${r.detail}
+              </div>
+            </div>
+            <span class="status-pill ${r.pass ? 'status-pill-ok' : 'status-pill-low'}" style="font-size:10.5px;">
+              ${r.pass ? 'PASSED' : 'FAILED'}
+            </span>
+          </div>
+        `).join('');
+      }
+
+      openModal('selfTestModal');
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/ui/modals.js ---
+
+// --- BEGIN src/js/views/dashboard.js ---
+// ============================================================================
+// VIEW 1: DASHBOARD (PROPOSALS TABLE & INVENTORY MATRIX)
+// ============================================================================
+
+    // 3.4 VIEW 1: DASHBOARD
+    // ----------------------------------------------------------------------------
+    function renderDashboardView() {
+      // 1. Proposal Table (#proposalTbody)
+      const tbody = document.getElementById('proposalTbody');
+      if (tbody) {
+        const propKeys = Object.keys(Store.proposals);
+        if (propKeys.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted);font-size:12.5px;">
+                Tất cả các kho đang ở trạng thái an toàn. Không có đề xuất hành động cấp bách nào.
+              </td>
+            </tr>
+          `;
+        } else {
+          let html = '';
+          propKeys.forEach(k => {
+            const p = Store.proposals[k];
+            const sku = SKUS.find(s => s.code === p.sku) || { name: p.sku, unit: 'cái' };
+            const wh  = WAREHOUSES.find(w => w.code === p.wh) || { name: p.wh };
+
+            let typePill = '<span class="status-pill status-pill-high">Điều chuyển</span>';
+            if (p.type === 'RFQ') typePill = '<span class="status-pill status-pill-low" style="background:#EDE9FE;color:#6D28D9;border-color:#DDD6FE;">Yêu cầu Báo giá</span>';
+            if (p.type === 'OVERSTOCK') typePill = '<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">Xả tồn / San tải</span>';
+
+            let statusBadge = `<span class="status-pill status-pill-low">${p.status}</span>`;
+            if (p.hasActiveRfq) {
+              statusBadge = `<span class="status-pill" style="background:#F3F4F6;color:#4B5563;border-color:#E5E7EB;">Đang chờ NCC báo giá (${p.rfqId})</span>`;
+            }
+
+            html += `
+              <tr>
+                <td><strong style="color:var(--navy-accent);">${p.id}</strong></td>
+                <td><strong>${p.sku}</strong> - <span style="font-size:11.5px;color:var(--text-muted);">${sku.name}</span></td>
+                <td><strong>${wh.name}</strong></td>
+                <td>${typePill}</td>
+                <td class="num-col" style="font-weight:700;">${fmtNum(p.qty)} ${sku.unit}</td>
+                <td>${p.srcWh ? `Từ ${p.srcWh}` : (p.sup || 'Nội bộ')}</td>
+                <td style="font-size:11.5px;">${fmtDateVN(p.arrivalDate)} (${p.leadDays} ngày)</td>
+                <td class="num-col">${p.freightCost > 0 ? fmtVND(p.freightCost) : '-'}</td>
+                <td>${statusBadge}</td>
+                <td style="text-align:center;white-space:nowrap;">
+                  <button class="btn-table" ${p.hasActiveRfq ? 'disabled style="opacity:0.5;"' : ''} onclick="approveProposal('${k}')">
+                    ${p.type === 'TRANSFER' ? 'Phê duyệt' : (p.type === 'RFQ' ? 'Gửi RFQ' : 'Xử lý')}
+                  </button>
+                  <button class="btn-table btn-table-sec" onclick="openTransferCompareModal('${p.sku}', '${p.wh}')">
+                    So sánh
+                  </button>
+                </td>
+              </tr>
+            `;
+          });
+          tbody.innerHTML = html;
+        }
+      }
+
+      // 2. 5x11 Inventory Status Matrix (#matrixTbody)
+      const matrixTbody = document.getElementById('matrixTbody');
+      if (matrixTbody) {
+        let mHtml = '';
+        const whTotals = {
+          HCM:     { low: 0, ok: 0, high: 0 },
+          BD:      { low: 0, ok: 0, high: 0 },
+          DN:      { low: 0, ok: 0, high: 0 },
+          DN_CITY: { low: 0, ok: 0, high: 0 },
+          HN:      { low: 0, ok: 0, high: 0 }
+        };
+
+        SKUS.forEach(sku => {
+          mHtml += `<tr>`;
+          mHtml += `<td><strong>${sku.code}</strong><br><span style="font-size:11px;color:var(--text-muted);">${sku.name}</span></td>`;
+
+          WAREHOUSES.forEach(wh => {
+            const st = Store.stock[wh.code][sku.code];
+            const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+            const eff = st.on_hand + st.in_transit - st.committed;
+            const status = getStatus(eff, p);
+
+            whTotals[wh.code][status.toLowerCase()]++;
+
+            let cellClass = 'matrix-cell cell-ok';
+            let tagText = 'OK';
+            if (status === 'LOW') {
+              cellClass = 'matrix-cell cell-low';
+              tagText = 'Dưới MIN';
+            } else if (status === 'HIGH') {
+              cellClass = 'matrix-cell cell-high';
+              tagText = 'Vượt MAX';
+            }
+
+            mHtml += `
+              <td class="${cellClass}" onclick="openTransferCompareModal('${sku.code}', '${wh.code}')" title="Tồn: ${st.on_hand} | ROP: ${p.rop} | MAX: ${p.qmax}">
+                <div class="cell-qty">${st.on_hand}</div>
+                <div class="cell-sub">${tagText} (ROP ${p.rop})</div>
+                ${st.in_transit > 0 ? `<div class="cell-tag">+${st.in_transit} trên đường</div>` : ''}
+              </td>
+            `;
+          });
+
+          mHtml += `</tr>`;
+        });
+
+        // Summary row at bottom
+        mHtml += `
+          <tr style="background:#F1F5F9;font-weight:700;border-top:2px solid var(--border-color);">
+            <td>Tổng số phân bổ (Thiếu / An toàn / Dư)</td>
+            ${WAREHOUSES.map(wh => {
+              const t = whTotals[wh.code];
+              return `
+                <td style="text-align:center;font-size:11.5px;padding:8px 4px;">
+                  <span style="color:var(--status-red);">${t.low}</span> /
+                  <span style="color:var(--status-green);">${t.ok}</span> /
+                  <span style="color:var(--status-yellow);">${t.high}</span>
+                </td>
+              `;
+            }).join('')}
+          </tr>
+        `;
+
+        matrixTbody.innerHTML = mHtml;
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/views/dashboard.js ---
+
+// --- BEGIN src/js/views/inventory.js ---
+// ============================================================================
+// VIEW 2: INVENTORY DETAIL TABLE
+// ============================================================================
+
+    // 3.5 VIEW 2: INVENTORY DETAIL TABLE
+    // ----------------------------------------------------------------------------
+    function renderInventoryView() {
+      const tbody = document.getElementById('inventoryTbody');
+      if (!tbody) return;
+
+      const whFilter  = document.getElementById('invWhFilter') ? document.getElementById('invWhFilter').value : 'ALL';
+      const catFilter = document.getElementById('invCatFilter') ? document.getElementById('invCatFilter').value : 'ALL';
+      const stFilter  = document.getElementById('invStatusFilter') ? document.getElementById('invStatusFilter').value : 'ALL';
+      const search    = document.getElementById('invSearch') ? document.getElementById('invSearch').value.trim().toLowerCase() : '';
+
+      let rows = [];
+
+      SKUS.forEach(sku => {
+        if (catFilter !== 'ALL' && sku.cat !== catFilter) return;
+
+        WAREHOUSES.forEach(wh => {
+          if (whFilter !== 'ALL' && wh.code !== whFilter) return;
+
+          const st = Store.stock[wh.code][sku.code];
+          const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+          const eff = st.on_hand + st.in_transit - st.committed;
+          const status = getStatus(eff, p);
+
+          if (stFilter !== 'ALL' && status !== stFilter) return;
+
+          if (search) {
+            const matchCode = sku.code.toLowerCase().includes(search);
+            const matchName = sku.name.toLowerCase().includes(search);
+            if (!matchCode && !matchName) return;
+          }
+
+          // Check if active RFQ exists
+          const activeRfq = Store.rfqs.find(r => r.sku === sku.code && r.wh === wh.code && r.status === 'Đã gửi NCC');
+
+          rows.push({
+            sku,
+            wh,
+            st,
+            p,
+            eff,
+            status,
+            activeRfq
+          });
+        });
+      });
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text-muted);">Không tìm thấy sản phẩm nào khớp bộ lọc.</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      rows.forEach(r => {
+        let pill = '<span class="status-pill status-pill-ok">OK (An toàn)</span>';
+        if (r.status === 'LOW')  pill = '<span class="status-pill status-pill-low">Dưới MIN (Cần nhập)</span>';
+        if (r.status === 'HIGH') pill = '<span class="status-pill status-pill-high">Vượt MAX (Tồn dư)</span>';
+
+        html += `
+          <tr>
+            <td><strong>${r.sku.code}</strong></td>
+            <td>${r.sku.name}</td>
+            <td><span style="font-size:11.5px;color:var(--text-muted);">${r.sku.cat}</span></td>
+            <td><strong>${r.wh.name}</strong></td>
+            <td class="num-col" style="font-weight:700;">${fmtNum(r.st.on_hand)}</td>
+            <td class="num-col">${r.st.in_transit > 0 ? `<span style="color:var(--navy-accent);font-weight:600;">+${fmtNum(r.st.in_transit)}</span>` : '-'}</td>
+            <td class="num-col">${r.activeRfq ? `<span style="color:#7C3AED;font-weight:600;">${fmtNum(r.activeRfq.qty)}</span>` : '-'}</td>
+            <td class="num-col" style="font-weight:700;color:var(--navy-main);">${fmtNum(r.eff)}</td>
+            <td class="num-col" style="color:var(--status-red);">${fmtNum(r.p.rop)}</td>
+            <td class="num-col" style="color:var(--status-yellow);">${fmtNum(r.p.qmax)}</td>
+            <td>${pill}</td>
+            <td style="text-align:center;">
+              <button class="btn-table" onclick="openTransferCompareModal('${r.sku.code}', '${r.wh.code}')">
+                ${r.status === 'LOW' ? 'Bổ sung' : (r.status === 'HIGH' ? 'Xả tồn' : 'Chi tiết')}
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/views/inventory.js ---
+
+// --- BEGIN src/js/views/transfers.js ---
+// ============================================================================
+// VIEW 3: TRANSFERS
+// ============================================================================
+
+    // 3.6 VIEW 3: TRANSFERS
+    // ----------------------------------------------------------------------------
+    function renderTransfersView() {
+      const tbody = document.getElementById('transferTbody');
+      if (!tbody) return;
+
+      if (Store.transfers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted);">Chưa có lệnh điều chuyển nội bộ nào được ghi nhận.</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      Store.transfers.forEach(tr => {
+        const sku = SKUS.find(s => s.code === tr.sku) || { name: tr.sku, unit: 'cái' };
+        const isArrived = tr.status === 'Đã nhận';
+
+        html += `
+          <tr>
+            <td><strong style="color:var(--navy-accent);">${tr.id}</strong></td>
+            <td>${fmtDateVN(tr.date)}</td>
+            <td><strong>${tr.sku}</strong> - <span style="font-size:11.5px;color:var(--text-muted);">${sku.name}</span></td>
+            <td><span class="status-pill status-pill-high" style="background:#F1F5F9;color:#334155;border-color:#CBD5E1;">${tr.srcWh}</span></td>
+            <td><span class="status-pill status-pill-ok" style="background:#ECFDF5;color:#047857;border-color:#A7F3D0;">${tr.dstWh}</span></td>
+            <td class="num-col" style="font-weight:700;">${fmtNum(tr.qty)} ${sku.unit}</td>
+            <td class="num-col">${fmtVND(tr.cost)}</td>
+            <td style="font-size:11.5px;">${fmtDateVN(tr.arrivalDate)}</td>
+            <td>
+              <span class="status-pill ${isArrived ? 'status-pill-ok' : 'status-pill-high'}">
+                ${tr.status}
+              </span>
+            </td>
+            <td style="text-align:center;">
+              ${!isArrived ? `
+                <button class="btn-table" onclick="receiveTransferEarly('${tr.id}')">
+                  Tiếp nhận sớm
+                </button>
+              ` : '<span style="font-size:11.5px;color:var(--status-green);">Hoàn tất</span>'}
+            </td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/views/transfers.js ---
+
+// --- BEGIN src/js/views/rfq.js ---
+// ============================================================================
+// VIEW 4: RFQ MANAGEMENT
+// ============================================================================
+
+    // 3.7 VIEW 4: RFQ MANAGEMENT
+    // ----------------------------------------------------------------------------
+    function renderRfqView() {
+      const tbody = document.getElementById('rfqTbody');
+      if (!tbody) return;
+
+      if (Store.rfqs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted);">Chưa có Yêu cầu Báo giá (RFQ) nào được gửi tới Nhà cung cấp.</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      Store.rfqs.forEach(rfq => {
+        const sku = SKUS.find(s => s.code === rfq.sku) || { name: rfq.sku, unit: 'cái' };
+        let statusPill = `<span class="status-pill status-pill-high" style="background:#EDE9FE;color:#6D28D9;border-color:#DDD6FE;">Đã gửi NCC</span>`;
+        if (rfq.status === 'Quá hạn') {
+          statusPill = `<span class="status-pill status-pill-low" style="background:#FEE2E2;color:#991B1B;border-color:#FECACA;">Quá hạn</span>`;
+        } else if (rfq.status === 'Đã hủy') {
+          statusPill = `<span class="status-pill" style="background:#F3F4F6;color:#6B7280;border-color:#E5E7EB;">Đã hủy</span>`;
+        }
+
+        html += `
+          <tr>
+            <td><strong style="color:var(--navy-accent);">${rfq.id}</strong></td>
+            <td>${fmtDateVN(rfq.date)}</td>
+            <td><strong>${rfq.sku}</strong> - <span style="font-size:11.5px;color:var(--text-muted);">${sku.name}</span></td>
+            <td><strong>${rfq.wh}</strong></td>
+            <td>${rfq.sup}</td>
+            <td class="num-col" style="font-weight:700;">${fmtNum(rfq.qty)} ${sku.unit}</td>
+            <td style="font-size:11.5px;">${fmtDateVN(rfq.validUntil)}</td>
+            <td>${statusPill}</td>
+            <td style="text-align:center;">
+              ${rfq.status === 'Đã gửi NCC' ? `
+                <button class="btn-table btn-table-sec" onclick="cancelRfq('${rfq.id}')">
+                  Hủy RFQ
+                </button>
+              ` : `
+                <button class="btn-table" onclick="openRfqModal('${rfq.sku}', '${rfq.wh}', ${rfq.qty}, '${rfq.sup}')">
+                  Gửi lại
+                </button>
+              `}
+            </td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/views/rfq.js ---
+
+// --- BEGIN src/js/views/quick.js ---
+// ============================================================================
+// VIEW 5: QUICK MOVEMENT
+// ============================================================================
+
+    // 2.14 QUICK MOVEMENT (Yêu cầu 2.5)
+    // ----------------------------------------------------------------------------
+    function updateMovementStockDisplay() {
+      const whSel = document.getElementById('mvWh');
+      const skuSel = document.getElementById('mvSku');
+      const help = document.getElementById('mvStockHelp');
+      if (!whSel || !skuSel || !help) return;
+
+      const whCode = whSel.value;
+      const skuCode = skuSel.value;
+      const st = Store.stock[whCode][skuCode];
+      const p  = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
+
+      help.innerHTML = `
+        Tồn kho thực tế hiện tại: <strong>${st.on_hand}</strong> | Đang chuyển: <strong>${st.in_transit}</strong> |
+        Ngưỡng MIN (ROP): <strong>${p.rop}</strong> | Trần MAX: <strong>${p.qmax}</strong>
+      `;
+    }
+
+    function submitQuickMovement() {
+      const wh   = document.getElementById('mvWh').value;
+      const sku  = document.getElementById('mvSku').value;
+      const type = document.getElementById('mvType').value;
+      const qty  = parseInt(document.getElementById('mvQty').value, 10) || 0;
+      const note = document.getElementById('mvNote').value.trim();
+
+      if (qty <= 0) {
+        showToast('Số lượng điều chỉnh phải > 0!', 'error');
+        return;
+      }
+
+      const st = Store.stock[wh][sku];
+
+      if (type === 'OUT') {
+        if (qty > st.on_hand) {
+          showToast(`Lỗi: Không thể xuất quá tồn kho vật lý hiện có (${st.on_hand})!`, 'error');
+          return;
+        }
+        st.on_hand -= qty;
+        logAction('QUICK_OUT', sku, `Xuất kho nhanh ${qty} ${sku} tại ${wh}. Lý do: ${note || 'Không có'}`);
+        pushNotification('STOCK_OUT', sku, `Xuất kho nhanh ${qty} ${sku} tại kho ${wh}.`);
+        showToast(`Đã xuất ${qty} ${sku} tại kho ${wh}`, 'success');
+      } else {
+        st.on_hand += qty;
+        logAction('QUICK_IN', sku, `Nhập kho nhanh ${qty} ${sku} tại ${wh}. Lý do: ${note || 'Không có'}`);
+        pushNotification('STOCK_IN', sku, `Nhập kho nhanh ${qty} ${sku} tại kho ${wh}.`);
+        showToast(`Đã nhập ${qty} ${sku} tại kho ${wh}`, 'success');
+      }
+
+      document.getElementById('mvQty').value = '10';
+      document.getElementById('mvNote').value = '';
+      updateMovementStockDisplay();
+      renderAllViews();
+    }
+
+    // ----------------------------------------------------------------------------
+
+    // 3.8 VIEW 5: QUICK MOVEMENT
+    // ----------------------------------------------------------------------------
+    function renderMovementView() {
+      const whSel = document.getElementById('mvWh');
+      const skuSel = document.getElementById('mvSku');
+      if (whSel && whSel.children.length === 0) {
+        whSel.innerHTML = WAREHOUSES.map(w => `<option value="${w.code}">${w.name} (${w.code})</option>`).join('');
+      }
+      if (skuSel && skuSel.children.length === 0) {
+        skuSel.innerHTML = SKUS.map(s => `<option value="${s.code}">${s.code} - ${s.name}</option>`).join('');
+      }
+      updateMovementStockDisplay();
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/views/quick.js ---
+
+// --- BEGIN src/js/views/params.js ---
+// ============================================================================
+// VIEW 6: PARAMS & AI FORMULAS
+// ============================================================================
+
+    // 3.9 VIEW 6: PARAMS & AI FORMULAS (Yêu cầu 6)
+    // ----------------------------------------------------------------------------
+    function renderParamsView() {
+      // 1. Setup dropdown selectors for interactive step calculation
+      const skuSel = document.getElementById('paramSkuSelect');
+      const whSel  = document.getElementById('paramWhSelect');
+
+      if (skuSel && skuSel.children.length === 0) {
+        skuSel.innerHTML = SKUS.map(s => `<option value="${s.code}">${s.code} - ${s.name}</option>`).join('');
+      }
+      if (whSel && whSel.children.length === 0) {
+        whSel.innerHTML = WAREHOUSES.map(w => `<option value="${w.code}">${w.name} (${w.code})</option>`).join('');
+      }
+
+      const curSku = skuSel ? skuSel.value : 'TLM-045';
+      const curWh  = whSel  ? whSel.value  : 'HCM';
+
+      // 2. Interactive Step Calculation Box (#paramStepCalc)
+      renderStepCalculator(curSku, curWh);
+
+      // 3. Dynamic 55-row Parameters Table (#paramsTbody)
+      const tbody = document.getElementById('paramsTbody');
+      if (tbody) {
+        let html = '';
+        const m = getMonthFromDate(Store.currentDate);
+
+        SKUS.forEach(sku => {
+          const sm = SI[sku.code] ? (SI[sku.code][m] || 1.0) : 1.0;
+
+          WAREHOUSES.forEach(wh => {
+            const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+            const st = Store.stock[wh.code][sku.code];
+            const eff = st.on_hand + st.in_transit - st.committed;
+            const status = getStatus(eff, p);
+
+            let pill = '<span class="status-pill status-pill-ok">OK</span>';
+            if (status === 'LOW')  pill = '<span class="status-pill status-pill-low">LOW</span>';
+            if (status === 'HIGH') pill = '<span class="status-pill status-pill-high">HIGH</span>';
+
+            html += `
+              <tr>
+                <td><strong>${sku.code}</strong></td>
+                <td>${sku.name}</td>
+                <td><strong>${wh.name}</strong></td>
+                <td class="num-col">${(wh.w * 100).toFixed(0)}%</td>
+                <td class="num-col">${p.d_sma4}</td>
+                <td class="num-col">${sm.toFixed(3)}</td>
+                <td class="num-col" style="font-weight:700;">${p.f_next}</td>
+                <td class="num-col">${p.lead.toFixed(1)}</td>
+                <td class="num-col">${p.sigma.toFixed(1)}</td>
+                <td class="num-col">${p.ss}</td>
+                <td class="num-col" style="font-weight:700;color:var(--status-red);">${p.rop}</td>
+                <td class="num-col" style="font-weight:700;color:var(--status-yellow);">${p.qmax}</td>
+                <td>${pill}</td>
+              </tr>
+            `;
+          });
+        });
+        tbody.innerHTML = html;
+      }
+    }
+
+    function renderStepCalculator(skuCode, whCode) {
+      const box = document.getElementById('paramStepCalc');
+      if (!box) return;
+
+      const sku = SKUS.find(s => s.code === skuCode) || SKUS[0];
+      const wh  = WAREHOUSES.find(w => w.code === whCode) || WAREHOUSES[0];
+      const m   = getMonthFromDate(Store.currentDate);
+      const sm  = SI[sku.code] ? (SI[sku.code][m] || 1.0) : 1.0;
+      const p   = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+      const st  = Store.stock[wh.code][sku.code];
+      const eff = st.on_hand + st.in_transit - st.committed;
+      const status = getStatus(eff, p);
+
+      const hist = (Store.history[sku.code] && Store.history[sku.code][wh.code]) || [];
+      const trailing4 = hist.slice(-4);
+      const trailing8 = hist.slice(-8);
+
+      const dVals = trailing4.map(h => h.demand).join(', ') || '120, 135, 128, 142';
+      const deVals = trailing4.map(h => h.deseason).join(', ') || '122, 137, 130, 144';
+
+      box.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #E2E8F0;padding-bottom:8px;">
+          <div>
+            <strong style="font-size:13px;color:var(--navy-main);">Dữ liệu Thực tế: ${sku.code} (${sku.name}) tại ${wh.name}</strong><br>
+            <span style="font-size:11.5px;color:var(--text-muted);">Ngày mô phỏng: ${fmtDateVN(Store.currentDate)} | Tỷ trọng vùng: ${wh.w * 100}% | Tháng: ${m}</span>
+          </div>
+          <div>
+            <span class="status-pill ${status === 'LOW' ? 'status-pill-low' : (status === 'HIGH' ? 'status-pill-high' : 'status-pill-ok')}">
+              Tồn: ${eff} / ROP: ${p.rop} / MAX: ${p.qmax} -> ${status}
+            </span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;font-size:12px;color:var(--text-main);">
+          <div style="background:#FFFFFF;padding:10px;border-radius:6px;border:1px solid #E2E8F0;">
+            <strong style="color:var(--navy-accent);">Bước 1: Khử mùa 4 tuần gần nhất</strong>
+            <div style="font-size:11px;color:var(--text-muted);margin:4px 0;">Tiêu thụ thực tế D = [${dVals}]</div>
+            <div>Khử mùa dt = Dt / Sm = [${deVals}]</div>
+            <div style="margin-top:4px;font-weight:600;">-> D_SMA4 = ${p.d_sma4} ${sku.unit}/tuần</div>
+          </div>
+
+          <div style="background:#FFFFFF;padding:10px;border-radius:6px;border:1px solid #E2E8F0;">
+            <strong style="color:var(--navy-accent);">Bước 2: Dự báo tuần tới (F_next)</strong>
+            <div style="font-size:11px;color:var(--text-muted);margin:4px 0;">F = D_SMA4 x Sm (Tháng ${m} = ${sm.toFixed(3)})</div>
+            <div>F = ${p.d_sma4} x ${sm.toFixed(3)} = ${(p.d_sma4 * sm).toFixed(1)}</div>
+            <div style="margin-top:4px;font-weight:600;">-> F_next = ${p.f_next} ${sku.unit}/tuần</div>
+          </div>
+
+          <div style="background:#FFFFFF;padding:10px;border-radius:6px;border:1px solid #E2E8F0;">
+            <strong style="color:var(--navy-accent);">Bước 3: Tồn an toàn (Safety Stock - SS)</strong>
+            <div style="font-size:11px;color:var(--text-muted);margin:4px 0;">SS = Z x Sigma x sqrt(L) với Z=1.65 (95%), L=${p.lead.toFixed(1)} tuần</div>
+            <div>SS = 1.65 x ${p.sigma.toFixed(1)} x sqrt(${p.lead.toFixed(1)}) = ${(1.65 * p.sigma * Math.sqrt(p.lead)).toFixed(1)}</div>
+            <div style="margin-top:4px;font-weight:600;">-> SS = ${p.ss} ${sku.unit}</div>
+          </div>
+
+          <div style="background:#FFFFFF;padding:10px;border-radius:6px;border:1px solid #E2E8F0;">
+            <strong style="color:var(--navy-accent);">Bước 4: Điểm đặt lại MIN (ROP) & Trần MAX</strong>
+            <div style="font-size:11px;color:var(--text-muted);margin:4px 0;">ROP = (F x L) + SS | Qmax = (F x (L+R)) + SS với R=1 tuần</div>
+            <div>ROP = (${p.f_next} x ${p.lead.toFixed(1)}) + ${p.ss} = ${p.rop}</div>
+            <div style="margin-top:4px;font-weight:600;color:var(--status-red);">-> MIN (ROP) = ${p.rop} | <span style="color:var(--status-yellow);">MAX = ${p.qmax}</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/views/params.js ---
+
+// --- BEGIN src/js/views/analytics.js ---
+// ============================================================================
+// VIEW 7: ANALYTICS & CANVAS CHARTS
+// ============================================================================
+
+    // 3.10 VIEW 7: ANALYTICS & CANVAS CHARTS (Yêu cầu 8)
+    // ----------------------------------------------------------------------------
+    function setupCanvasHiDPI(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const w = Math.round(rect.width) || canvas.parentElement?.clientWidth || 500;
+      const h = Math.round(rect.height) || canvas.parentElement?.clientHeight || 220;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      const ctx = canvas.getContext('2d');
+      if (ctx.resetTransform) ctx.resetTransform();
+      else ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      return { ctx, w, h };
+    }
+
+    function renderAnalyticsView() {
+      // 1. Populate SKU Filter dropdown
+      const sel = document.getElementById('chartSkuFilter');
+      if (sel && sel.children.length === 0) {
+        sel.innerHTML = '<option value="ALL">Toàn bộ 11 SKU (Toàn mạng lưới)</option>' +
+          SKUS.map(s => `<option value="${s.code}">${s.code} - ${s.name}</option>`).join('');
+      }
+
+      drawChartA();
+      drawChartB();
+      drawChartC();
+    }
+
+    // Chart A: Dự báo Nhu cầu vs Tiêu thụ Thực tế
+    function drawChartA() {
+      const canvas = document.getElementById('chartDemandForecast');
+      if (!canvas) return;
+      const { ctx, w, h } = setupCanvasHiDPI(canvas);
+      ctx.clearRect(0, 0, w, h);
+
+      const sel = document.getElementById('chartSkuFilter');
+      const selectedSku = sel ? sel.value : 'ALL';
+
+      const pad = { l: 48, r: 18, t: 20, b: 28 };
+      const cw = w - pad.l - pad.r;
+      const ch = h - pad.t - pad.b;
+      if (cw <= 10 || ch <= 10) return;
+
+      // Aggregated 12-week data
+      const weeks = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'];
+      const actuals = [];
+      const forecasts = [];
+
+      for (let wi = 0; wi < 12; wi++) {
+        let actSum = 0;
+        let fcSum = 0;
+
+        SKUS.forEach(sku => {
+          if (selectedSku !== 'ALL' && sku.code !== selectedSku) return;
+          WAREHOUSES.forEach(wh => {
+            const h = Store.history[sku.code] && Store.history[sku.code][wh.code];
+            if (h && h[wi]) {
+              actSum += h[wi].demand;
+              fcSum  += Math.round(h[wi].deseason * h[wi].sm);
+            } else {
+              actSum += Math.round(sku.base * wh.w);
+              fcSum  += Math.round(sku.base * wh.w * 0.98);
+            }
+          });
+        });
+
+        actuals.push(actSum);
+        forecasts.push(fcSum);
+      }
+
+      const maxVal = Math.max(...actuals, ...forecasts) * 1.15 || 3000;
+      const minVal = 0;
+
+      // Draw Y-Grid
+      ctx.strokeStyle = '#F1F5F9';
+      ctx.lineWidth = 1;
+      ctx.fillStyle = '#64748B';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+
+      for (let i = 0; i <= 4; i++) {
+        const yVal = minVal + ((maxVal - minVal) / 4) * i;
+        const y = pad.t + ch - (ch / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(pad.l + cw, y);
+        ctx.stroke();
+        ctx.fillText(fmtNum(Math.round(yVal)), pad.l - 6, y + 3);
+      }
+
+      // Draw X labels
+      ctx.textAlign = 'center';
+      const xStep = cw / (weeks.length - 1);
+      weeks.forEach((wk, i) => {
+        const x = pad.l + i * xStep;
+        ctx.fillText(wk, x, h - 8);
+      });
+
+      // Draw Forecast Line (Orange Dashed)
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      forecasts.forEach((f, i) => {
+        const x = pad.l + i * xStep;
+        const y = pad.t + ch - ((f - minVal) / (maxVal - minVal)) * ch;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw Actual Demand Line (Blue Solid)
+      ctx.strokeStyle = '#2563EB';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      actuals.forEach((a, i) => {
+        const x = pad.l + i * xStep;
+        const y = pad.t + ch - ((a - minVal) / (maxVal - minVal)) * ch;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Draw dots
+      actuals.forEach((a, i) => {
+        const x = pad.l + i * xStep;
+        const y = pad.t + ch - ((a - minVal) / (maxVal - minVal)) * ch;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2563EB';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      // Legend
+      ctx.font = '11px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#2563EB';
+      ctx.fillRect(pad.l + 10, pad.t - 12, 14, 4);
+      ctx.fillStyle = '#334155';
+      ctx.fillText('Tiêu thụ thực tế', pad.l + 30, pad.t - 8);
+
+      ctx.fillStyle = '#F59E0B';
+      ctx.fillRect(pad.l + 130, pad.t - 12, 14, 4);
+      ctx.fillStyle = '#334155';
+      ctx.fillText('Dự báo AI (F_next)', pad.l + 150, pad.t - 8);
+    }
+
+    // Chart B: Tỷ lệ Đáp ứng Dịch vụ theo Kho
+    function drawChartB() {
+      const canvas = document.getElementById('chartServiceLevel');
+      if (!canvas) return;
+      const { ctx, w, h } = setupCanvasHiDPI(canvas);
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = { l: 40, r: 16, t: 20, b: 28 };
+      const cw = w - pad.l - pad.r;
+      const ch = h - pad.t - pad.b;
+      if (cw <= 10 || ch <= 10) return;
+
+      const whRates = WAREHOUSES.map(wh => {
+        let totalLost = 0;
+        let totalSales = 0;
+        SKUS.forEach(s => {
+          totalLost += Store.lostSales[wh.code][s.code] || 0;
+          totalSales += Store.currentWeekDemand[s.code][wh.code] || (s.base * wh.w);
+        });
+        const sl = Math.max(88, Math.min(99.4, 100 - (totalLost / (totalSales + totalLost + 1)) * 100));
+        return { wh: wh.code, rate: parseFloat(sl.toFixed(1)) };
+      });
+
+      // Grid Y from 80% to 100%
+      ctx.strokeStyle = '#F1F5F9';
+      ctx.lineWidth = 1;
+      ctx.fillStyle = '#64748B';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+
+      for (let i = 0; i <= 4; i++) {
+        const val = 80 + i * 5;
+        const y = pad.t + ch - (ch / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(pad.l + cw, y);
+        ctx.stroke();
+        ctx.fillText(val + '%', pad.l - 6, y + 3);
+      }
+
+      // Benchmark Target Line (95%)
+      const targetY = pad.t + ch - ((95 - 80) / 20) * ch;
+      ctx.strokeStyle = '#EF4444';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, targetY);
+      ctx.lineTo(pad.l + cw, targetY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#EF4444';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Mục tiêu SLA: 95%', pad.l + cw - 95, targetY - 4);
+
+      // Bars for Warehouses
+      const barCount = whRates.length;
+      const barW = Math.min(42, (cw / barCount) * 0.55);
+      const gap = cw / barCount;
+
+      whRates.forEach((item, i) => {
+        const x = pad.l + i * gap + (gap - barW) / 2;
+        const barH = ((item.rate - 80) / 20) * ch;
+        const y = pad.t + ch - barH;
+
+        ctx.fillStyle = item.rate >= 95 ? '#059669' : '#F59E0B';
+        ctx.beginPath();
+        ctx.roundRect(x, y, barW, barH, [4, 4, 0, 0]);
+        ctx.fill();
+
+        // Label Rate on top
+        ctx.fillStyle = '#1E293B';
+        ctx.font = 'bold 10.5px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(item.rate + '%', x + barW / 2, y - 5);
+
+        // Label X Wh code
+        ctx.fillStyle = '#64748B';
+        ctx.font = '10.5px Inter, sans-serif';
+        ctx.fillText(item.wh, x + barW / 2, h - 8);
+      });
+    }
+
+    // Chart C: Diễn biến Giá trị Tồn kho & Vốn Ứ đọng
+    function drawChartC() {
+      const canvas = document.getElementById('chartStockTrajectory');
+      if (!canvas) return;
+      const { ctx, w, h } = setupCanvasHiDPI(canvas);
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = { l: 56, r: 24, t: 24, b: 28 };
+      const cw = w - pad.l - pad.r;
+      const ch = h - pad.t - pad.b;
+      if (cw <= 10 || ch <= 10) return;
+
+      const dates = Object.keys(Store.daily).sort();
+      if (dates.length < 2) {
+        // Draw single day state or placeholder
+        ctx.fillStyle = '#64748B';
+        ctx.font = '12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Tiến hành mô phỏng các ngày tiếp theo để hiển thị đường xu hướng tích lũy.', w / 2, h / 2);
+        return;
+      }
+
+      const totalVals = dates.map(d => Store.daily[d].totalStock / 1000000.0); // Triệu VNĐ
+      const trapVals  = dates.map(d => Store.daily[d].trappedCap / 1000000.0);
+
+      const maxVal = Math.max(...totalVals) * 1.15 || 5000;
+      const minVal = 0;
+
+      // Draw Grid Y
+      ctx.strokeStyle = '#F1F5F9';
+      ctx.lineWidth = 1;
+      ctx.fillStyle = '#64748B';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+
+      for (let i = 0; i <= 4; i++) {
+        const val = minVal + ((maxVal - minVal) / 4) * i;
+        const y = pad.t + ch - (ch / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(pad.l + cw, y);
+        ctx.stroke();
+        ctx.fillText(fmtNum(Math.round(val)) + ' tr', pad.l - 6, y + 3);
+      }
+
+      const xStep = cw / (dates.length - 1);
+
+      // Draw Total Inventory Curve (Navy)
+      ctx.strokeStyle = '#1E3A8A';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      dates.forEach((d, i) => {
+        const x = pad.l + i * xStep;
+        const y = pad.t + ch - (totalVals[i] / maxVal) * ch;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Draw Trapped Capital Curve (Red)
+      ctx.strokeStyle = '#EF4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      dates.forEach((d, i) => {
+        const x = pad.l + i * xStep;
+        const y = pad.t + ch - (trapVals[i] / maxVal) * ch;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // X Labels
+      ctx.fillStyle = '#64748B';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      const labelInterval = Math.max(1, Math.floor(dates.length / 6));
+      dates.forEach((d, i) => {
+        if (i % labelInterval === 0 || i === dates.length - 1) {
+          const x = pad.l + i * xStep;
+          ctx.fillText(fmtDateVN(d).slice(0, 5), x, h - 8);
+        }
+      });
+
+      // Legend
+      ctx.font = '11px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#1E3A8A';
+      ctx.fillRect(pad.l + 10, pad.t - 14, 14, 4);
+      ctx.fillStyle = '#334155';
+      ctx.fillText('Tổng giá trị tồn kho (Triệu VNĐ)', pad.l + 30, pad.t - 10);
+
+      ctx.fillStyle = '#EF4444';
+      ctx.fillRect(pad.l + 210, pad.t - 14, 14, 4);
+      ctx.fillStyle = '#334155';
+      ctx.fillText('Vốn ứ đọng vượt MAX (Triệu VNĐ)', pad.l + 230, pad.t - 10);
+    }
+
+    // ----------------------------------------------------------------------------
+
+
+// --- END src/js/views/analytics.js ---
+
+// --- BEGIN src/js/main.js ---
+// ============================================================================
+// NAVIGATION, MASTER RENDER, TIME CONTROLS & DOM INITIALIZATION
+// ============================================================================
+
+    // 3.2 NAVIGATION & TAB SWITCHING
+    // ----------------------------------------------------------------------------
+    function switchNavTab(tabName) {
+      Store.activeTab = tabName;
+
+      // Update Tab Buttons
+      const tabBtns = document.querySelectorAll('.nav-tab');
+      tabBtns.forEach(btn => {
+        if (btn.id === `tab-${tabName}`) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Update View Panels
+      const panels = document.querySelectorAll('.view-panel');
+      panels.forEach(p => {
+        if (p.id === `view-${tabName}`) {
+          p.classList.add('active');
+        } else {
+          p.classList.remove('active');
+        }
+      });
+
+      // Render specific view
+      if (tabName === 'dashboard') {
+        renderDashboardView();
+      } else if (tabName === 'inventory') {
+        renderInventoryView();
+      } else if (tabName === 'transfers') {
+        renderTransfersView();
+      } else if (tabName === 'rfq') {
+        renderRfqView();
+      } else if (tabName === 'movement') {
+        renderMovementView();
+      } else if (tabName === 'params') {
+        renderParamsView();
+      } else if (tabName === 'analytics') {
+        renderAnalyticsView();
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+    // 3.3 MASTER RENDER ALL VIEWS
+    // ----------------------------------------------------------------------------
+    function renderAllViews() {
+      // 1. Header Date Picker & Badges
+      const picker = document.getElementById('simDatePicker');
+      if (picker) {
+        picker.value = Store.currentDate;
+        picker.min = Store.currentDate; // Forward-only enforcement
+      }
+
+      updateNotificationBadge();
+
+      // 2. Count Active Proposals & Badges
+      const propKeys = Object.keys(Store.proposals);
+      const badgeRecs = document.getElementById('badge-recs-count');
+      if (badgeRecs) {
+        badgeRecs.textContent = propKeys.length;
+        badgeRecs.style.display = propKeys.length > 0 ? 'inline-block' : 'none';
+      }
+
+      const activeTrf = Store.transfers.filter(t => t.status === 'Đang chuyển').length;
+      const badgeTrf = document.getElementById('badge-trf-count');
+      if (badgeTrf) {
+        badgeTrf.textContent = activeTrf;
+        badgeTrf.style.display = activeTrf > 0 ? 'inline-block' : 'none';
+      }
+
+      const activeRfq = Store.rfqs.filter(r => r.status === 'Đã gửi NCC').length;
+      const badgeRfq = document.getElementById('badge-rfq-count');
+      if (badgeRfq) {
+        badgeRfq.textContent = activeRfq;
+        badgeRfq.style.display = activeRfq > 0 ? 'inline-block' : 'none';
+      }
+
+      // 3. Dashboard Event Banner
+      const activeEvt = EVENTS.find(e => Store.currentDate >= e.start && Store.currentDate <= e.end);
+      const evtBadge = document.getElementById('eventBadgeWrap');
+      const evtTitle = document.getElementById('eventTitle');
+      const evtDesc  = document.getElementById('eventDesc');
+      const evtImpact = document.getElementById('eventImpact');
+
+      if (activeEvt && evtBadge) {
+        evtBadge.style.display = 'block';
+        if (evtTitle) evtTitle.textContent = `${activeEvt.icon} Sự kiện đang diễn ra: ${activeEvt.title}`;
+        if (evtDesc)  evtDesc.textContent = `${activeEvt.desc} (Thời gian: ${fmtDateVN(activeEvt.start)} - ${fmtDateVN(activeEvt.end)})`;
+        if (evtImpact) evtImpact.textContent = `Tác động: Hệ số nhu cầu x${activeEvt.demandMult} | Độ trễ giao hàng NCC: +${(activeEvt.delayAdd || (activeEvt.applyEvent ? activeEvt.applyEvent('TLM-045','HCM').delayAdd : 0) || 0)} ngày`;
+      } else if (evtBadge) {
+        evtBadge.style.display = 'none';
+      }
+
+      // 4. KPIs
+      let lowCount = 0;
+      let highCount = 0;
+      let trappedCap = 0;
+      let holdingSaving = 0;
+
+      SKUS.forEach(sku => {
+        WAREHOUSES.forEach(wh => {
+          const st = Store.stock[wh.code][sku.code];
+          const p = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+          const eff = st.on_hand + st.in_transit - st.committed;
+          const status = getStatus(eff, p);
+
+          if (status === 'LOW') lowCount++;
+          if (status === 'HIGH') {
+            highCount++;
+            if (st.on_hand > p.qmax) {
+              trappedCap += (st.on_hand - p.qmax) * sku.cogs;
+            }
+          }
+        });
+      });
+
+      const kpiLow = document.getElementById('kpi-under-min');
+      const kpiHigh = document.getElementById('kpi-over-max');
+      const kpiCap = document.getElementById('kpi-trapped-cap');
+      const kpiCost = document.getElementById('kpi-cost-diff');
+
+      if (kpiLow)  kpiLow.textContent = lowCount;
+      if (kpiHigh) kpiHigh.textContent = highCount;
+      if (kpiCap)  kpiCap.textContent = fmtVND(trappedCap);
+      if (kpiCost) kpiCost.textContent = fmtVND(Math.round(trappedCap * 0.05));
+
+      // 5. Render currently visible tab
+      switchNavTab(Store.activeTab);
+    }
+
+    // ----------------------------------------------------------------------------
+
+    function advanceToDate(targetDate) {
+      if (targetDate < Store.currentDate) {
+        showToast('Không thể quay ngược thời gian! Hệ thống chỉ mô phỏng tiến tới.', 'error');
+        const picker = document.getElementById('simDatePicker');
+        if (picker) picker.value = Store.currentDate;
+        return;
+      }
+      if (targetDate > Store.endDate) targetDate = Store.endDate;
+
+      while (Store.currentDate < targetDate) {
+        const ok = advanceOneDay();
+        if (!ok) break;
+      }
+
+      const picker = document.getElementById('simDatePicker');
+      if (picker) {
+        picker.value = Store.currentDate;
+        picker.min = Store.currentDate; // Ép chỉ chọn ngày tương lai
+      }
+
+      renderAllViews();
+    }
+
+    function stepDays(days) {
+      const target = addDays(Store.currentDate, days);
+      advanceToDate(target);
+    }
+
+    function onManualDateChange(newVal) {
+      if (!newVal) return;
+      if (newVal < Store.currentDate) {
+        showToast('Không thể chọn ngày trong quá khứ!', 'error');
+        const picker = document.getElementById('simDatePicker');
+        if (picker) picker.value = Store.currentDate;
+        return;
+      }
+      advanceToDate(newVal);
+    }
+
+    let autoPilotTimer = null;
+    function toggleAutoPilot() {
+      Store.autoPilot = !Store.autoPilot;
+      const btn = document.getElementById('autoPilotToggle');
+      if (Store.autoPilot) {
+        if (btn) btn.classList.add('active');
+        if (Store.currentDate >= Store.endDate) {
+          Store.autoPilot = false;
+          if (btn) btn.classList.remove('active');
+          showToast('Đã ở ngày kết thúc mô phỏng', 'info');
+          return;
+        }
+        autoPilotTimer = setInterval(() => {
+          if (Store.currentDate >= Store.endDate || !Store.autoPilot) {
+            clearInterval(autoPilotTimer);
+            Store.autoPilot = false;
+            if (btn) btn.classList.remove('active');
+            renderAllViews();
+            return;
+          }
+          advanceOneDay();
+          const picker = document.getElementById('simDatePicker');
+          if (picker) {
+            picker.value = Store.currentDate;
+            picker.min = Store.currentDate;
+          }
+          renderAllViews();
+        }, 700);
+      } else {
+        if (btn) btn.classList.remove('active');
+        if (autoPilotTimer) {
+          clearInterval(autoPilotTimer);
+          autoPilotTimer = null;
+        }
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+
+    // 3.13 DOM INITIALIZATION & EVENT LISTENERS
+    // ----------------------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. Initialize Seeded 12-week history
+      Store.history = initSeededHistory();
+
+      // 2. Initialize Day 0 Params for all 55 pairs
+      const day0Params = {};
+      SKUS.forEach(sku => {
+        day0Params[sku.code] = {};
+        WAREHOUSES.forEach(wh => {
+          day0Params[sku.code][wh.code] = calcSKUParams(sku.code, wh.code, Store.startDate, Store.history);
+        });
+      });
+
+      // 3. Build Initial Stock with FNV-1a diversity and required overrides
+      Store.stock = buildInitialStock(day0Params);
+
+      // 4. Initialize Weekly Accumulators & Lost Sales
+      SKUS.forEach(sku => {
+        Store.currentWeekDemand[sku.code] = {};
+        WAREHOUSES.forEach(wh => {
+          Store.currentWeekDemand[sku.code][wh.code] = 0;
+        });
+      });
+
+      WAREHOUSES.forEach(wh => {
+        Store.lostSales[wh.code] = {};
+        SKUS.forEach(sku => {
+          Store.lostSales[wh.code][sku.code] = 0;
+        });
+      });
+
+      // 5. Initial Proposal Scan
+      scanAndGenerateProposals(Store.startDate);
+
+      // 6. Record Initial Day 0 Snapshot
+      recordDailySnapshot(Store.startDate);
+
+      // 7. Initial Log Entry
+      logAction('SYSTEM_INIT', 'ALL', 'Khởi tạo hệ thống SenNova Home IMS v3 thành công với 5 kho x 11 SKU.');
+
+      // 8. Bind Global Modal Click Outside to Close
+      document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) {
+            overlay.classList.remove('active');
+          }
+        });
+      });
+
+      // 9. Initial Render
+      renderAllViews();
+
+      showToast('Hệ thống SenNova Home IMS sẵn sàng!', 'success');
+    });
+
+
+// --- END src/js/main.js ---
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+supplier_code,supplier_name,lead_time_weeks,lead_time_days,expected_delay_days
+SUP-SENVIET,NM Ton Sen Viet,1.0,7,2
+SUP-VIETSTEEL,NM Ong thep Viet Steel,1.43,10,3
+SUP-LOTUS,Nhua Lotus,2.0,14,3
+SUP-DAIPHAT,Gach men Dai Phat,3.0,21,4
+SUP-MINHAN,Son & Thiet bi Minh An,0.71,5,1

@@ -1,0 +1,5 @@
+event_id,event_name,target_type,target_values,notice_days,start_date,end_date,impact_type,impact_value,ramp_days,note
+EVT-PEAK-AUG,Cau VLXD he thu,ALL,ALL,2,2026-08-14,2026-08-19,demand_multiplier,1.35,2,Tang cau toan mang +35%
+EVT-SUP-MAINT,Sen Viet bao tri can,SUPPLIER,SUP-SENVIET,1,2026-08-18,2026-08-20,supplier_delay,2,0,SUP-SENVIET cham giao +2 ngay
+EVT-STORM-CENTRAL,Bao so 4 Mien Trung,WAREHOUSE,"DN,DN_CITY",2,2026-09-01,2026-09-08,transfer_delay,5,0,Tuyen vao DN va DN_CITY tre +5 ngay
+EVT-YEAR-END,Mua hoan thien cuoi nam,CATEGORY,"Son,TBV-LAV,TBV-VOI",3,2026-10-01,2026-10-23,turnover_increase,1.25,2,Tang vong quay nhu cau Son va TBVS
