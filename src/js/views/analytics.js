@@ -38,6 +38,9 @@
       const { ctx, w, h } = setupCanvasHiDPI(canvas);
       ctx.clearRect(0, 0, w, h);
 
+      const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+      const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
       const sel = document.getElementById('chartSkuFilter');
       const selectedSku = sel ? sel.value : 'ALL';
 
@@ -46,7 +49,7 @@
       const ch = h - pad.t - pad.b;
       if (cw <= 10 || ch <= 10) return;
 
-      // Aggregated 12-week data
+      // Aggregated 12-week data for active warehouse
       const weeks = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'];
       const actuals = [];
       const forecasts = [];
@@ -57,16 +60,15 @@
 
         SKUS.forEach(sku => {
           if (selectedSku !== 'ALL' && sku.code !== selectedSku) return;
-          WAREHOUSES.forEach(wh => {
-            const h = Store.history[sku.code] && Store.history[sku.code][wh.code];
-            if (h && h[wi]) {
-              actSum += h[wi].demand;
-              fcSum  += Math.round(h[wi].deseason * h[wi].sm);
-            } else {
-              actSum += Math.round(sku.base * wh.w);
-              fcSum  += Math.round(sku.base * wh.w * 0.98);
-            }
-          });
+          const wh = whObj;
+          const h = Store.history[sku.code] && Store.history[sku.code][wh.code];
+          if (h && h[wi]) {
+            actSum += h[wi].demand;
+            fcSum  += Math.round(h[wi].deseason * h[wi].sm);
+          } else {
+            actSum += Math.round(sku.base * wh.w);
+            fcSum  += Math.round(sku.base * wh.w * 0.98);
+          }
         });
 
         actuals.push(actSum);

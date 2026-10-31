@@ -1,14 +1,35 @@
 // ============================================================================
-// VIEW 3: TRANSFERS - REFACTORED WITH renderTable (B1)
+// VIEW 3: TRANSFERS - CONTEXTUALIZED FOR ACTIVE WAREHOUSE (C2)
 // ============================================================================
 
 function renderTransfersView() {
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  const cardTitle = document.querySelector('#view-transfers .card-title');
+  if (cardTitle) {
+    cardTitle.textContent = `Sổ Lệnh Chuyển kho: ${whObj.name} (Nhập về & Xuất đi)`;
+  }
+
+  // Filter transfers involving active warehouse (C2)
+  const whTransfers = Store.transfers.filter(tr => tr.dstWh === activeWh || tr.srcWh === activeWh);
+
   const columns = [
     {
       key: 'id',
       header: 'Mã lệnh',
       width: '90px',
       render: tr => `<strong style="color:var(--navy-accent);">${tr.id}</strong>`
+    },
+    {
+      key: 'direction',
+      header: 'Chiều luân chuyển',
+      render: tr => {
+        if (tr.dstWh === activeWh) {
+          return `<span class="status-pill status-pill-ok" style="font-weight:700;">⬇ Nhập về ${activeWh}</span>`;
+        }
+        return `<span class="status-pill status-pill-high" style="font-weight:700;">⬆ Xuất từ ${activeWh}</span>`;
+      }
     },
     {
       key: 'date',
@@ -24,14 +45,9 @@ function renderTransfersView() {
       }
     },
     {
-      key: 'srcWh',
-      header: 'Từ kho',
-      render: tr => `<span class="status-pill status-pill-high" style="background:#F1F5F9;color:#334155;border-color:#CBD5E1;">${tr.srcWh}</span>`
-    },
-    {
-      key: 'dstWh',
-      header: 'Đến kho',
-      render: tr => `<span class="status-pill status-pill-ok" style="background:#ECFDF5;color:#047857;border-color:#A7F3D0;">${tr.dstWh}</span>`
+      key: 'route',
+      header: 'Tuyến chuyển',
+      render: tr => `Kho <strong>${tr.srcWh}</strong> ➔ Kho <strong>${tr.dstWh}</strong>`
     },
     {
       key: 'qty',
@@ -67,10 +83,13 @@ function renderTransfersView() {
       align: 'center',
       render: tr => {
         const isArrived = tr.status === 'Đã nhận';
-        if (!isArrived) {
+        if (!isArrived && tr.dstWh === activeWh) {
           return `<button class="btn-table" onclick="receiveTransferEarly('${tr.id}')">Tiếp nhận sớm</button>`;
         }
-        return '<span style="font-size:11.5px;color:var(--status-green);font-weight:600;">✓ Hoàn tất</span>';
+        if (isArrived) {
+          return '<span style="font-size:11.5px;color:var(--status-green);font-weight:600;">✓ Hoàn tất</span>';
+        }
+        return '<span style="font-size:11.5px;color:var(--text-muted);">Đang vận chuyển</span>';
       }
     }
   ];
@@ -80,7 +99,7 @@ function renderTransfersView() {
     theadId: 'transferThead',
     tbodyId: 'transferTbody',
     columns: columns,
-    rows: Store.transfers,
-    emptyMsg: 'Chưa có lệnh điều chuyển nội bộ nào được ghi nhận.'
+    rows: whTransfers,
+    emptyMsg: `Chưa có lệnh điều chuyển nào liên quan đến ${whObj.name}.`
   });
 }

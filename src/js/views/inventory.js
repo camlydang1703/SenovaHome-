@@ -1,12 +1,26 @@
 // ============================================================================
-// VIEW 2: INVENTORY DETAIL TABLE - REFACTORED (B1, B4)
+// VIEW 2: INVENTORY DETAIL TABLE FOR ACTIVE WAREHOUSE (C2)
 // ============================================================================
 
 function renderInventoryView() {
   const tbody = document.getElementById('inventoryTbody');
   if (!tbody) return;
 
-  const whFilter  = document.getElementById('invWhFilter') ? document.getElementById('invWhFilter').value : 'ALL';
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  // Update card title to show active warehouse
+  const cardTitle = document.querySelector('#view-inventory .card-title');
+  if (cardTitle) {
+    cardTitle.textContent = `Chi tiết Quản trị Tồn kho: ${whObj.name} (11 SKU)`;
+  }
+
+  // Sync dropdown with active warehouse
+  const whFilterEl = document.getElementById('invWhFilter');
+  if (whFilterEl && whFilterEl.value !== activeWh && whFilterEl.value !== 'ALL') {
+    whFilterEl.value = activeWh;
+  }
+  const whFilter  = (whFilterEl && whFilterEl.value) ? whFilterEl.value : activeWh;
   const catFilter = document.getElementById('invCatFilter') ? document.getElementById('invCatFilter').value : 'ALL';
   const stFilter  = document.getElementById('invStatusFilter') ? document.getElementById('invStatusFilter').value : 'ALL';
   const search    = document.getElementById('invSearch') ? document.getElementById('invSearch').value.trim().toLowerCase() : '';
@@ -17,6 +31,7 @@ function renderInventoryView() {
     if (catFilter !== 'ALL' && sku.cat !== catFilter) return;
 
     WAREHOUSES.forEach(wh => {
+      // In Phase C: default view shows active warehouse
       if (whFilter !== 'ALL' && wh.code !== whFilter) return;
 
       const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
@@ -143,6 +158,6 @@ function renderInventoryView() {
     tbodyId: 'inventoryTbody',
     columns: columns,
     rows: rows,
-    emptyMsg: 'Không tìm thấy sản phẩm nào khớp bộ lọc.'
+    emptyMsg: `Không tìm thấy sản phẩm nào khớp bộ lọc tại ${whObj.name}.`
   });
 }

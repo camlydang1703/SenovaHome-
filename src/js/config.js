@@ -125,6 +125,9 @@
       currentDate: '2026-08-01',
       autoPilot: false,
       activeTab: 'dashboard',
+      ui: {
+        activeWh: 'HCM'
+      },
 
       // Seeded history 12 weeks: history[sku][wh] = [{ demand, sm, deseason }]
       history: {},

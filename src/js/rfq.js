@@ -7,8 +7,10 @@
     let activeRfqDraft = null;
 
     function openRfqModal(skuCode, whCode, suggestedQty, supCode) {
+      const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
       const sku = SKUS.find(s => s.code === skuCode) || SKUS[0];
-      const wh  = WAREHOUSES.find(w => w.code === whCode) || WAREHOUSES[0];
+      const targetWh = whCode || activeWh;
+      const wh  = WAREHOUSES.find(w => w.code === targetWh) || WAREHOUSES[0];
       const sup = supCode || sku.sup;
       const qty = suggestedQty || 100;
 

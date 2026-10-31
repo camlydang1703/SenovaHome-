@@ -12,6 +12,7 @@ import os
 import re
 
 sys.stdout.reconfigure(encoding='utf-8')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 print("=== RUNNING PHASE B VALIDATION TESTS ===")
 

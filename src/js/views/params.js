@@ -3,6 +3,14 @@
 // ============================================================================
 
 function renderParamsView() {
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  const cardTitle = document.querySelector('#view-params .card-title');
+  if (cardTitle) {
+    cardTitle.textContent = `Bảng Tham số & Ngưỡng Định mức Min/Max: ${whObj.name} (11 SKU)`;
+  }
+
   // 1. Setup dropdown selectors for interactive step calculation
   const skuSel = document.getElementById('paramSkuSelect');
   const whSel  = document.getElementById('paramWhSelect');
@@ -13,37 +21,39 @@ function renderParamsView() {
   if (whSel && whSel.children.length === 0) {
     whSel.innerHTML = WAREHOUSES.map(w => `<option value="${w.code}">${w.name} (${w.code})</option>`).join('');
   }
+  if (whSel && whSel.value !== activeWh) {
+    whSel.value = activeWh;
+  }
 
   const curSku = skuSel ? skuSel.value : 'TLM-045';
-  const curWh  = whSel  ? whSel.value  : 'HCM';
+  const curWh  = whSel  ? whSel.value  : activeWh;
 
   // 2. Interactive Step Calculation Box (#paramStepCalc)
   renderStepCalculator(curSku, curWh);
 
-  // 3. Dynamic 55-row Parameters Table (#paramsTbody) using renderTable
+  // 3. Dynamic 11-row Parameters Table for Active Warehouse (#paramsTbody) using renderTable
   const m = getMonthFromDate(Store.currentDate);
   const rows = [];
 
   SKUS.forEach(sku => {
     const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
 
-    WAREHOUSES.forEach(wh => {
-      const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
-      const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
-        ? Store.stock[wh.code][sku.code]
-        : { on_hand: 0, in_transit: 0, committed: 0 };
-      const eff = st.on_hand + st.in_transit - st.committed;
-      const status = getStatus(eff, p);
+    const wh = whObj;
+    const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+    const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
+      ? Store.stock[wh.code][sku.code]
+      : { on_hand: 0, in_transit: 0, committed: 0 };
+    const eff = st.on_hand + st.in_transit - st.committed;
+    const status = getStatus(eff, p);
 
-      rows.push({
-        sku,
-        wh,
-        p,
-        st,
-        eff,
-        sm,
-        status
-      });
+    rows.push({
+      sku,
+      wh,
+      p,
+      st,
+      eff,
+      sm,
+      status
     });
   });
 

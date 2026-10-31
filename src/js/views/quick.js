@@ -62,10 +62,14 @@
     // 3.8 VIEW 5: QUICK MOVEMENT
     // ----------------------------------------------------------------------------
     function renderMovementView() {
+      const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
       const whSel = document.getElementById('mvWh');
       const skuSel = document.getElementById('mvSku');
       if (whSel && whSel.children.length === 0) {
         whSel.innerHTML = WAREHOUSES.map(w => `<option value="${w.code}">${w.name} (${w.code})</option>`).join('');
+      }
+      if (whSel && whSel.value !== activeWh) {
+        whSel.value = activeWh;
       }
       if (skuSel && skuSel.children.length === 0) {
         skuSel.innerHTML = SKUS.map(s => `<option value="${s.code}">${s.code} - ${s.name}</option>`).join('');

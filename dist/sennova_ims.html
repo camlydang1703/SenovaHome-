@@ -783,6 +783,90 @@
       background-color: rgba(254, 242, 242, 0.45);
     }
 
+    /* --- WAREHOUSE SEGMENTED CONTROL BAR (C1) --- */
+    .warehouse-bar {
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--border-color);
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 51px;
+      z-index: 90;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .wh-bar-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--navy-main);
+      white-space: nowrap;
+    }
+    .wh-segmented-control {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .wh-seg-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 600;
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .wh-seg-btn:hover {
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+    }
+    .wh-seg-btn.active {
+      background: var(--navy-main);
+      color: #FFFFFF;
+      border-color: var(--navy-main);
+      box-shadow: 0 2px 4px rgba(30, 58, 95, 0.2);
+    }
+    .wh-badge-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 2px;
+    }
+    .wh-badge-low {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 9999px;
+      background: #FEE2E2;
+      color: #991B1B;
+    }
+    .wh-seg-btn.active .wh-badge-low {
+      background: #EF4444;
+      color: #FFFFFF;
+    }
+    .wh-badge-high {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 9999px;
+      background: #FEF3C7;
+      color: #92400E;
+    }
+    .wh-seg-btn.active .wh-badge-high {
+      background: #F59E0B;
+      color: #FFFFFF;
+    }
+
   </style>
 </head>
 <body>
@@ -842,6 +926,17 @@
       </div>
     </div>
   </header>
+
+  <!-- WAREHOUSE SELECTOR BAR (C1) -->
+  <div class="warehouse-bar" id="warehouseBar">
+    <div class="wh-bar-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+      <span>Chọn Kho làm việc:</span>
+    </div>
+    <div class="wh-segmented-control" id="whSegmentedControl">
+      <!-- 5 buttons dynamically rendered with dynamic MIN/MAX badges -->
+    </div>
+  </div>
 
   <!-- NAVIGATION TABS -->
   <nav class="nav-tabs-bar">
@@ -936,21 +1031,26 @@
         </div>
         <div class="table-container">
           <table class="data-tbl" id="proposalTable">
-            <thead id="proposalThead">
-              <tr>
-                <th>Mã ĐX</th>
-                <th>Phương thức</th>
-                <th>SKU</th>
-                <th>Kho nhận</th>
-                <th class="num-col">Lượng cần (Q)</th>
-                <th>Kho nguồn / Phương án</th>
-                <th class="num-col">Thời gian</th>
-                <th class="num-col">Còn bán</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
             <thead id="proposalThead"></thead>
             <tbody id="proposalTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- OUTBOUND PROPOSALS (C2) -->
+        <div class="card-head" style="margin-top:20px;border-top:1px solid var(--border-subtle);padding-top:16px;">
+          <div class="card-title" id="outboundQueueTitle">
+            Hàng đợi Điều chuyển Xuất đi từ Kho
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);">
+            Các đề xuất điều chuyển lấy hàng từ kho này để chi viện cho kho khác trong mạng lưới
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl" id="outboundTable">
+            <thead id="outboundThead"></thead>
+            <tbody id="outboundTbody">
               <!-- Rendered dynamically -->
             </tbody>
           </table>
@@ -1563,6 +1663,9 @@
       currentDate: '2026-08-01',
       autoPilot: false,
       activeTab: 'dashboard',
+      ui: {
+        activeWh: 'HCM'
+      },
 
       // Seeded history 12 weeks: history[sku][wh] = [{ demand, sm, deseason }]
       history: {},
@@ -2099,8 +2202,10 @@ function fmt(n) {
     let activeRfqDraft = null;
 
     function openRfqModal(skuCode, whCode, suggestedQty, supCode) {
+      const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
       const sku = SKUS.find(s => s.code === skuCode) || SKUS[0];
-      const wh  = WAREHOUSES.find(w => w.code === whCode) || WAREHOUSES[0];
+      const targetWh = whCode || activeWh;
+      const wh  = WAREHOUSES.find(w => w.code === targetWh) || WAREHOUSES[0];
       const sup = supCode || sku.sup;
       const qty = suggestedQty || 100;
 
@@ -2228,14 +2333,32 @@ function fmt(n) {
 
     // 2.1 NOTIFICATIONS SYSTEM (Yêu cầu 5)
     // ----------------------------------------------------------------------------
-    function pushNotification(type, refId, text) {
+    function pushNotification(type, refId, text, whCode = null) {
       const notifId = 'NT-' + String(Store.seq.notif++).padStart(4, '0');
+      let targetWh = whCode;
+      if (!targetWh && refId) {
+        for (const w of WAREHOUSES) {
+          if (refId.startsWith(w.code + '-') || refId.endsWith('-' + w.code) || refId === w.code) {
+            targetWh = w.code;
+            break;
+          }
+        }
+      }
+      if (!targetWh && text) {
+        for (const w of WAREHOUSES) {
+          if (text.includes(w.name) || text.includes(`kho ${w.code}`) || text.includes(`Kho ${w.code}`) || text.includes(`về ${w.code}`) || text.includes(`tại ${w.code}`)) {
+            targetWh = w.code;
+            break;
+          }
+        }
+      }
       const item = {
         id: notifId,
         date: Store.currentDate,
         type: type,
         refId: refId,
         text: text,
+        wh: targetWh,
         read: false,
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       };
@@ -2327,6 +2450,10 @@ function fmt(n) {
       if (popover) popover.classList.remove('active');
 
       if (item) {
+        // C3: Auto-switch active warehouse to the notification's warehouse before switching tab
+        if (item.wh && typeof switchWarehouse === 'function') {
+          switchWarehouse(item.wh);
+        }
         if (item.type.includes('TRANSFER')) {
           switchNavTab('transfers');
         } else if (item.type.includes('RFQ')) {
@@ -3769,6 +3896,10 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
       openModal('selfTestModal');
     }
 
+    function openSelfTestModal() {
+      runSelfTests();
+    }
+
     // ----------------------------------------------------------------------------
 
 
@@ -3776,16 +3907,26 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, emptyMsg = 'Kh�
 
 // --- BEGIN src/js/views/dashboard.js ---
 // ============================================================================
-// VIEW 1: DASHBOARD (PROPOSALS TABLE & INVENTORY MATRIX) - REFACTORED (B1, B4)
+// VIEW 1: DASHBOARD (PROPOSALS & OUTBOUND FOR ACTIVE WAREHOUSE - C2)
 // ============================================================================
 
 function renderDashboardView() {
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
   // --------------------------------------------------------------------------
-  // 1. Proposal Table (#proposalTbody) using renderTable helper
-  // Columns: Mã ĐX | SKU | Kho nhận | Phương thức | Lượng cần | Kho nguồn / NCC | Dự kiến về (số ngày) | Chi phí vận chuyển | Trạng thái | Thao tác
+  // 1. Inbound Proposal Queue (Kho nhận = activeWh) (C2)
   // --------------------------------------------------------------------------
+  const titleEl = document.getElementById('proposalQueueTitle');
+  if (titleEl) {
+    titleEl.textContent = `Hàng đợi Đề xuất Bổ sung / Nhập về ${whObj.name}`;
+  }
+
   const propKeys = Object.keys(Store.proposals);
-  const propRows = propKeys.map(k => ({ key: k, ...Store.proposals[k] }));
+  // Filter for active warehouse as recipient
+  const inboundRows = propKeys
+    .filter(k => Store.proposals[k].wh === activeWh)
+    .map(k => ({ key: k, ...Store.proposals[k] }));
 
   const proposalColumns = [
     {
@@ -3805,10 +3946,7 @@ function renderDashboardView() {
     {
       key: 'wh',
       header: 'Kho nhận',
-      render: r => {
-        const wh = WAREHOUSES.find(w => w.code === r.wh) || { name: r.wh };
-        return `<strong>${wh.name}</strong>`;
-      }
+      render: r => `<strong>${whObj.name}</strong>`
     },
     {
       key: 'type',
@@ -3866,7 +4004,6 @@ function renderDashboardView() {
       header: 'Thao tác',
       align: 'center',
       render: r => {
-        // B4: Button handlers
         if (r.type === 'TRANSFER') {
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
@@ -3882,7 +4019,6 @@ function renderDashboardView() {
             </div>
           `;
         } else {
-          // OVERSTOCK: both buttons open Overstock Modal per B4
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
               <button class="btn-table" onclick="openOverstockModal('${r.sku}', '${r.wh}')">Xử lý</button>
@@ -3899,12 +4035,83 @@ function renderDashboardView() {
     theadId: 'proposalThead',
     tbodyId: 'proposalTbody',
     columns: proposalColumns,
-    rows: propRows,
-    emptyMsg: 'Tất cả các kho đang ở trạng thái an toàn. Không có đề xuất hành động cấp bách nào.'
+    rows: inboundRows,
+    emptyMsg: `Kho ${whObj.name} đang ở trạng thái an toàn. Không có đề xuất hành động cấp bách nào.`
   });
 
   // --------------------------------------------------------------------------
-  // 2. 5x11 Inventory Status Matrix (#matrixTbody)
+  // 2. Outbound Proposal Queue (Kho xuất = activeWh) (C2)
+  // --------------------------------------------------------------------------
+  const outTitleEl = document.getElementById('outboundQueueTitle');
+  if (outTitleEl) {
+    outTitleEl.textContent = `Hàng đợi Điều chuyển Xuất đi từ ${whObj.name}`;
+  }
+
+  const outboundRows = propKeys
+    .filter(k => Store.proposals[k].type === 'TRANSFER' && Store.proposals[k].srcWh === activeWh)
+    .map(k => ({ key: k, ...Store.proposals[k] }));
+
+  const outboundColumns = [
+    {
+      key: 'id',
+      header: 'Mã ĐX',
+      width: '90px',
+      render: r => `<strong style="color:var(--navy-accent);">${r.id}</strong>`
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      render: r => {
+        const sku = SKUS.find(s => s.code === r.sku) || { name: r.sku };
+        return `<strong>${r.sku}</strong> - <span style="font-size:11px;color:var(--text-muted);">${sku.name}</span>`;
+      }
+    },
+    {
+      key: 'dstWh',
+      header: 'Kho nhận viện trợ',
+      render: r => {
+        const dest = WAREHOUSES.find(w => w.code === r.wh) || { name: r.wh };
+        return `<strong>${dest.name}</strong>`;
+      }
+    },
+    {
+      key: 'qty',
+      header: 'Lượng xuất chuyển',
+      align: 'right',
+      render: r => {
+        const sku = SKUS.find(s => s.code === r.sku) || { unit: 'cái' };
+        return `<strong>${fmtNum(r.qty)}</strong> ${sku.unit}`;
+      }
+    },
+    {
+      key: 'arrival',
+      header: 'Thời gian đến',
+      render: r => `${fmtDateVN(r.arrivalDate)} (${r.leadDays} ngày)`
+    },
+    {
+      key: 'cost',
+      header: 'Chi phí vận chuyển',
+      align: 'right',
+      render: r => r.freightCost > 0 ? fmtVND(r.freightCost) : '-'
+    },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      render: r => `<span class="status-pill status-pill-high">${r.status}</span>`
+    }
+  ];
+
+  renderTable({
+    tableId: 'outboundTable',
+    theadId: 'outboundThead',
+    tbodyId: 'outboundTbody',
+    columns: outboundColumns,
+    rows: outboundRows,
+    emptyMsg: `Hiện tại không có yêu cầu điều chuyển nào lấy hàng từ ${whObj.name}.`
+  });
+
+  // --------------------------------------------------------------------------
+  // 3. 5x11 Inventory Status Matrix (with active warehouse highlighted)
   // --------------------------------------------------------------------------
   const matrixTbody = document.getElementById('matrixTbody');
   if (matrixTbody) {
@@ -3922,7 +4129,9 @@ function renderDashboardView() {
       mHtml += `<td><strong>${sku.code}</strong><br><span style="font-size:11px;color:var(--text-muted);">${sku.name}</span></td>`;
 
       WAREHOUSES.forEach(wh => {
-        const st = Store.stock[wh.code][sku.code];
+        const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
+          ? Store.stock[wh.code][sku.code]
+          : { on_hand: 0, in_transit: 0, committed: 0 };
         const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
         const eff = st.on_hand + st.in_transit - st.committed;
         const status = getStatus(eff, p);
@@ -3939,16 +4148,17 @@ function renderDashboardView() {
           tagText = 'Vượt MAX';
         }
 
-        // B4: If on_hand <= ROP but eff > ROP, explain "OK nhờ hàng đang về"
         if (status === 'OK' && st.on_hand <= p.rop && st.in_transit > 0) {
           tagText = 'OK (nhờ hàng về)';
         }
 
         const transitText = st.in_transit > 0 ? ` (+${st.in_transit} đang về)` : '';
         const modalFunc = status === 'HIGH' ? `openOverstockModal('${sku.code}', '${wh.code}')` : `openTransferCompareModal('${sku.code}', '${wh.code}')`;
+        const isCurrentActive = (wh.code === activeWh);
+        const activeStyle = isCurrentActive ? 'border: 2px solid var(--navy-main);' : '';
 
         mHtml += `
-          <td class="${cellClass}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | ROP: ${p.rop} | MAX: ${p.qmax}">
+          <td class="${cellClass}" style="${activeStyle}" onclick="${modalFunc}" title="Tồn thực: ${st.on_hand}${transitText} | ROP: ${p.rop} | MAX: ${p.qmax}">
             <div class="cell-qty">${st.on_hand}${transitText}</div>
             <div class="cell-sub">${tagText} (ROP ${p.rop})</div>
           </td>
@@ -3964,8 +4174,10 @@ function renderDashboardView() {
         <td>Tổng số phân bổ (Thiếu / An toàn / Dư)</td>
         ${WAREHOUSES.map(wh => {
           const t = whTotals[wh.code];
+          const isCurrentActive = (wh.code === activeWh);
+          const activeStyle = isCurrentActive ? 'background:#E2E8F0;font-weight:800;' : '';
           return `
-            <td style="text-align:center;font-size:11.5px;padding:8px 4px;">
+            <td style="text-align:center;font-size:11.5px;padding:8px 4px;${activeStyle}">
               <span style="color:var(--status-red);">${t.low}</span> /
               <span style="color:var(--status-green);">${t.ok}</span> /
               <span style="color:var(--status-yellow);">${t.high}</span>
@@ -3983,14 +4195,28 @@ function renderDashboardView() {
 
 // --- BEGIN src/js/views/inventory.js ---
 // ============================================================================
-// VIEW 2: INVENTORY DETAIL TABLE - REFACTORED (B1, B4)
+// VIEW 2: INVENTORY DETAIL TABLE FOR ACTIVE WAREHOUSE (C2)
 // ============================================================================
 
 function renderInventoryView() {
   const tbody = document.getElementById('inventoryTbody');
   if (!tbody) return;
 
-  const whFilter  = document.getElementById('invWhFilter') ? document.getElementById('invWhFilter').value : 'ALL';
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  // Update card title to show active warehouse
+  const cardTitle = document.querySelector('#view-inventory .card-title');
+  if (cardTitle) {
+    cardTitle.textContent = `Chi tiết Quản trị Tồn kho: ${whObj.name} (11 SKU)`;
+  }
+
+  // Sync dropdown with active warehouse
+  const whFilterEl = document.getElementById('invWhFilter');
+  if (whFilterEl && whFilterEl.value !== activeWh && whFilterEl.value !== 'ALL') {
+    whFilterEl.value = activeWh;
+  }
+  const whFilter  = (whFilterEl && whFilterEl.value) ? whFilterEl.value : activeWh;
   const catFilter = document.getElementById('invCatFilter') ? document.getElementById('invCatFilter').value : 'ALL';
   const stFilter  = document.getElementById('invStatusFilter') ? document.getElementById('invStatusFilter').value : 'ALL';
   const search    = document.getElementById('invSearch') ? document.getElementById('invSearch').value.trim().toLowerCase() : '';
@@ -4001,6 +4227,7 @@ function renderInventoryView() {
     if (catFilter !== 'ALL' && sku.cat !== catFilter) return;
 
     WAREHOUSES.forEach(wh => {
+      // In Phase C: default view shows active warehouse
       if (whFilter !== 'ALL' && wh.code !== whFilter) return;
 
       const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
@@ -4127,7 +4354,7 @@ function renderInventoryView() {
     tbodyId: 'inventoryTbody',
     columns: columns,
     rows: rows,
-    emptyMsg: 'Không tìm thấy sản phẩm nào khớp bộ lọc.'
+    emptyMsg: `Không tìm thấy sản phẩm nào khớp bộ lọc tại ${whObj.name}.`
   });
 }
 
@@ -4135,16 +4362,37 @@ function renderInventoryView() {
 
 // --- BEGIN src/js/views/transfers.js ---
 // ============================================================================
-// VIEW 3: TRANSFERS - REFACTORED WITH renderTable (B1)
+// VIEW 3: TRANSFERS - CONTEXTUALIZED FOR ACTIVE WAREHOUSE (C2)
 // ============================================================================
 
 function renderTransfersView() {
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  const cardTitle = document.querySelector('#view-transfers .card-title');
+  if (cardTitle) {
+    cardTitle.textContent = `Sổ Lệnh Chuyển kho: ${whObj.name} (Nhập về & Xuất đi)`;
+  }
+
+  // Filter transfers involving active warehouse (C2)
+  const whTransfers = Store.transfers.filter(tr => tr.dstWh === activeWh || tr.srcWh === activeWh);
+
   const columns = [
     {
       key: 'id',
       header: 'Mã lệnh',
       width: '90px',
       render: tr => `<strong style="color:var(--navy-accent);">${tr.id}</strong>`
+    },
+    {
+      key: 'direction',
+      header: 'Chiều luân chuyển',
+      render: tr => {
+        if (tr.dstWh === activeWh) {
+          return `<span class="status-pill status-pill-ok" style="font-weight:700;">⬇ Nhập về ${activeWh}</span>`;
+        }
+        return `<span class="status-pill status-pill-high" style="font-weight:700;">⬆ Xuất từ ${activeWh}</span>`;
+      }
     },
     {
       key: 'date',
@@ -4160,14 +4408,9 @@ function renderTransfersView() {
       }
     },
     {
-      key: 'srcWh',
-      header: 'Từ kho',
-      render: tr => `<span class="status-pill status-pill-high" style="background:#F1F5F9;color:#334155;border-color:#CBD5E1;">${tr.srcWh}</span>`
-    },
-    {
-      key: 'dstWh',
-      header: 'Đến kho',
-      render: tr => `<span class="status-pill status-pill-ok" style="background:#ECFDF5;color:#047857;border-color:#A7F3D0;">${tr.dstWh}</span>`
+      key: 'route',
+      header: 'Tuyến chuyển',
+      render: tr => `Kho <strong>${tr.srcWh}</strong> ➔ Kho <strong>${tr.dstWh}</strong>`
     },
     {
       key: 'qty',
@@ -4203,10 +4446,13 @@ function renderTransfersView() {
       align: 'center',
       render: tr => {
         const isArrived = tr.status === 'Đã nhận';
-        if (!isArrived) {
+        if (!isArrived && tr.dstWh === activeWh) {
           return `<button class="btn-table" onclick="receiveTransferEarly('${tr.id}')">Tiếp nhận sớm</button>`;
         }
-        return '<span style="font-size:11.5px;color:var(--status-green);font-weight:600;">✓ Hoàn tất</span>';
+        if (isArrived) {
+          return '<span style="font-size:11.5px;color:var(--status-green);font-weight:600;">✓ Hoàn tất</span>';
+        }
+        return '<span style="font-size:11.5px;color:var(--text-muted);">Đang vận chuyển</span>';
       }
     }
   ];
@@ -4216,8 +4462,8 @@ function renderTransfersView() {
     theadId: 'transferThead',
     tbodyId: 'transferTbody',
     columns: columns,
-    rows: Store.transfers,
-    emptyMsg: 'Chưa có lệnh điều chuyển nội bộ nào được ghi nhận.'
+    rows: whTransfers,
+    emptyMsg: `Chưa có lệnh điều chuyển nào liên quan đến ${whObj.name}.`
   });
 }
 
@@ -4225,10 +4471,20 @@ function renderTransfersView() {
 
 // --- BEGIN src/js/views/rfq.js ---
 // ============================================================================
-// VIEW 4: RFQ MANAGEMENT - REFACTORED WITH renderTable (B1)
+// VIEW 4: RFQ MANAGEMENT - CONTEXTUALIZED FOR ACTIVE WAREHOUSE (C2)
 // ============================================================================
 
 function renderRfqView() {
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  const cardTitle = document.querySelector('#view-rfq .card-title');
+  if (cardTitle) {
+    cardTitle.textContent = `Danh sách Yêu cầu Báo giá (RFQ): ${whObj.name}`;
+  }
+
+  const whRfqs = Store.rfqs.filter(r => r.wh === activeWh);
+
   const columns = [
     {
       key: 'id',
@@ -4304,8 +4560,8 @@ function renderRfqView() {
     theadId: 'rfqThead',
     tbodyId: 'rfqTbody',
     columns: columns,
-    rows: Store.rfqs,
-    emptyMsg: 'Chưa có Yêu cầu Báo giá (RFQ) nào được gửi tới Nhà cung cấp.'
+    rows: whRfqs,
+    emptyMsg: `Chưa có Yêu cầu Báo giá (RFQ) nào được ghi nhận tại ${whObj.name}.`
   });
 }
 
@@ -4376,10 +4632,14 @@ function renderRfqView() {
     // 3.8 VIEW 5: QUICK MOVEMENT
     // ----------------------------------------------------------------------------
     function renderMovementView() {
+      const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
       const whSel = document.getElementById('mvWh');
       const skuSel = document.getElementById('mvSku');
       if (whSel && whSel.children.length === 0) {
         whSel.innerHTML = WAREHOUSES.map(w => `<option value="${w.code}">${w.name} (${w.code})</option>`).join('');
+      }
+      if (whSel && whSel.value !== activeWh) {
+        whSel.value = activeWh;
       }
       if (skuSel && skuSel.children.length === 0) {
         skuSel.innerHTML = SKUS.map(s => `<option value="${s.code}">${s.code} - ${s.name}</option>`).join('');
@@ -4398,6 +4658,14 @@ function renderRfqView() {
 // ============================================================================
 
 function renderParamsView() {
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  const cardTitle = document.querySelector('#view-params .card-title');
+  if (cardTitle) {
+    cardTitle.textContent = `Bảng Tham số & Ngưỡng Định mức Min/Max: ${whObj.name} (11 SKU)`;
+  }
+
   // 1. Setup dropdown selectors for interactive step calculation
   const skuSel = document.getElementById('paramSkuSelect');
   const whSel  = document.getElementById('paramWhSelect');
@@ -4408,37 +4676,39 @@ function renderParamsView() {
   if (whSel && whSel.children.length === 0) {
     whSel.innerHTML = WAREHOUSES.map(w => `<option value="${w.code}">${w.name} (${w.code})</option>`).join('');
   }
+  if (whSel && whSel.value !== activeWh) {
+    whSel.value = activeWh;
+  }
 
   const curSku = skuSel ? skuSel.value : 'TLM-045';
-  const curWh  = whSel  ? whSel.value  : 'HCM';
+  const curWh  = whSel  ? whSel.value  : activeWh;
 
   // 2. Interactive Step Calculation Box (#paramStepCalc)
   renderStepCalculator(curSku, curWh);
 
-  // 3. Dynamic 55-row Parameters Table (#paramsTbody) using renderTable
+  // 3. Dynamic 11-row Parameters Table for Active Warehouse (#paramsTbody) using renderTable
   const m = getMonthFromDate(Store.currentDate);
   const rows = [];
 
   SKUS.forEach(sku => {
     const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
 
-    WAREHOUSES.forEach(wh => {
-      const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
-      const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
-        ? Store.stock[wh.code][sku.code]
-        : { on_hand: 0, in_transit: 0, committed: 0 };
-      const eff = st.on_hand + st.in_transit - st.committed;
-      const status = getStatus(eff, p);
+    const wh = whObj;
+    const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+    const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
+      ? Store.stock[wh.code][sku.code]
+      : { on_hand: 0, in_transit: 0, committed: 0 };
+    const eff = st.on_hand + st.in_transit - st.committed;
+    const status = getStatus(eff, p);
 
-      rows.push({
-        sku,
-        wh,
-        p,
-        st,
-        eff,
-        sm,
-        status
-      });
+    rows.push({
+      sku,
+      wh,
+      p,
+      st,
+      eff,
+      sm,
+      status
     });
   });
 
@@ -4642,6 +4912,9 @@ function renderStepCalculator(skuCode, whCode) {
       const { ctx, w, h } = setupCanvasHiDPI(canvas);
       ctx.clearRect(0, 0, w, h);
 
+      const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+      const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
       const sel = document.getElementById('chartSkuFilter');
       const selectedSku = sel ? sel.value : 'ALL';
 
@@ -4650,7 +4923,7 @@ function renderStepCalculator(skuCode, whCode) {
       const ch = h - pad.t - pad.b;
       if (cw <= 10 || ch <= 10) return;
 
-      // Aggregated 12-week data
+      // Aggregated 12-week data for active warehouse
       const weeks = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'];
       const actuals = [];
       const forecasts = [];
@@ -4661,16 +4934,15 @@ function renderStepCalculator(skuCode, whCode) {
 
         SKUS.forEach(sku => {
           if (selectedSku !== 'ALL' && sku.code !== selectedSku) return;
-          WAREHOUSES.forEach(wh => {
-            const h = Store.history[sku.code] && Store.history[sku.code][wh.code];
-            if (h && h[wi]) {
-              actSum += h[wi].demand;
-              fcSum  += Math.round(h[wi].deseason * h[wi].sm);
-            } else {
-              actSum += Math.round(sku.base * wh.w);
-              fcSum  += Math.round(sku.base * wh.w * 0.98);
-            }
-          });
+          const wh = whObj;
+          const h = Store.history[sku.code] && Store.history[sku.code][wh.code];
+          if (h && h[wi]) {
+            actSum += h[wi].demand;
+            fcSum  += Math.round(h[wi].deseason * h[wi].sm);
+          } else {
+            actSum += Math.round(sku.base * wh.w);
+            fcSum  += Math.round(sku.base * wh.w * 0.98);
+          }
         });
 
         actuals.push(actSum);
@@ -4946,290 +5218,358 @@ function renderStepCalculator(skuCode, whCode) {
 
 // --- BEGIN src/js/main.js ---
 // ============================================================================
-// NAVIGATION, MASTER RENDER, TIME CONTROLS & DOM INITIALIZATION
+// NAVIGATION, MASTER RENDER, TIME CONTROLS & DOM INITIALIZATION (PHASE C)
 // ============================================================================
 
-    // 3.2 NAVIGATION & TAB SWITCHING
-    // ----------------------------------------------------------------------------
-    function switchNavTab(tabName) {
-      Store.activeTab = tabName;
+// 3.2 NAVIGATION & TAB SWITCHING
+function switchNavTab(tabName) {
+  Store.activeTab = tabName;
 
-      // Update Tab Buttons
-      const tabBtns = document.querySelectorAll('.nav-tab');
-      tabBtns.forEach(btn => {
-        if (btn.id === `tab-${tabName}`) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      });
-
-      // Update View Panels
-      const panels = document.querySelectorAll('.view-panel');
-      panels.forEach(p => {
-        if (p.id === `view-${tabName}`) {
-          p.classList.add('active');
-        } else {
-          p.classList.remove('active');
-        }
-      });
-
-      // Render specific view
-      if (tabName === 'dashboard') {
-        renderDashboardView();
-      } else if (tabName === 'inventory') {
-        renderInventoryView();
-      } else if (tabName === 'transfers') {
-        renderTransfersView();
-      } else if (tabName === 'rfq') {
-        renderRfqView();
-      } else if (tabName === 'movement') {
-        renderMovementView();
-      } else if (tabName === 'params') {
-        renderParamsView();
-      } else if (tabName === 'analytics') {
-        renderAnalyticsView();
-      }
+  // Update Tab Buttons
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  tabBtns.forEach(btn => {
+    if (btn.id === `tab-${tabName}`) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
     }
+  });
 
-    // ----------------------------------------------------------------------------
-    // 3.3 MASTER RENDER ALL VIEWS
-    // ----------------------------------------------------------------------------
-    function renderAllViews() {
-      // 1. Header Date Picker & Badges
-      const picker = document.getElementById('simDatePicker');
-      if (picker) {
-        picker.value = Store.currentDate;
-        picker.min = Store.currentDate; // Forward-only enforcement
-      }
-
-      updateNotificationBadge();
-
-      // 2. Count Active Proposals & Badges
-      const propKeys = Object.keys(Store.proposals);
-      const badgeRecs = document.getElementById('badge-recs-count');
-      if (badgeRecs) {
-        badgeRecs.textContent = propKeys.length;
-        badgeRecs.style.display = propKeys.length > 0 ? 'inline-block' : 'none';
-      }
-
-      const activeTrf = Store.transfers.filter(t => t.status === 'Đang chuyển').length;
-      const badgeTrf = document.getElementById('badge-trf-count');
-      if (badgeTrf) {
-        badgeTrf.textContent = activeTrf;
-        badgeTrf.style.display = activeTrf > 0 ? 'inline-block' : 'none';
-      }
-
-      const activeRfq = Store.rfqs.filter(r => r.status === 'Đã gửi NCC').length;
-      const badgeRfq = document.getElementById('badge-rfq-count');
-      if (badgeRfq) {
-        badgeRfq.textContent = activeRfq;
-        badgeRfq.style.display = activeRfq > 0 ? 'inline-block' : 'none';
-      }
-
-      // 3. Dashboard Event Banner
-      const activeEvt = EVENTS.find(e => Store.currentDate >= e.start && Store.currentDate <= e.end);
-      const evtBadge = document.getElementById('eventBadgeWrap');
-      const evtTitle = document.getElementById('eventTitle');
-      const evtDesc  = document.getElementById('eventDesc');
-      const evtImpact = document.getElementById('eventImpact');
-
-      const curM = getMonthFromDate(Store.currentDate);
-      const curSm = SI[curM] || 1.0;
-
-      if (activeEvt) {
-        if (evtBadge) {
-          evtBadge.style.display = 'block';
-          evtBadge.innerHTML = `<span class="dot-pill low">${activeEvt.badge || 'Sự kiện đặc biệt'}</span>`;
-        }
-        const delay = (activeEvt.delayAdd || (activeEvt.applyEvent ? (activeEvt.applyEvent('TLM-045','HCM').delayAdd || activeEvt.applyEvent('TLM-045','DN').delayAdd) : 0) || 0);
-        if (evtTitle) evtTitle.textContent = `${activeEvt.icon || '⚠️'} ${activeEvt.title}`;
-        if (evtDesc)  evtDesc.textContent = `${activeEvt.desc} (Thời gian: ${fmtDateVN(activeEvt.start)} - ${fmtDateVN(activeEvt.end)})`;
-        if (evtImpact) evtImpact.textContent = `Tác động: Hệ số cầu x${activeEvt.demandMult} | Độ trễ NCC: +${delay} ngày`;
-      } else {
-        if (evtBadge) {
-          evtBadge.style.display = 'block';
-          evtBadge.innerHTML = `<span class="dot-pill neutral">Điều kiện chuẩn</span>`;
-        }
-        if (evtTitle) evtTitle.textContent = `Tháng ${curM}: Chỉ số mùa vụ Sm = ${curSm}`;
-        if (evtDesc)  evtDesc.textContent = `Chuỗi cung ứng vận hành bình thường theo mùa vụ tháng ${curM}.`;
-        if (evtImpact) evtImpact.textContent = `Hệ số cầu: 1.00 | Không trễ chuyến`;
-      }
-
-      // 4. KPIs
-      let lowCount = 0;
-      let highCount = 0;
-      let trappedCap = 0;
-      let holdingSaving = 0;
-
-      SKUS.forEach(sku => {
-        WAREHOUSES.forEach(wh => {
-          const st = Store.stock[wh.code][sku.code];
-          const p = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
-          const eff = st.on_hand + st.in_transit - st.committed;
-          const status = getStatus(eff, p);
-
-          if (status === 'LOW') lowCount++;
-          if (status === 'HIGH') {
-            highCount++;
-            if (st.on_hand > p.qmax) {
-              trappedCap += (st.on_hand - p.qmax) * sku.cogs;
-            }
-          }
-        });
-      });
-
-      const kpiLow = document.getElementById('kpi-under-min');
-      const kpiHigh = document.getElementById('kpi-over-max');
-      const kpiCap = document.getElementById('kpi-trapped-cap');
-      const kpiCost = document.getElementById('kpi-cost-diff');
-
-      if (kpiLow)  kpiLow.textContent = lowCount;
-      if (kpiHigh) kpiHigh.textContent = highCount;
-      if (kpiCap)  kpiCap.textContent = fmtVND(trappedCap);
-      if (kpiCost) kpiCost.textContent = fmtVND(Math.round(trappedCap * 0.05));
-
-      // 5. Render currently visible tab
-      switchNavTab(Store.activeTab);
+  // Update View Panels
+  const panels = document.querySelectorAll('.view-panel');
+  panels.forEach(p => {
+    if (p.id === `view-${tabName}`) {
+      p.classList.add('active');
+    } else {
+      p.classList.remove('active');
     }
+  });
 
-    // ----------------------------------------------------------------------------
+  // Render specific view
+  if (tabName === 'dashboard') {
+    renderDashboardView();
+  } else if (tabName === 'inventory') {
+    renderInventoryView();
+  } else if (tabName === 'transfers') {
+    renderTransfersView();
+  } else if (tabName === 'rfq') {
+    renderRfqView();
+  } else if (tabName === 'movement') {
+    renderMovementView();
+  } else if (tabName === 'params') {
+    renderParamsView();
+  } else if (tabName === 'analytics') {
+    renderAnalyticsView();
+  }
+}
 
-    function advanceToDate(targetDate) {
-      if (targetDate < Store.currentDate) {
-        showToast('Không thể quay ngược thời gian! Hệ thống chỉ mô phỏng tiến tới.', 'error');
-        const picker = document.getElementById('simDatePicker');
-        if (picker) picker.value = Store.currentDate;
-        return;
-      }
-      if (targetDate > Store.endDate) targetDate = Store.endDate;
+// C1: SWITCH ACTIVE WAREHOUSE (SEGMENTED CONTROL & HASH SYNC)
+function switchWarehouse(whCode) {
+  if (!WAREHOUSES.some(w => w.code === whCode)) return;
+  if (!Store.ui) Store.ui = { activeWh: 'HCM' };
+  Store.ui.activeWh = whCode;
+  try {
+    window.location.hash = `#wh=${whCode}`;
+  } catch (e) {}
+  renderAllViews();
+}
 
-      while (Store.currentDate < targetDate) {
-        const ok = advanceOneDay();
-        if (!ok) break;
-      }
+// C1: RENDER WAREHOUSE SEGMENTED CONTROL BAR
+function renderWarehouseBar() {
+  const container = document.getElementById('whSegmentedControl');
+  if (!container) return;
 
-      const picker = document.getElementById('simDatePicker');
-      if (picker) {
-        picker.value = Store.currentDate;
-        picker.min = Store.currentDate; // Ép chỉ chọn ngày tương lai
-      }
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  let html = '';
 
-      renderAllViews();
-    }
-
-    function stepDays(days) {
-      const target = addDays(Store.currentDate, days);
-      advanceToDate(target);
-    }
-
-    function onManualDateChange(newVal) {
-      if (!newVal) return;
-      if (newVal < Store.currentDate) {
-        showToast('Không thể chọn ngày trong quá khứ!', 'error');
-        const picker = document.getElementById('simDatePicker');
-        if (picker) picker.value = Store.currentDate;
-        return;
-      }
-      advanceToDate(newVal);
-    }
-
-    let autoPilotTimer = null;
-    function toggleAutoPilot() {
-      Store.autoPilot = !Store.autoPilot;
-      const btn = document.getElementById('autoPilotToggle');
-      if (Store.autoPilot) {
-        if (btn) btn.classList.add('active');
-        if (Store.currentDate >= Store.endDate) {
-          Store.autoPilot = false;
-          if (btn) btn.classList.remove('active');
-          showToast('Đã ở ngày kết thúc mô phỏng', 'info');
-          return;
-        }
-        autoPilotTimer = setInterval(() => {
-          if (Store.currentDate >= Store.endDate || !Store.autoPilot) {
-            clearInterval(autoPilotTimer);
-            Store.autoPilot = false;
-            if (btn) btn.classList.remove('active');
-            renderAllViews();
-            return;
-          }
-          advanceOneDay();
-          const picker = document.getElementById('simDatePicker');
-          if (picker) {
-            picker.value = Store.currentDate;
-            picker.min = Store.currentDate;
-          }
-          renderAllViews();
-        }, 700);
-      } else {
-        if (btn) btn.classList.remove('active');
-        if (autoPilotTimer) {
-          clearInterval(autoPilotTimer);
-          autoPilotTimer = null;
-        }
-      }
-    }
-
-    // ----------------------------------------------------------------------------
-
-    // 3.13 DOM INITIALIZATION & EVENT LISTENERS
-    // ----------------------------------------------------------------------------
-    window.addEventListener('DOMContentLoaded', () => {
-      // 1. Initialize Seeded 12-week history
-      Store.history = initSeededHistory();
-
-      // 2. Initialize Day 0 Params for all 55 pairs
-      const day0Params = {};
-      SKUS.forEach(sku => {
-        day0Params[sku.code] = {};
-        WAREHOUSES.forEach(wh => {
-          day0Params[sku.code][wh.code] = calcSKUParams(sku.code, wh.code, Store.startDate, Store.history);
-        });
-      });
-
-      // 3. Build Initial Stock with FNV-1a diversity and required overrides
-      Store.stock = buildInitialStock(day0Params);
-
-      // 4. Initialize Weekly Accumulators & Lost Sales
-      SKUS.forEach(sku => {
-        Store.currentWeekDemand[sku.code] = {};
-        WAREHOUSES.forEach(wh => {
-          Store.currentWeekDemand[sku.code][wh.code] = 0;
-        });
-      });
-
-      WAREHOUSES.forEach(wh => {
-        Store.lostSales[wh.code] = {};
-        SKUS.forEach(sku => {
-          Store.lostSales[wh.code][sku.code] = 0;
-        });
-      });
-
-      // 5. Initial Proposal Scan
-      scanAndGenerateProposals(Store.startDate);
-
-      // 6. Record Initial Day 0 Snapshot
-      recordDailySnapshot(Store.startDate);
-
-      // 7. Initial Log Entry
-      logAction('SYSTEM_INIT', 'ALL', 'Khởi tạo hệ thống SenNova Home IMS v3 thành công với 5 kho x 11 SKU.');
-
-      // 8. Bind Global Modal Click Outside to Close
-      document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.addEventListener('click', (e) => {
-          if (e.target === overlay) {
-            overlay.classList.remove('active');
-          }
-        });
-      });
-
-      // 9. Initial Render
-      renderAllViews();
-
-      showToast('Hệ thống SenNova Home IMS sẵn sàng!', 'success');
+  WAREHOUSES.forEach(wh => {
+    let low = 0;
+    let high = 0;
+    SKUS.forEach(sku => {
+      const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
+        ? Store.stock[wh.code][sku.code]
+        : { on_hand: 0, in_transit: 0, committed: 0 };
+      const p = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+      const eff = st.on_hand + st.in_transit - st.committed;
+      const status = getStatus(eff, p);
+      if (status === 'LOW') low++;
+      else if (status === 'HIGH') high++;
     });
 
+    const isActive = (wh.code === activeWh);
+    html += `
+      <button class="wh-seg-btn ${isActive ? 'active' : ''}" onclick="switchWarehouse('${wh.code}')" data-wh="${wh.code}">
+        <span>${wh.name}</span>
+        <div class="wh-badge-group">
+          <span class="wh-badge-low" title="Số ô dưới MIN kho này">${low}</span>
+          <span class="wh-badge-high" title="Số ô vượt MAX kho này">${high}</span>
+        </div>
+      </button>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+// ----------------------------------------------------------------------------
+// 3.3 MASTER RENDER ALL VIEWS
+// ----------------------------------------------------------------------------
+function renderAllViews() {
+  // 1. Header Date Picker & Badges
+  const picker = document.getElementById('simDatePicker');
+  if (picker) {
+    picker.value = Store.currentDate;
+    picker.min = Store.currentDate; // Forward-only enforcement
+  }
+
+  updateNotificationBadge();
+
+  // C1: Render Warehouse Bar with dynamic badges
+  renderWarehouseBar();
+
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  // 2. Count Active Proposals & Badges for active warehouse (C2)
+  const propKeys = Object.keys(Store.proposals);
+  const whProposals = propKeys.filter(k => Store.proposals[k].wh === activeWh);
+  const badgeRecs = document.getElementById('badge-recs-count');
+  if (badgeRecs) {
+    badgeRecs.textContent = whProposals.length;
+    badgeRecs.style.display = whProposals.length > 0 ? 'inline-block' : 'none';
+  }
+
+  const activeTrf = Store.transfers.filter(t => t.status === 'Đang chuyển' && (t.dstWh === activeWh || t.srcWh === activeWh)).length;
+  const badgeTrf = document.getElementById('badge-trf-count');
+  if (badgeTrf) {
+    badgeTrf.textContent = activeTrf;
+    badgeTrf.style.display = activeTrf > 0 ? 'inline-block' : 'none';
+  }
+
+  const activeRfq = Store.rfqs.filter(r => r.status === 'Đã gửi NCC' && r.wh === activeWh).length;
+  const badgeRfq = document.getElementById('badge-rfq-count');
+  if (badgeRfq) {
+    badgeRfq.textContent = activeRfq;
+    badgeRfq.style.display = activeRfq > 0 ? 'inline-block' : 'none';
+  }
+
+  // 3. Dashboard Event Banner (Contextual for active warehouse)
+  const activeEvt = EVENTS.find(e => Store.currentDate >= e.start && Store.currentDate <= e.end);
+  const evtBadge = document.getElementById('eventBadgeWrap');
+  const evtTitle = document.getElementById('eventTitle');
+  const evtDesc  = document.getElementById('eventDesc');
+  const evtImpact = document.getElementById('eventImpact');
+
+  const curM = getMonthFromDate(Store.currentDate);
+  const curSm = SI[curM] || 1.0;
+
+  if (activeEvt) {
+    if (evtBadge) {
+      evtBadge.style.display = 'block';
+      evtBadge.innerHTML = `<span class="dot-pill low">${activeEvt.badge || 'Sự kiện đặc biệt'}</span>`;
+    }
+    const delay = (activeEvt.delayAdd || (activeEvt.applyEvent ? (activeEvt.applyEvent('TLM-045', activeWh).delayAdd) : 0) || 0);
+    if (evtTitle) evtTitle.textContent = `${activeEvt.icon || '⚠️'} ${activeEvt.title}`;
+    if (evtDesc)  evtDesc.textContent = `${activeEvt.desc} (Thời gian: ${fmtDateVN(activeEvt.start)} - ${fmtDateVN(activeEvt.end)})`;
+    if (evtImpact) evtImpact.textContent = `Tác động tại ${whObj.name}: Hệ số cầu x${activeEvt.demandMult} | Độ trễ NCC: +${delay} ngày`;
+  } else {
+    if (evtBadge) {
+      evtBadge.style.display = 'block';
+      evtBadge.innerHTML = `<span class="dot-pill neutral">Điều kiện chuẩn</span>`;
+    }
+    if (evtTitle) evtTitle.textContent = `Tháng ${curM}: Chỉ số mùa vụ Sm = ${curSm} (${whObj.name})`;
+    if (evtDesc)  evtDesc.textContent = `Chuỗi cung ứng vận hành bình thường theo mùa vụ tháng ${curM} tại ${whObj.name}.`;
+    if (evtImpact) evtImpact.textContent = `Hệ số cầu: 1.00 | Không trễ chuyến`;
+  }
+
+  // 4. KPIs OF ACTIVE WAREHOUSE (C2, C4)
+  let lowCount = 0;
+  let highCount = 0;
+  let trappedCap = 0;
+
+  SKUS.forEach(sku => {
+    const st = (Store.stock && Store.stock[activeWh] && Store.stock[activeWh][sku.code])
+      ? Store.stock[activeWh][sku.code]
+      : { on_hand: 0, in_transit: 0, committed: 0 };
+    const p = calcSKUParams(sku.code, activeWh, Store.currentDate, Store.history);
+    const eff = st.on_hand + st.in_transit - st.committed;
+    const status = getStatus(eff, p);
+
+    if (status === 'LOW') lowCount++;
+    if (status === 'HIGH') {
+      highCount++;
+      if (st.on_hand > p.qmax) {
+        trappedCap += (st.on_hand - p.qmax) * sku.cogs;
+      }
+    }
+  });
+
+  const kpiLow = document.getElementById('kpi-under-min');
+  const kpiHigh = document.getElementById('kpi-over-max');
+  const kpiCap = document.getElementById('kpi-trapped-cap');
+  const kpiCost = document.getElementById('kpi-cost-diff');
+
+  if (kpiLow)  kpiLow.textContent = lowCount;
+  if (kpiHigh) kpiHigh.textContent = highCount;
+  if (kpiCap)  kpiCap.textContent = fmtVND(trappedCap);
+  if (kpiCost) kpiCost.textContent = fmtVND(Math.round(trappedCap * 0.05));
+
+  // 5. Render active view
+  renderDashboardView();
+  renderInventoryView();
+  switchNavTab(Store.activeTab);
+}
+
+// SIMULATION TIME CONTROL
+function advanceToDate(targetDate) {
+  if (targetDate < Store.currentDate) {
+    showToast('Không thể quay ngược thời gian! Hệ thống chỉ mô phỏng tiến tới.', 'error');
+    const picker = document.getElementById('simDatePicker');
+    if (picker) picker.value = Store.currentDate;
+    return;
+  }
+  if (targetDate > Store.endDate) targetDate = Store.endDate;
+
+  while (Store.currentDate < targetDate) {
+    const ok = advanceOneDay();
+    if (!ok) break;
+  }
+
+  const picker = document.getElementById('simDatePicker');
+  if (picker) {
+    picker.value = Store.currentDate;
+    picker.min = Store.currentDate;
+  }
+
+  renderAllViews();
+  showToast(`Đã chuyển tới ngày ${fmtDateVN(Store.currentDate)} thành công!`, 'success');
+}
+
+function stepDays(days) {
+  const target = addDays(Store.currentDate, days);
+  advanceToDate(target);
+}
+
+function onManualDateChange(newVal) {
+  if (!newVal) return;
+  if (newVal < Store.currentDate) {
+    showToast('Không thể chọn ngày trong quá khứ!', 'error');
+    const picker = document.getElementById('simDatePicker');
+    if (picker) picker.value = Store.currentDate;
+    return;
+  }
+  advanceToDate(newVal);
+}
+
+let autoPilotTimer = null;
+function toggleAutoPilot() {
+  Store.autoPilot = !Store.autoPilot;
+  const btn = document.getElementById('autoPilotToggle');
+  if (Store.autoPilot) {
+    if (btn) btn.classList.add('active');
+    if (Store.currentDate >= Store.endDate) {
+      Store.autoPilot = false;
+      if (btn) btn.classList.remove('active');
+      showToast('Đã ở ngày kết thúc mô phỏng', 'info');
+      return;
+    }
+    autoPilotTimer = setInterval(() => {
+      if (Store.currentDate >= Store.endDate || !Store.autoPilot) {
+        clearInterval(autoPilotTimer);
+        Store.autoPilot = false;
+        if (btn) btn.classList.remove('active');
+        renderAllViews();
+        return;
+      }
+      advanceOneDay();
+      const picker = document.getElementById('simDatePicker');
+      if (picker) {
+        picker.value = Store.currentDate;
+        picker.min = Store.currentDate;
+      }
+      renderAllViews();
+    }, 700);
+  } else {
+    if (btn) btn.classList.remove('active');
+    if (autoPilotTimer) {
+      clearInterval(autoPilotTimer);
+      autoPilotTimer = null;
+    }
+  }
+}
+
+// DOM INITIALIZATION (C1: HASH SYNC)
+window.addEventListener('DOMContentLoaded', () => {
+  // 1. Initialize Seeded 12-week history
+  Store.history = initSeededHistory();
+
+  // 2. Initialize Day 0 Params for all 55 pairs
+  const day0Params = {};
+  SKUS.forEach(sku => {
+    day0Params[sku.code] = {};
+    WAREHOUSES.forEach(wh => {
+      day0Params[sku.code][wh.code] = calcSKUParams(sku.code, wh.code, Store.startDate, Store.history);
+    });
+  });
+
+  // 3. Build Initial Stock with FNV-1a diversity and required overrides
+  Store.stock = buildInitialStock();
+
+  // 4. Initialize Weekly Accumulators & Lost Sales
+  SKUS.forEach(sku => {
+    Store.currentWeekDemand[sku.code] = {};
+    WAREHOUSES.forEach(wh => {
+      Store.currentWeekDemand[sku.code][wh.code] = 0;
+    });
+  });
+
+  WAREHOUSES.forEach(wh => {
+    Store.lostSales[wh.code] = {};
+    SKUS.forEach(sku => {
+      Store.lostSales[wh.code][sku.code] = 0;
+    });
+  });
+
+  // C1: Read location.hash to retain selected warehouse on F5
+  if (!Store.ui) Store.ui = { activeWh: 'HCM' };
+  if (window.location.hash && window.location.hash.startsWith('#wh=')) {
+    const hashWh = window.location.hash.replace('#wh=', '').trim();
+    if (WAREHOUSES.some(w => w.code === hashWh)) {
+      Store.ui.activeWh = hashWh;
+    }
+  }
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash && window.location.hash.startsWith('#wh=')) {
+      const hashWh = window.location.hash.replace('#wh=', '').trim();
+      if (WAREHOUSES.some(w => w.code === hashWh) && Store.ui.activeWh !== hashWh) {
+        switchWarehouse(hashWh);
+      }
+    }
+  });
+
+  // 5. Initial Proposal Scan
+  scanAndGenerateProposals(Store.startDate);
+
+  // 6. Record Initial Day 0 Snapshot
+  recordDailySnapshot(Store.startDate);
+
+  // 7. Initial Log Entry
+  logAction('SYSTEM_INIT', 'ALL', 'Khởi tạo hệ thống SenNova Home IMS v3 thành công với 5 kho x 11 SKU.');
+
+  // 8. Bind Global Modal Click Outside to Close
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('active');
+      }
+    });
+  });
+
+  // 9. Initial Render
+  renderAllViews();
+
+  showToast('Hệ thống SenNova Home IMS sẵn sàng!', 'success');
+});
 
 // --- END src/js/main.js ---
 

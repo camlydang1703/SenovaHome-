@@ -1,8 +1,18 @@
 // ============================================================================
-// VIEW 4: RFQ MANAGEMENT - REFACTORED WITH renderTable (B1)
+// VIEW 4: RFQ MANAGEMENT - CONTEXTUALIZED FOR ACTIVE WAREHOUSE (C2)
 // ============================================================================
 
 function renderRfqView() {
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  const cardTitle = document.querySelector('#view-rfq .card-title');
+  if (cardTitle) {
+    cardTitle.textContent = `Danh sách Yêu cầu Báo giá (RFQ): ${whObj.name}`;
+  }
+
+  const whRfqs = Store.rfqs.filter(r => r.wh === activeWh);
+
   const columns = [
     {
       key: 'id',
@@ -78,7 +88,7 @@ function renderRfqView() {
     theadId: 'rfqThead',
     tbodyId: 'rfqTbody',
     columns: columns,
-    rows: Store.rfqs,
-    emptyMsg: 'Chưa có Yêu cầu Báo giá (RFQ) nào được gửi tới Nhà cung cấp.'
+    rows: whRfqs,
+    emptyMsg: `Chưa có Yêu cầu Báo giá (RFQ) nào được ghi nhận tại ${whObj.name}.`
   });
 }

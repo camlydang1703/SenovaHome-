@@ -4,14 +4,32 @@
 
     // 2.1 NOTIFICATIONS SYSTEM (Yêu cầu 5)
     // ----------------------------------------------------------------------------
-    function pushNotification(type, refId, text) {
+    function pushNotification(type, refId, text, whCode = null) {
       const notifId = 'NT-' + String(Store.seq.notif++).padStart(4, '0');
+      let targetWh = whCode;
+      if (!targetWh && refId) {
+        for (const w of WAREHOUSES) {
+          if (refId.startsWith(w.code + '-') || refId.endsWith('-' + w.code) || refId === w.code) {
+            targetWh = w.code;
+            break;
+          }
+        }
+      }
+      if (!targetWh && text) {
+        for (const w of WAREHOUSES) {
+          if (text.includes(w.name) || text.includes(`kho ${w.code}`) || text.includes(`Kho ${w.code}`) || text.includes(`về ${w.code}`) || text.includes(`tại ${w.code}`)) {
+            targetWh = w.code;
+            break;
+          }
+        }
+      }
       const item = {
         id: notifId,
         date: Store.currentDate,
         type: type,
         refId: refId,
         text: text,
+        wh: targetWh,
         read: false,
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       };
@@ -103,6 +121,10 @@
       if (popover) popover.classList.remove('active');
 
       if (item) {
+        // C3: Auto-switch active warehouse to the notification's warehouse before switching tab
+        if (item.wh && typeof switchWarehouse === 'function') {
+          switchWarehouse(item.wh);
+        }
         if (item.type.includes('TRANSFER')) {
           switchNavTab('transfers');
         } else if (item.type.includes('RFQ')) {

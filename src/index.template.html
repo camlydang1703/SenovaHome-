@@ -69,6 +69,17 @@
     </div>
   </header>
 
+  <!-- WAREHOUSE SELECTOR BAR (C1) -->
+  <div class="warehouse-bar" id="warehouseBar">
+    <div class="wh-bar-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+      <span>Chọn Kho làm việc:</span>
+    </div>
+    <div class="wh-segmented-control" id="whSegmentedControl">
+      <!-- 5 buttons dynamically rendered with dynamic MIN/MAX badges -->
+    </div>
+  </div>
+
   <!-- NAVIGATION TABS -->
   <nav class="nav-tabs-bar">
     <button class="tab-btn active" id="tab-dashboard" onclick="switchNavTab('dashboard')">
@@ -162,21 +173,26 @@
         </div>
         <div class="table-container">
           <table class="data-tbl" id="proposalTable">
-            <thead id="proposalThead">
-              <tr>
-                <th>Mã ĐX</th>
-                <th>Phương thức</th>
-                <th>SKU</th>
-                <th>Kho nhận</th>
-                <th class="num-col">Lượng cần (Q)</th>
-                <th>Kho nguồn / Phương án</th>
-                <th class="num-col">Thời gian</th>
-                <th class="num-col">Còn bán</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
             <thead id="proposalThead"></thead>
             <tbody id="proposalTbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- OUTBOUND PROPOSALS (C2) -->
+        <div class="card-head" style="margin-top:20px;border-top:1px solid var(--border-subtle);padding-top:16px;">
+          <div class="card-title" id="outboundQueueTitle">
+            Hàng đợi Điều chuyển Xuất đi từ Kho
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);">
+            Các đề xuất điều chuyển lấy hàng từ kho này để chi viện cho kho khác trong mạng lưới
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-tbl" id="outboundTable">
+            <thead id="outboundThead"></thead>
+            <tbody id="outboundTbody">
               <!-- Rendered dynamically -->
             </tbody>
           </table>

@@ -764,5 +764,9 @@
       openModal('selfTestModal');
     }
 
+    function openSelfTestModal() {
+      runSelfTests();
+    }
+
     // ----------------------------------------------------------------------------
 
