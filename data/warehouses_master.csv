@@ -1,6 +1,6 @@
-warehouse_code,warehouse_name,address
-HCM,Kho TP. Ho Chi Minh,TP. Ho Chi Minh
-BD,Kho Binh Duong,Tinh Binh Duong
-DN,Kho Da Nang,TP. Da Nang
-DN_CITY,Kho Ha Giang,Tinh Ha Giang
-HN,Kho Ha Noi,TP. Ha Noi
+warehouse_code,warehouse_name,address,region,weight
+HCM,Kho TP. Hồ Chí Minh,TP. Hồ Chí Minh,South,0.35
+BD,Kho Bình Dương,Tỉnh Bình Dương,South,0.15
+DN,Kho Đà Nẵng,TP. Đà Nẵng,Central,0.12
+DN_CITY,Kho Hà Giang,Tỉnh Hà Giang,North,0.08
+HN,Kho Hà Nội,TP. Hà Nội,North,0.3

@@ -44,10 +44,24 @@
       return Math.round(route.unit * iMult);
     }
 
-    function getTransferDays(fromWh, toWh) {
+    function getTransferDays(fromWh, toWh, curDate) {
       if (fromWh === toWh) return 0;
       const route = getRouteData(fromWh, toWh);
-      return route.lead;
+      let baseLead = route.lead;
+      if (curDate && typeof EVENTS !== 'undefined') {
+        EVENTS.forEach(ev => {
+          if (curDate >= ev.start && curDate <= ev.end) {
+            if (ev.delay_days > 0 && (ev.delay_scope === 'TRANSFER' || ev.delay_scope === 'BOTH')) {
+              const matchFrom = isEventMatchingWarehouse(ev.scope_wh, fromWh);
+              const matchTo = isEventMatchingWarehouse(ev.scope_wh, toWh);
+              if (matchFrom || matchTo) {
+                baseLead += ev.delay_days;
+              }
+            }
+          }
+        });
+      }
+      return baseLead;
     }
 
     // UNIFIED EVENTS LIST

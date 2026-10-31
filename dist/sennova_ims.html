@@ -634,7 +634,7 @@
       font-size: 11.5px;
       padding: 10px 14px;
     }
-    .log-accordion-body.open { display: block; }
+    .log-accordion-body.open, .log-accordion-body.active { display: block; }
     .log-line { margin-bottom: 4px; line-height: 1.4; }
     .log-time { color: #94A3B8; margin-right: 8px; }
     .log-type { color: #38BDF8; margin-right: 6px; font-weight: 600; }
@@ -1666,9 +1666,13 @@
 // --- BEGIN src/js/csv_data.js ---
 // AUTO-GENERATED FROM data/*.csv BY build.py — NGUỒN SỰ THẬT DUY NHẤT
 const CSV_DATABASE = {
-  inventory_opening: [{"sku": "TLM-045", "wh": "HCM", "on_hand": 180, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "HCM", "on_hand": 200, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "HCM", "on_hand": 87, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "HCM", "on_hand": 122, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "HCM", "on_hand": 140, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "HCM", "on_hand": 432, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "HCM", "on_hand": 383, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "HCM", "on_hand": 44, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "HCM", "on_hand": 220, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "HCM", "on_hand": 180, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "HCM", "on_hand": 8, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "BD", "on_hand": 486, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "BD", "on_hand": 154, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "BD", "on_hand": 51, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "BD", "on_hand": 156, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "BD", "on_hand": 64, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "BD", "on_hand": 224, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "BD", "on_hand": 326, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "BD", "on_hand": 25, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "BD", "on_hand": 9, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "BD", "on_hand": 5, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "BD", "on_hand": 3, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "DN", "on_hand": 109, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "DN", "on_hand": 130, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "DN", "on_hand": 63, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "DN", "on_hand": 50, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "DN", "on_hand": 30, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "DN", "on_hand": 188, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "DN", "on_hand": 164, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "DN", "on_hand": 31, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "DN", "on_hand": 4, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "DN", "on_hand": 4, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "DN", "on_hand": 2, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "DN_CITY", "on_hand": 80, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "DN_CITY", "on_hand": 38, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "DN_CITY", "on_hand": 35, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "DN_CITY", "on_hand": 24, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "DN_CITY", "on_hand": 44, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "DN_CITY", "on_hand": 95, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "DN_CITY", "on_hand": 81, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "DN_CITY", "on_hand": 14, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "DN_CITY", "on_hand": 7, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "DN_CITY", "on_hand": 0, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "DN_CITY", "on_hand": 2, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "HN", "on_hand": 159, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "HN", "on_hand": 216, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "HN", "on_hand": 95, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "HN", "on_hand": 248, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "HN", "on_hand": 77, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "HN", "on_hand": 229, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "HN", "on_hand": 358, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "HN", "on_hand": 45, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "HN", "on_hand": 21, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "HN", "on_hand": 6, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "HN", "on_hand": 9, "in_transit": 0, "committed": 0}],
+  inventory_opening: [{"sku": "TLM-045", "wh": "HCM", "on_hand": 180, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "HCM", "on_hand": 200, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "HCM", "on_hand": 87, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "HCM", "on_hand": 122, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "HCM", "on_hand": 140, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "HCM", "on_hand": 432, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "HCM", "on_hand": 383, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "HCM", "on_hand": 44, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "HCM", "on_hand": 20, "in_transit": 5, "committed": 0}, {"sku": "TBV-LAV", "wh": "HCM", "on_hand": 6, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "HCM", "on_hand": 8, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "BD", "on_hand": 486, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "BD", "on_hand": 154, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "BD", "on_hand": 51, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "BD", "on_hand": 156, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "BD", "on_hand": 64, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "BD", "on_hand": 224, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "BD", "on_hand": 326, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "BD", "on_hand": 25, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "BD", "on_hand": 9, "in_transit": 2, "committed": 0}, {"sku": "TBV-LAV", "wh": "BD", "on_hand": 5, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "BD", "on_hand": 3, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "DN", "on_hand": 109, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "DN", "on_hand": 130, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "DN", "on_hand": 63, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "DN", "on_hand": 50, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "DN", "on_hand": 30, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "DN", "on_hand": 188, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "DN", "on_hand": 164, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "DN", "on_hand": 31, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "DN", "on_hand": 7, "in_transit": 2, "committed": 0}, {"sku": "TBV-LAV", "wh": "DN", "on_hand": 4, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "DN", "on_hand": 2, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "DN_CITY", "on_hand": 80, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "DN_CITY", "on_hand": 38, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "DN_CITY", "on_hand": 35, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "DN_CITY", "on_hand": 24, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "DN_CITY", "on_hand": 44, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "DN_CITY", "on_hand": 95, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "DN_CITY", "on_hand": 81, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "DN_CITY", "on_hand": 14, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "DN_CITY", "on_hand": 7, "in_transit": 0, "committed": 0}, {"sku": "TBV-LAV", "wh": "DN_CITY", "on_hand": 0, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "DN_CITY", "on_hand": 2, "in_transit": 0, "committed": 0}, {"sku": "TLM-045", "wh": "HN", "on_hand": 159, "in_transit": 0, "committed": 0}, {"sku": "TLM-040", "wh": "HN", "on_hand": 216, "in_transit": 0, "committed": 0}, {"sku": "TMK-035", "wh": "HN", "on_hand": 95, "in_transit": 0, "committed": 0}, {"sku": "OTK-049", "wh": "HN", "on_hand": 248, "in_transit": 0, "committed": 0}, {"sku": "OTK-060", "wh": "HN", "on_hand": 77, "in_transit": 0, "committed": 0}, {"sku": "PPR-025", "wh": "HN", "on_hand": 229, "in_transit": 0, "committed": 0}, {"sku": "GCH-6060", "wh": "HN", "on_hand": 358, "in_transit": 0, "committed": 0}, {"sku": "SON-18L", "wh": "HN", "on_hand": 45, "in_transit": 0, "committed": 0}, {"sku": "GCH-DEC", "wh": "HN", "on_hand": 17, "in_transit": 5, "committed": 0}, {"sku": "TBV-LAV", "wh": "HN", "on_hand": 6, "in_transit": 0, "committed": 0}, {"sku": "TBV-VOI", "wh": "HN", "on_hand": 9, "in_transit": 0, "committed": 0}],
   seasonal_parameters: {"1": 1.15, "2": 0.6, "3": 1.1, "4": 1.15, "5": 0.9, "6": 0.8, "7": 0.8, "8": 0.85, "9": 0.9, "10": 1.05, "11": 1.2, "12": 1.25},
-  routes: [{"from": "HCM", "to": "BD", "lead": 1, "rate": 450000, "unit": 15000, "note": "Noi vung Dong Nam Bo"}, {"from": "HCM", "to": "DN", "lead": 3, "rate": 1200000, "unit": 25000, "note": "Lien vung Nam - Trung"}, {"from": "HCM", "to": "DN_CITY", "lead": 4, "rate": 2200000, "unit": 40000, "note": "Lien vung Nam - Ha Giang"}, {"from": "HCM", "to": "HN", "lead": 4, "rate": 1800000, "unit": 35000, "note": "Lien vung Bac - Nam"}, {"from": "BD", "to": "HCM", "lead": 1, "rate": 450000, "unit": 15000, "note": "Noi vung Dong Nam Bo"}, {"from": "BD", "to": "DN", "lead": 3, "rate": 1150000, "unit": 25000, "note": "Lien vung Nam - Trung"}, {"from": "BD", "to": "DN_CITY", "lead": 4, "rate": 2150000, "unit": 40000, "note": "Lien vung Nam - Ha Giang"}, {"from": "BD", "to": "HN", "lead": 4, "rate": 1750000, "unit": 35000, "note": "Lien vung Bac - Nam"}, {"from": "DN", "to": "HCM", "lead": 3, "rate": 1200000, "unit": 25000, "note": "Lien vung Trung - Nam"}, {"from": "DN", "to": "BD", "lead": 3, "rate": 1150000, "unit": 25000, "note": "Lien vung Trung - Nam"}, {"from": "DN", "to": "DN_CITY", "lead": 3, "rate": 1350000, "unit": 30000, "note": "Lien vung Da Nang - Ha Giang"}, {"from": "DN", "to": "HN", "lead": 3, "rate": 1100000, "unit": 25000, "note": "Lien vung Trung - Bac"}, {"from": "DN_CITY", "to": "HCM", "lead": 4, "rate": 2200000, "unit": 40000, "note": "Lien vung Ha Giang - Nam"}, {"from": "DN_CITY", "to": "BD", "lead": 4, "rate": 2150000, "unit": 40000, "note": "Lien vung Ha Giang - Nam"}, {"from": "DN_CITY", "to": "DN", "lead": 3, "rate": 1350000, "unit": 30000, "note": "Lien vung Ha Giang - Da Nang"}, {"from": "DN_CITY", "to": "HN", "lead": 2, "rate": 650000, "unit": 20000, "note": "Lien vung Ha Giang - Ha Noi"}, {"from": "HN", "to": "HCM", "lead": 4, "rate": 1800000, "unit": 35000, "note": "Lien vung Bac - Nam"}, {"from": "HN", "to": "BD", "lead": 4, "rate": 1750000, "unit": 35000, "note": "Lien vung Bac - Nam"}, {"from": "HN", "to": "DN", "lead": 3, "rate": 1100000, "unit": 25000, "note": "Lien vung Bac - Trung"}, {"from": "HN", "to": "DN_CITY", "lead": 2, "rate": 650000, "unit": 20000, "note": "Lien vung Ha Noi - Ha Giang"}]
+  routes: [{"from": "HCM", "to": "BD", "lead": 1, "rate": 450000, "unit": 15000, "note": "Noi vung Dong Nam Bo"}, {"from": "HCM", "to": "DN", "lead": 3, "rate": 1200000, "unit": 25000, "note": "Lien vung Nam - Trung"}, {"from": "HCM", "to": "DN_CITY", "lead": 4, "rate": 2200000, "unit": 40000, "note": "Lien vung Nam - Ha Giang"}, {"from": "HCM", "to": "HN", "lead": 4, "rate": 1800000, "unit": 35000, "note": "Lien vung Bac - Nam"}, {"from": "BD", "to": "HCM", "lead": 1, "rate": 450000, "unit": 15000, "note": "Noi vung Dong Nam Bo"}, {"from": "BD", "to": "DN", "lead": 3, "rate": 1150000, "unit": 25000, "note": "Lien vung Nam - Trung"}, {"from": "BD", "to": "DN_CITY", "lead": 4, "rate": 2150000, "unit": 40000, "note": "Lien vung Nam - Ha Giang"}, {"from": "BD", "to": "HN", "lead": 4, "rate": 1750000, "unit": 35000, "note": "Lien vung Bac - Nam"}, {"from": "DN", "to": "HCM", "lead": 3, "rate": 1200000, "unit": 25000, "note": "Lien vung Trung - Nam"}, {"from": "DN", "to": "BD", "lead": 3, "rate": 1150000, "unit": 25000, "note": "Lien vung Trung - Nam"}, {"from": "DN", "to": "DN_CITY", "lead": 3, "rate": 1350000, "unit": 30000, "note": "Lien vung Da Nang - Ha Giang"}, {"from": "DN", "to": "HN", "lead": 3, "rate": 1100000, "unit": 25000, "note": "Lien vung Trung - Bac"}, {"from": "DN_CITY", "to": "HCM", "lead": 4, "rate": 2200000, "unit": 40000, "note": "Lien vung Ha Giang - Nam"}, {"from": "DN_CITY", "to": "BD", "lead": 4, "rate": 2150000, "unit": 40000, "note": "Lien vung Ha Giang - Nam"}, {"from": "DN_CITY", "to": "DN", "lead": 3, "rate": 1350000, "unit": 30000, "note": "Lien vung Ha Giang - Da Nang"}, {"from": "DN_CITY", "to": "HN", "lead": 2, "rate": 650000, "unit": 20000, "note": "Lien vung Ha Giang - Ha Noi"}, {"from": "HN", "to": "HCM", "lead": 4, "rate": 1800000, "unit": 35000, "note": "Lien vung Bac - Nam"}, {"from": "HN", "to": "BD", "lead": 4, "rate": 1750000, "unit": 35000, "note": "Lien vung Bac - Nam"}, {"from": "HN", "to": "DN", "lead": 3, "rate": 1100000, "unit": 25000, "note": "Lien vung Bac - Trung"}, {"from": "HN", "to": "DN_CITY", "lead": 2, "rate": 650000, "unit": 20000, "note": "Lien vung Ha Noi - Ha Giang"}],
+  warehouses: [{"code": "HCM", "name": "Kho TP. Hồ Chí Minh", "address": "TP. Hồ Chí Minh", "region": "South", "w": 0.35}, {"code": "BD", "name": "Kho Bình Dương", "address": "Tỉnh Bình Dương", "region": "South", "w": 0.15}, {"code": "DN", "name": "Kho Đà Nẵng", "address": "TP. Đà Nẵng", "region": "Central", "w": 0.12}, {"code": "DN_CITY", "name": "Kho Hà Giang", "address": "Tỉnh Hà Giang", "region": "North", "w": 0.08}, {"code": "HN", "name": "Kho Hà Nội", "address": "TP. Hà Nội", "region": "North", "w": 0.3}],
+  suppliers: {"SUP-SENVIET": {"code": "SUP-SENVIET", "name": "NM Ton Sen Viet", "lead_weeks": 1.0, "lead": 7, "delay": 2}, "SUP-VIETSTEEL": {"code": "SUP-VIETSTEEL", "name": "NM Ong thep Viet Steel", "lead_weeks": 1.43, "lead": 10, "delay": 3}, "SUP-LOTUS": {"code": "SUP-LOTUS", "name": "Nhua Lotus", "lead_weeks": 2.0, "lead": 14, "delay": 3}, "SUP-DAIPHAT": {"code": "SUP-DAIPHAT", "name": "Gach men Dai Phat", "lead_weeks": 3.0, "lead": 21, "delay": 4}, "SUP-MINHAN": {"code": "SUP-MINHAN", "name": "Son & Thiet bi Minh An", "lead_weeks": 0.71, "lead": 5, "delay": 1}},
+  products: [{"code": "TLM-045", "name": "Tôn lạnh màu xanh 0.45mm", "category": "Tôn thép", "unit": "tấm", "cogs": 150000, "price": 185000, "sup": "SUP-SENVIET", "base": 565, "slow": false}, {"code": "TLM-040", "name": "Tôn lạnh màu xanh 0.40mm", "category": "Tôn thép", "unit": "tấm", "cogs": 134000, "price": 165000, "sup": "SUP-SENVIET", "base": 450, "slow": false}, {"code": "TMK-035", "name": "Tôn mạ kẽm 0.35mm", "category": "Tôn thép", "unit": "tấm", "cogs": 106000, "price": 130000, "sup": "SUP-SENVIET", "base": 280, "slow": false}, {"code": "OTK-049", "name": "Ống thép mạ kẽm phi 49", "category": "Ống thép", "unit": "cây", "cogs": 270000, "price": 320000, "sup": "SUP-VIETSTEEL", "base": 245, "slow": false}, {"code": "OTK-060", "name": "Ống thép mạ kẽm phi 60", "category": "Ống thép", "unit": "cây", "cogs": 345000, "price": 410000, "sup": "SUP-VIETSTEEL", "base": 170, "slow": false}, {"code": "PPR-025", "name": "Ống PPR phi 25 dài 4m", "category": "Ống nhựa", "unit": "cây", "cogs": 36000, "price": 48000, "sup": "SUP-LOTUS", "base": 395, "slow": false}, {"code": "GCH-6060", "name": "Gạch men 60x60", "category": "Gạch ngói", "unit": "thùng", "cogs": 205000, "price": 260000, "sup": "SUP-DAIPHAT", "base": 350, "slow": false}, {"code": "SON-18L", "name": "Sơn nước ngoại thất 18L", "category": "Sơn & TBVS", "unit": "thùng", "cogs": 1150000, "price": 1450000, "sup": "SUP-MINHAN", "base": 115, "slow": false}, {"code": "GCH-DEC", "name": "Gạch trang trí 30x60", "category": "Gạch ngói", "unit": "thùng", "cogs": 170000, "price": 220000, "sup": "SUP-DAIPHAT", "base": 15, "slow": true}, {"code": "TBV-LAV", "name": "Chậu lavabo", "category": "Sơn & TBVS", "unit": "bộ", "cogs": 650000, "price": 850000, "sup": "SUP-MINHAN", "base": 12, "slow": true}, {"code": "TBV-VOI", "name": "Vòi sen cao cấp", "category": "Sơn & TBVS", "unit": "bộ", "cogs": 480000, "price": 650000, "sup": "SUP-MINHAN", "base": 10, "slow": true}],
+  events: [{"id": "EVT-PEAK-AUG", "start": "2026-08-14", "end": "2026-08-19", "type": "DEMAND", "severity": "Cao", "scope_wh": "ALL", "scope_target": "ALL", "demand_mult": 1.35, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 3, "title": "Đợt kích cầu xây dựng hè thu: Nhu cầu toàn mạng lưới tăng +35%", "desc": "Nhu cầu thị trường tăng đột biến trong đợt khởi động dự án xây dựng quý 3 toàn mạng lưới."}, {"id": "EVT-SENVIET-DELAY", "start": "2026-08-18", "end": "2026-08-20", "type": "SUPPLY_DELAY", "severity": "Trung bình", "scope_wh": "ALL", "scope_target": "TLM-045,TLM-040,TMK-035", "demand_mult": 1.0, "delay_days": 2, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "NM Tôn Sen Việt bảo trì dây chuyền cán: Giao trễ +2 ngày", "desc": "SUP-SENVIET thông báo chậm giao hàng do đại tu máy móc định kỳ."}, {"id": "EVT-INFRA-HCM-BD", "start": "2026-08-25", "end": "2026-08-31", "type": "DEMAND", "severity": "Cao", "scope_wh": "HCM,BD", "scope_target": "cat:Ống thép,cat:Tôn thép", "demand_mult": 1.4, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 3, "title": "Khởi công Vành đai 3 & Cao tốc: Cầu Ống thép & Tôn thép tăng +40%", "desc": "Đẩy mạnh thi công hạ tầng giao thông trọng điểm khu vực TP.HCM & Bình Dương kích thích nhu cầu thép."}, {"id": "EVT-HOAPHAT-PROMO", "start": "2026-09-21", "end": "2026-09-28", "type": "DEMAND", "severity": "Trung bình", "scope_wh": "HN", "scope_target": "cat:Ống thép", "demand_mult": 1.3, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Đại lý Thép Hòa Phát (Hà Nội) chiết khấu quý 3: Cầu Ống thép tăng +30%", "desc": "Chính sách trợ giá kích thích các đại lý khu vực phía Bắc tăng cường gom hàng ống thép."}, {"id": "EVT-FINISH-SEASON", "start": "2026-10-01", "end": "2026-10-14", "type": "DEMAND", "severity": "Cao", "scope_wh": "ALL", "scope_target": "cat:Gạch ngói,cat:Sơn & TBVS", "demand_mult": 1.35, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 3, "title": "Mùa hoàn thiện công trình cuối năm: Cầu Gạch, Sơn & TBVS tăng +35%", "desc": "Cao điểm hoàn thiện các công trình dân dụng và thương mại trước mùa mưa bão cuối năm."}, {"id": "EVT-ROUTE-MAINT", "start": "2026-10-15", "end": "2026-10-22", "type": "TRANSFER_DELAY", "severity": "Trung bình", "scope_wh": "HCM,BD", "scope_target": "ALL", "demand_mult": 1.0, "delay_days": 2, "delay_scope": "BOTH", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Nâng cấp mặt đường QL1A & Cầu Đồng Nai: Vận chuyển trễ +2 ngày", "desc": "Sửa chữa các điểm nghẽn giao thông trọng yếu giữa TP.HCM và Bình Dương làm chậm tuyến xe điều chuyển."}, {"id": "EVT-CENTRAL-STORM", "start": "2026-09-01", "end": "2026-09-08", "type": "STORM", "severity": "Cao", "scope_wh": "DN", "scope_target": "ALL", "demand_mult": 1.0, "delay_days": 5, "delay_scope": "BOTH", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 3, "title": "Bão số 4 đổ bộ ven biển Đà Nẵng: Tuyến vận chuyển trễ +5 ngày", "desc": "Mưa lũ ngập Quốc lộ 1A và đèo Hải Vân khiến các tuyến vận chuyển đi và đến kho Đà Nẵng bị gián đoạn hoàn toàn."}, {"id": "EVT-URBAN-DN", "start": "2026-09-11", "end": "2026-09-18", "type": "DEMAND", "severity": "Trung bình", "scope_wh": "DN", "scope_target": "PPR-025,cat:Gạch ngói", "demand_mult": 1.35, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 3, "title": "Cải tạo hạ tầng cấp thoát nước Đà Nẵng: Cầu Ống nhựa & Gạch tăng +35%", "desc": "Thành phố Đà Nẵng triển khai các gói thầu chỉnh trang đô thị và thoát nước sau mùa mưa lũ."}, {"id": "EVT-RAIN-SOUTH", "start": "2026-08-03", "end": "2026-08-07", "type": "WEATHER", "severity": "Thấp", "scope_wh": "HCM,BD", "scope_target": "cat:Tôn thép,SON-18L,GCH-6060", "demand_mult": 0.8, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Mưa kéo dài Nam Bộ: Công trình ngoài trời chậm tiến độ", "desc": "Mưa diện rộng tại TP.HCM và Bình Dương làm đình trệ hoạt động thi công ngoài trời, nhu cầu tôn thép và sơn giảm."}, {"id": "EVT-PORT-CATLAI", "start": "2026-08-05", "end": "2026-08-09", "type": "SUPPLY_DELAY", "severity": "Trung bình", "scope_wh": "HCM,BD", "scope_target": "sup:SUP-MINHAN", "demand_mult": 1.0, "delay_days": 2, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Ùn tắc cảng Cát Lái: Hàng Sơn & TBVS về trễ +2 ngày", "desc": "Tàu hàng và container nguyên liệu cập cảng Cát Lái bị nghẽn bến bãi, đơn vị Minh An chậm giao hàng."}, {"id": "EVT-LANDSLIDE-HAGIANG", "start": "2026-08-10", "end": "2026-08-16", "type": "DISASTER", "severity": "Cao", "scope_wh": "DN_CITY", "scope_target": "ALL", "demand_mult": 0.9, "delay_days": 3, "delay_scope": "BOTH", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 3, "title": "Sạt lở đường lên Hà Giang: Vận chuyển gián đoạn trễ +3 ngày", "desc": "Sạt lở đất đá nghiêm trọng trên tuyến quốc lộ huyết mạch vào Hà Giang khiến xe tải không thể lưu thông."}, {"id": "EVT-HAGIANG-REBUILD", "start": "2026-08-17", "end": "2026-08-28", "type": "DEMAND", "severity": "Trung bình", "scope_wh": "DN_CITY", "scope_target": "TLM-045,TLM-040,PPR-025,cat:Ống thép", "demand_mult": 1.4, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 3, "title": "Sửa chữa nhà dân vùng cao sau sạt lở: Cầu tăng +40%", "desc": "Bà con vùng cao tại Hà Giang tập trung gia cố và lợp lại mái tôn, sửa chữa đường ống nước hư hại."}, {"id": "EVT-SCHOOL-REPAIR", "start": "2026-08-20", "end": "2026-08-31", "type": "DEMAND", "severity": "Thấp", "scope_wh": "HN", "scope_target": "SON-18L,TBV-LAV,TBV-VOI", "demand_mult": 1.25, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Sửa chữa trường học trước khai giảng tại Hà Nội: Cầu tăng +25%", "desc": "Các trường học trên địa bàn Hà Nội gấp rút sơn sửa phòng ốc và thay thế thiết bị vệ sinh trước thềm năm học mới."}, {"id": "EVT-RINGROAD4-HN", "start": "2026-09-01", "end": "2026-09-12", "type": "DEMAND", "severity": "Trung bình", "scope_wh": "HN", "scope_target": "cat:Tôn thép,cat:Ống thép", "demand_mult": 1.3, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 3, "title": "Công trình hạ tầng Vành đai 4 Hà Nội kéo cầu thép và tôn tăng +30%", "desc": "Các nhà thầu thi công hạ tầng đường Vành đai 4 vùng Thủ đô đồng loạt đẩy nhanh tiến độ san lấp và kết cấu thép."}, {"id": "EVT-NATIONAL-DAY", "start": "2026-09-02", "end": "2026-09-03", "type": "HOLIDAY", "severity": "Thấp", "scope_wh": "ALL", "scope_target": "ALL", "demand_mult": 0.6, "delay_days": 1, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Nghỉ lễ Quốc khánh 2/9: Bán chậm, nhà cung cấp giao trễ +1 ngày", "desc": "Các công trường và đại lý toàn quốc tạm ngưng giao dịch trong kỳ nghỉ lễ, các nhà máy nghỉ vận hành."}, {"id": "EVT-VIETSTEEL-MAINT", "start": "2026-09-05", "end": "2026-09-11", "type": "SUPPLY_DELAY", "severity": "Trung bình", "scope_wh": "ALL", "scope_target": "OTK-049,OTK-060", "demand_mult": 1.0, "delay_days": 3, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "NM Việt Steel bảo trì lò luyện: Giao trễ +3 ngày", "desc": "Nhà máy Việt Steel tạm dừng dây chuyền bảo dưỡng định kỳ lò cán ống thép mạ kẽm."}, {"id": "EVT-STORM-RECOVERY-DN", "start": "2026-09-09", "end": "2026-09-15", "type": "DEMAND", "severity": "Cao", "scope_wh": "DN", "scope_target": "TLM-045,TLM-040,TMK-035", "demand_mult": 1.4, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Sửa mái nhà sau bão tại Đà Nẵng: Nhu cầu tôn tăng +40%", "desc": "Người dân và cơ quan tại Đà Nẵng khẩn trương mua tôn thay thế mái lợp bị tốc sau cơn bão số 4."}, {"id": "EVT-STEEL-HOARD", "start": "2026-09-15", "end": "2026-09-21", "type": "DEMAND", "severity": "Thấp", "scope_wh": "ALL", "scope_target": "cat:Tôn thép,cat:Ống thép", "demand_mult": 1.1, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Đại lý tích trữ trước tin giá thép tăng: Cầu tăng +10%", "desc": "Thông tin giá phôi thép nhập khẩu tăng khiến các đại lý phân phối gia tăng lượng hàng gom dự trữ."}, {"id": "EVT-STEEL-PRICE-UP", "start": "2026-09-15", "end": "2026-10-05", "type": "PRICE", "severity": "Trung bình", "scope_wh": "ALL", "scope_target": "cat:Tôn thép,cat:Ống thép", "demand_mult": 1.0, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.06, "advisory_days": 3, "title": "Giá thép nguyên liệu tăng +6%: Chi phí vốn nhập hàng gia tăng", "desc": "Các nhà máy điều chỉnh tăng giá niêm yết tôn thép và ống thép do chi phí quặng sắt thế giới biến động."}, {"id": "EVT-LOTUS-SHORTAGE", "start": "2026-09-14", "end": "2026-09-24", "type": "SHORTAGE", "severity": "Cao", "scope_wh": "ALL", "scope_target": "PPR-025", "demand_mult": 1.0, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 0.5, "price_mult": 1.0, "advisory_days": 3, "title": "Lotus thiếu hụt hạt nhựa: Nhà cung cấp chỉ giao 50% đơn hàng", "desc": "Đứt gãy nguồn cung hạt nhựa PPR nhập khẩu buộc nhà máy Lotus phải cắt giảm phân nửa sản lượng giao cho các kho."}, {"id": "EVT-BD-INDUSTRIAL", "start": "2026-09-20", "end": "2026-09-27", "type": "DEMAND", "severity": "Trung bình", "scope_wh": "BD", "scope_target": "TLM-045,TLM-040,TMK-035", "demand_mult": 1.45, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 3, "title": "Khu công nghiệp mới tại Bình Dương lợp nhà xưởng: Cầu tôn tăng +45%", "desc": "Gói thầu xây lắp cụm nhà xưởng logistics tại Bình Dương bước vào giai đoạn lợp mái tôn hàng loạt."}, {"id": "EVT-Q3-CLOSE", "start": "2026-09-25", "end": "2026-09-30", "type": "DEMAND", "severity": "Thấp", "scope_wh": "HCM,HN", "scope_target": "ALL", "demand_mult": 1.15, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Đại lý chốt doanh số quý 3 tại HCM & Hà Nội: Cầu tăng +15%", "desc": "Các đại lý lớn tại hai đầu cầu kinh tế đẩy mạnh xuất bán để đạt chỉ tiêu thưởng quý 3."}, {"id": "EVT-DAIPHAT-KILN", "start": "2026-10-06", "end": "2026-10-13", "type": "SHORTAGE", "severity": "Cao", "scope_wh": "ALL", "scope_target": "GCH-6060,GCH-DEC", "demand_mult": 1.0, "delay_days": 4, "delay_scope": "SUPPLY", "fill_rate": 0.5, "price_mult": 1.0, "advisory_days": 3, "title": "Đại Phát dừng lò nung: Giao hàng giảm 50% và trễ +4 ngày", "desc": "Sự cố kỹ thuật tại lò nung gạch men Đại Phát gây thiếu hụt nguồn cung gạch nghiêm trọng ngay mùa cao điểm."}, {"id": "EVT-SALE-1010", "start": "2026-10-08", "end": "2026-10-12", "type": "DEMAND", "severity": "Thấp", "scope_wh": "ALL", "scope_target": "SON-18L,TBV-LAV,TBV-VOI,GCH-DEC", "demand_mult": 1.3, "delay_days": 0, "delay_scope": "SUPPLY", "fill_rate": 1.0, "price_mult": 1.0, "advisory_days": 2, "title": "Chương trình khuyến mãi ngày đôi 10.10: Cầu Sơn & TBVS tăng +30%", "desc": "Các chuỗi cửa hàng vật liệu và trang trí nội thất tung ưu đãi kích cầu ngày đôi 10.10."}]
 };
 
 // --- END src/js/csv_data.js ---
@@ -1678,61 +1682,93 @@ const CSV_DATABASE = {
 // CONFIGURATION & CONSTANTS
 // ============================================================================
 
-    const WAREHOUSES = [
-      { code: 'HCM',     name: 'Kho TP. Hồ Chí Minh', region: 'South',   w: 0.30 },
-      { code: 'BD',      name: 'Kho Bình Dương',       region: 'South',   w: 0.20 },
-      { code: 'DN',      name: 'Kho Đà Nẵng',          region: 'Central', w: 0.12 },
-      { code: 'DN_CITY', name: 'Kho Hà Giang',         region: 'North',   w: 0.08 },
-      { code: 'HN',      name: 'Kho Hà Nội',           region: 'North',   w: 0.30 }
-    ];
+    // 1.1 DOC TU CSV_DATABASE (NGUỒN SỰ THẬT TỪ CSV)
+    const WAREHOUSES = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.warehouses && CSV_DATABASE.warehouses.length > 0)
+      ? CSV_DATABASE.warehouses
+      : [
+          { code: 'HCM',     name: 'Kho TP. Hồ Chí Minh', region: 'South',   w: 0.35 },
+          { code: 'BD',      name: 'Kho Bình Dương',       region: 'South',   w: 0.15 },
+          { code: 'DN',      name: 'Kho Đà Nẵng',          region: 'Central', w: 0.12 },
+          { code: 'DN_CITY', name: 'Kho Hà Giang',         region: 'North',   w: 0.08 },
+          { code: 'HN',      name: 'Kho Hà Nội',           region: 'North',   w: 0.30 }
+        ];
 
-    const SKUS = [
-      { code: 'TLM-045',  name: 'Tôn lạnh màu xanh 0.45mm',    base: 565, cogs: 150000,  price: 185000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
-      { code: 'TLM-040',  name: 'Tôn lạnh màu xanh 0.40mm',    base: 450, cogs: 134000,  price: 165000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
-      { code: 'TMK-035',  name: 'Tôn mạ kẽm 0.35mm',      base: 280, cogs: 106000,  price: 130000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
-      { code: 'OTK-049',  name: 'Ống thép mạ kẽm phi 49',    base: 245, cogs: 270000,  price: 320000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
-      { code: 'OTK-060',  name: 'Ống thép mạ kẽm phi 60',    base: 170, cogs: 345000,  price: 410000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
-      { code: 'PPR-025',  name: 'Ống PPR phi 25 dài 4m',    base: 395, cogs: 36000,   price: 48000,   sup: 'SUP-LOTUS',     lead: 14, delay: 3, cat: 'Ống nhựa',   unit: 'cây',   slow: false },
-      { code: 'GCH-6060', name: 'Gạch men 60x60',         base: 350, cogs: 205000,  price: 260000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: false },
-      { code: 'SON-18L',  name: 'Sơn nước ngoại thất 18L',     base: 115, cogs: 1150000, price: 1450000, sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'thùng', slow: false },
-      { code: 'GCH-DEC',  name: 'Gạch trang trí 30x60',   base: 15,  cogs: 170000,  price: 220000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: true  },
-      { code: 'TBV-LAV',  name: 'Chậu lavabo',         base: 12,  cogs: 650000,  price: 850000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  },
-      { code: 'TBV-VOI',  name: 'Vòi sen cao cấp',        base: 10,  cogs: 480000,  price: 650000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  }
-    ];
+    const SKUS = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.products && CSV_DATABASE.products.length > 0)
+      ? CSV_DATABASE.products.map(p => ({
+          ...p,
+          lead: (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.suppliers && CSV_DATABASE.suppliers[p.sup])
+            ? CSV_DATABASE.suppliers[p.sup].lead
+            : (p.code.startsWith('TLM') || p.code === 'TMK-035' ? 7 : (p.code.startsWith('OTK') ? 10 : (p.code === 'PPR-025' ? 14 : (p.code.startsWith('GCH') ? 21 : 5)))),
+          delay: (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.suppliers && CSV_DATABASE.suppliers[p.sup])
+            ? CSV_DATABASE.suppliers[p.sup].delay
+            : (p.code.startsWith('TLM') || p.code === 'TMK-035' ? 2 : (p.code.startsWith('OTK') ? 3 : (p.code === 'PPR-025' ? 3 : (p.code.startsWith('GCH') ? 4 : 1)))),
+          cat: p.category
+        }))
+      : [
+          { code: 'TLM-045',  name: 'Tôn lạnh màu xanh 0.45mm',    base: 565, cogs: 150000,  price: 185000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+          { code: 'TLM-040',  name: 'Tôn lạnh màu xanh 0.40mm',    base: 450, cogs: 134000,  price: 165000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+          { code: 'TMK-035',  name: 'Tôn mạ kẽm 0.35mm',      base: 280, cogs: 106000,  price: 130000,  sup: 'SUP-SENVIET',   lead: 7,  delay: 2, cat: 'Tôn thép',   unit: 'tấm',   slow: false },
+          { code: 'OTK-049',  name: 'Ống thép mạ kẽm phi 49',    base: 245, cogs: 270000,  price: 320000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
+          { code: 'OTK-060',  name: 'Ống thép mạ kẽm phi 60',    base: 170, cogs: 345000,  price: 410000,  sup: 'SUP-VIETSTEEL', lead: 10, delay: 3, cat: 'Ống thép',   unit: 'cây',   slow: false },
+          { code: 'PPR-025',  name: 'Ống PPR phi 25 dài 4m',    base: 395, cogs: 36000,   price: 48000,   sup: 'SUP-LOTUS',     lead: 14, delay: 3, cat: 'Ống nhựa',   unit: 'cây',   slow: false },
+          { code: 'GCH-6060', name: 'Gạch men 60x60',         base: 350, cogs: 205000,  price: 260000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: false },
+          { code: 'SON-18L',  name: 'Sơn nước ngoại thất 18L',     base: 115, cogs: 1150000, price: 1450000, sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'thùng', slow: false },
+          { code: 'GCH-DEC',  name: 'Gạch trang trí 30x60',   base: 15,  cogs: 170000,  price: 220000,  sup: 'SUP-DAIPHAT',   lead: 21, delay: 4, cat: 'Gạch ngói',  unit: 'thùng', slow: true  },
+          { code: 'TBV-LAV',  name: 'Chậu lavabo',         base: 12,  cogs: 650000,  price: 850000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  },
+          { code: 'TBV-VOI',  name: 'Vòi sen cao cấp',        base: 10,  cogs: 480000,  price: 650000,  sup: 'SUP-MINHAN',    lead: 5,  delay: 1, cat: 'Sơn & TBVS', unit: 'bộ',    slow: true  }
+        ];
 
     // SEASONAL INDEX Sm (LẤY TRỰC TIẾP TỪ data/seasonal_parameters.csv)
     const SI = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.seasonal_parameters)
       ? { ...CSV_DATABASE.seasonal_parameters }
       : { 1:1.15, 2:0.60, 3:1.10, 4:1.15, 5:0.90, 6:0.80, 7:0.80, 8:0.85, 9:0.90, 10:1.05, 11:1.20, 12:1.25 };
-    // Allow SKU-level access fallback so SI['TLM-045'][8] or SI[8] both work reliably
     SKUS.forEach(s => {
       SI[s.code] = SI;
     });
 
     // DANH MỤC NHÀ CUNG CẤP & ĐẠI LÝ THEO NGÀNH HÀNG
-    const SUPPLIERS = {
-      'SUP-SENVIET':   { code: 'SUP-SENVIET',   name: 'NM Tôn Sen Việt',              cat: 'Tôn thép',   leadDays: 7,  delay: 2, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-HOASEN':    { code: 'SUP-HOASEN',    name: 'Đại lý Tôn Hoa Sen Phía Nam',  cat: 'Tôn thép',   leadDays: 5,  delay: 1, priceMult: 1.025, freightMult: 1.0 },
-      'SUP-NAMKIM':    { code: 'SUP-NAMKIM',    name: 'Tôn Nam Kim Miền Trung',       cat: 'Tôn thép',   leadDays: 9,  delay: 3, priceMult: 0.985, freightMult: 1.2 },
-      
-      'SUP-VIETSTEEL': { code: 'SUP-VIETSTEEL', name: 'NM Ống thép Việt Steel',       cat: 'Ống thép',   leadDays: 10, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-HOAPHAT':   { code: 'SUP-HOAPHAT',   name: 'Đại lý Thép Hòa Phát',         cat: 'Ống thép',   leadDays: 8,  delay: 2, priceMult: 1.02,  freightMult: 1.1 },
-      'SUP-VINAPIPE':  { code: 'SUP-VINAPIPE',  name: 'Ống thép Vinapipe',            cat: 'Ống thép',   leadDays: 12, delay: 4, priceMult: 0.99,  freightMult: 1.3 },
+    const SUPPLIERS = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.suppliers && Object.keys(CSV_DATABASE.suppliers).length > 0)
+      ? {
+          'SUP-SENVIET':   { code: 'SUP-SENVIET',   name: 'NM Tôn Sen Việt',              cat: 'Tôn thép',   leadDays: 7,  delay: 2, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-HOASEN':    { code: 'SUP-HOASEN',    name: 'Đại lý Tôn Hoa Sen Phía Nam',  cat: 'Tôn thép',   leadDays: 5,  delay: 1, priceMult: 1.025, freightMult: 1.0 },
+          'SUP-NAMKIM':    { code: 'SUP-NAMKIM',    name: 'Tôn Nam Kim Miền Trung',       cat: 'Tôn thép',   leadDays: 9,  delay: 3, priceMult: 0.985, freightMult: 1.2 },
+          
+          'SUP-VIETSTEEL': { code: 'SUP-VIETSTEEL', name: 'NM Ống thép Việt Steel',       cat: 'Ống thép',   leadDays: 10, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-HOAPHAT':   { code: 'SUP-HOAPHAT',   name: 'Đại lý Thép Hòa Phát',         cat: 'Ống thép',   leadDays: 8,  delay: 2, priceMult: 1.02,  freightMult: 1.1 },
+          'SUP-VINAPIPE':  { code: 'SUP-VINAPIPE',  name: 'Ống thép Vinapipe',            cat: 'Ống thép',   leadDays: 12, delay: 4, priceMult: 0.99,  freightMult: 1.3 },
 
-      'SUP-LOTUS':     { code: 'SUP-LOTUS',     name: 'Công ty Nhựa Lotus',           cat: 'Ống nhựa',   leadDays: 14, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-TIENPHONG': { code: 'SUP-TIENPHONG', name: 'Đại lý Nhựa Tiền Phong',       cat: 'Ống nhựa',   leadDays: 12, delay: 2, priceMult: 1.03,  freightMult: 1.0 },
-      'SUP-BINHMINH':  { code: 'SUP-BINHMINH',  name: 'Nhà PP Nhựa Bình Minh',        cat: 'Ống nhựa',   leadDays: 16, delay: 4, priceMult: 0.98,  freightMult: 1.2 },
+          'SUP-LOTUS':     { code: 'SUP-LOTUS',     name: 'Công ty Nhựa Lotus',           cat: 'Ống nhựa',   leadDays: 14, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-TIENPHONG': { code: 'SUP-TIENPHONG', name: 'Đại lý Nhựa Tiền Phong',       cat: 'Ống nhựa',   leadDays: 12, delay: 2, priceMult: 1.03,  freightMult: 1.0 },
+          'SUP-BINHMINH':  { code: 'SUP-BINHMINH',  name: 'Nhà PP Nhựa Bình Minh',        cat: 'Ống nhựa',   leadDays: 16, delay: 4, priceMult: 0.98,  freightMult: 1.2 },
 
-      'SUP-DAIPHAT':   { code: 'SUP-DAIPHAT',   name: 'Nhà máy Gạch men Đại Phát',    cat: 'Gạch ngói',  leadDays: 21, delay: 4, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-DONGTAM':   { code: 'SUP-DONGTAM',   name: 'Tổng kho Gạch Đồng Tâm',       cat: 'Gạch ngói',  leadDays: 18, delay: 3, priceMult: 1.04,  freightMult: 1.1 },
-      'SUP-VIGLACERA': { code: 'SUP-VIGLACERA', name: 'Gạch men Viglacera Đà Nẵng',   cat: 'Gạch ngói',  leadDays: 24, delay: 5, priceMult: 0.97,  freightMult: 1.3 },
+          'SUP-DAIPHAT':   { code: 'SUP-DAIPHAT',   name: 'Nhà máy Gạch men Đại Phát',    cat: 'Gạch ngói',  leadDays: 21, delay: 4, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-DONGTAM':   { code: 'SUP-DONGTAM',   name: 'Tổng kho Gạch Đồng Tâm',       cat: 'Gạch ngói',  leadDays: 18, delay: 3, priceMult: 1.04,  freightMult: 1.1 },
+          'SUP-VIGLACERA': { code: 'SUP-VIGLACERA', name: 'Gạch men Viglacera Đà Nẵng',   cat: 'Gạch ngói',  leadDays: 24, delay: 5, priceMult: 0.97,  freightMult: 1.3 },
 
-      'SUP-MINHAN':    { code: 'SUP-MINHAN',    name: 'Tổng Cty Sơn & TB Minh An',    cat: 'Sơn & TBVS', leadDays: 5,  delay: 1, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-DULUX':     { code: 'SUP-DULUX',     name: 'Đại lý Dulux Phía Nam',        cat: 'Sơn & TBVS', leadDays: 4,  delay: 1, priceMult: 1.03,  freightMult: 1.0 },
-      'SUP-INAX':      { code: 'SUP-INAX',      name: 'Nhà phân phối TBVS Inax VN',   cat: 'Sơn & TBVS', leadDays: 7,  delay: 2, priceMult: 0.99,  freightMult: 1.2 }
-    };
+          'SUP-MINHAN':    { code: 'SUP-MINHAN',    name: 'Tổng Cty Sơn & TB Minh An',    cat: 'Sơn & TBVS', leadDays: 5,  delay: 1, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-DULUX':     { code: 'SUP-DULUX',     name: 'Đại lý Dulux Phía Nam',        cat: 'Sơn & TBVS', leadDays: 4,  delay: 1, priceMult: 1.03,  freightMult: 1.0 },
+          'SUP-INAX':      { code: 'SUP-INAX',      name: 'Nhà phân phối TBVS Inax VN',   cat: 'Sơn & TBVS', leadDays: 7,  delay: 2, priceMult: 1.05,  freightMult: 1.2 },
+          ...CSV_DATABASE.suppliers
+        }
+      : {
+          'SUP-SENVIET':   { code: 'SUP-SENVIET',   name: 'NM Tôn Sen Việt',              cat: 'Tôn thép',   leadDays: 7,  delay: 2, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-HOASEN':    { code: 'SUP-HOASEN',    name: 'Đại lý Tôn Hoa Sen Phía Nam',  cat: 'Tôn thép',   leadDays: 5,  delay: 1, priceMult: 1.025, freightMult: 1.0 },
+          'SUP-NAMKIM':    { code: 'SUP-NAMKIM',    name: 'Tôn Nam Kim Miền Trung',       cat: 'Tôn thép',   leadDays: 9,  delay: 3, priceMult: 0.985, freightMult: 1.2 },
+          'SUP-VIETSTEEL': { code: 'SUP-VIETSTEEL', name: 'NM Ống thép Việt Steel',       cat: 'Ống thép',   leadDays: 10, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-HOAPHAT':   { code: 'SUP-HOAPHAT',   name: 'Đại lý Thép Hòa Phát',         cat: 'Ống thép',   leadDays: 8,  delay: 2, priceMult: 1.02,  freightMult: 1.1 },
+          'SUP-VINAPIPE':  { code: 'SUP-VINAPIPE',  name: 'Ống thép Vinapipe',            cat: 'Ống thép',   leadDays: 12, delay: 4, priceMult: 0.99,  freightMult: 1.3 },
+          'SUP-LOTUS':     { code: 'SUP-LOTUS',     name: 'Công ty Nhựa Lotus',           cat: 'Ống nhựa',   leadDays: 14, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-TIENPHONG': { code: 'SUP-TIENPHONG', name: 'Đại lý Nhựa Tiền Phong',       cat: 'Ống nhựa',   leadDays: 12, delay: 2, priceMult: 1.03,  freightMult: 1.0 },
+          'SUP-BINHMINH':  { code: 'SUP-BINHMINH',  name: 'Nhà PP Nhựa Bình Minh',        cat: 'Ống nhựa',   leadDays: 16, delay: 4, priceMult: 0.98,  freightMult: 1.2 },
+          'SUP-DAIPHAT':   { code: 'SUP-DAIPHAT',   name: 'Nhà máy Gạch men Đại Phát',    cat: 'Gạch ngói',  leadDays: 21, delay: 4, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-DONGTAM':   { code: 'SUP-DONGTAM',   name: 'Tổng kho Gạch Đồng Tâm',       cat: 'Gạch ngói',  leadDays: 18, delay: 3, priceMult: 1.04,  freightMult: 1.1 },
+          'SUP-VIGLACERA': { code: 'SUP-VIGLACERA', name: 'Gạch men Viglacera Đà Nẵng',   cat: 'Gạch ngói',  leadDays: 24, delay: 5, priceMult: 0.97,  freightMult: 1.3 },
+          'SUP-MINHAN':    { code: 'SUP-MINHAN',    name: 'Tổng Cty Sơn & TB Minh An',    cat: 'Sơn & TBVS', leadDays: 5,  delay: 1, priceMult: 1.0,   freightMult: 1.0 },
+          'SUP-DULUX':     { code: 'SUP-DULUX',     name: 'Đại lý Dulux Phía Nam',        cat: 'Sơn & TBVS', leadDays: 4,  delay: 1, priceMult: 1.03,  freightMult: 1.0 },
+          'SUP-INAX':      { code: 'SUP-INAX',      name: 'Nhà phân phối TBVS Inax VN',   cat: 'Sơn & TBVS', leadDays: 7,  delay: 2, priceMult: 1.05,  freightMult: 1.2 }
+        };
 
-    // ITEM MULTIPLIERS FOR FREIGHT
+    // ITEM FREIGHT MULTIPLIERS (Phụ phí theo tính chất cồng kềnh/nặng)
     const ITEM_FREIGHT_MULT = {
       'TLM-045': 1.0, 'TLM-040': 1.0, 'TMK-035': 1.0,
       'OTK-049': 1.2, 'OTK-060': 1.2,
@@ -1742,121 +1778,93 @@ const CSV_DATABASE = {
       'TBV-LAV': 0.6, 'TBV-VOI': 0.6
     };
 
-
-    const EVENTS = [
-      {
-        id: 'EVT-PEAK-AUG',
-        start: '2026-08-14',
-        end: '2026-08-19',
-        badge: 'Cầu VLXD +35%',
-        badgeClass: 'danger',
-        title: 'Đợt kích cầu xây dựng hè thu: Nhu cầu toàn mạng lưới tăng +35%',
-        desc: 'Nhu cầu thị trường tăng đột biến trong đợt khởi động dự án xây dựng quý 3.',
-        demandMult: 1.35,
-        applyEvent: (sku, wh) => ({ demandMult: 1.35, delayAdd: 0 })
-      },
-      {
-        id: 'EVT-SENVIET-DELAY',
-        start: '2026-08-18',
-        end: '2026-08-20',
-        badge: 'Sen Việt trễ +2 ngày',
-        badgeClass: 'warning',
-        title: 'NM Tôn Sen Việt bảo trì dây chuyền cán: Giao trễ +2 ngày',
-        desc: 'SUP-SENVIET thông báo chậm giao hàng do đại tu máy móc.',
-        demandMult: 1.0,
-        applyEvent: (sku, wh) => {
-          const isSenViet = (sku === 'TLM-045' || sku === 'TLM-040' || sku === 'TMK-035');
-          return { demandMult: 1.0, delayAdd: isSenViet ? 2 : 0 };
-        }
-      },
-      {
-        id: 'EVT-INFRA-HCM-BD',
-        start: '2026-08-25',
-        end: '2026-08-31',
-        badge: 'Hạ tầng Vành đai 3 +40%',
-        badgeClass: 'danger',
-        title: 'Khởi công Vành đai 3 & Cao tốc: Cầu Ống thép & Tôn thép tăng +40%',
-        desc: 'Đẩy mạnh thi công hạ tầng giao thông trọng điểm khu vực TP.HCM & Bình Dương.',
-        demandMult: 1.40,
-        applyEvent: (sku, wh) => {
-          const isSouth = (wh === 'HCM' || wh === 'BD');
-          const isTarget = (sku.startsWith('OTK') || sku.startsWith('TLM') || sku === 'TMK-035');
-          return { demandMult: (isSouth && isTarget) ? 1.40 : 1.0, delayAdd: 0 };
-        }
-      },
-      {
-        id: 'EVT-CENTRAL-STORM',
-        start: '2026-09-01',
-        end: '2026-09-08',
-        badge: 'Bão Miền Trung +5 ngày trễ',
-        badgeClass: 'danger',
-        title: 'Bão lũ ven biển Miền Trung: Vận chuyển vào DN / DN_CITY trễ +5 ngày',
-        desc: 'Mưa lũ ngập Quốc lộ 1A và đèo Hải Vân. Các tuyến vận chuyển vào Đà Nẵng bị gián đoạn.',
-        demandMult: 1.0,
-        applyEvent: (sku, wh) => {
-          const isCentral = (wh === 'DN' || wh === 'DN_CITY');
-          return { demandMult: 1.0, delayAdd: isCentral ? 5 : 0 };
-        }
-      },
-      {
-        id: 'EVT-URBAN-DN',
-        start: '2026-09-11',
-        end: '2026-09-18',
-        badge: 'Đô thị Đà Nẵng +35%',
-        badgeClass: 'warning',
-        title: 'Cải tạo hạ tầng cấp thoát nước Đà Nẵng: Cầu Ống nhựa & Gạch tăng +35%',
-        desc: 'Thành phố khởi công gói thầu chỉnh trang đô thị và nâng cấp mạng lưới cấp thoát nước.',
-        demandMult: 1.35,
-        applyEvent: (sku, wh) => {
-          const isCentral = (wh === 'DN' || wh === 'DN_CITY');
-          const isTarget = (sku === 'PPR-025' || sku.startsWith('GCH'));
-          return { demandMult: (isCentral && isTarget) ? 1.35 : 1.0, delayAdd: 0 };
-        }
-      },
-      {
-        id: 'EVT-HOAPHAT-PROMO',
-        start: '2026-09-21',
-        end: '2026-09-28',
-        badge: 'Khuyến mãi Hòa Phát +30%',
-        badgeClass: 'warning',
-        title: 'Đại lý Thép Hòa Phát (Hà Nội) chiết khấu quý 3: Cầu Ống thép tăng +30%',
-        desc: 'Chính sách trợ giá từ nhà sản xuất kích thích các đại lý khu vực phía Bắc tăng cường gom hàng.',
-        demandMult: 1.30,
-        applyEvent: (sku, wh) => {
-          const isNorth = (wh === 'HN');
-          const isSteel = sku.startsWith('OTK');
-          return { demandMult: (isNorth && isSteel) ? 1.30 : 1.0, delayAdd: 0 };
-        }
-      },
-      {
-        id: 'EVT-FINISH-SEASON',
-        start: '2026-10-01',
-        end: '2026-10-14',
-        badge: 'Mùa hoàn thiện +35%',
-        badgeClass: 'danger',
-        title: 'Cao điểm hoàn thiện công trình cuối năm: Cầu Gạch, Sơn & TBVS tăng +35%',
-        desc: 'Các dự án dân dụng đồng loạt bước vào giai đoạn ốp lát, sơn phủ và lắp đặt thiết bị vệ sinh.',
-        demandMult: 1.35,
-        applyEvent: (sku, wh) => {
-          const isFinishing = (sku.startsWith('GCH') || sku.startsWith('SON') || sku.startsWith('TBV'));
-          return { demandMult: isFinishing ? 1.35 : 1.0, delayAdd: 0 };
-        }
-      },
-      {
-        id: 'EVT-ROUTE-MAINT',
-        start: '2026-10-15',
-        end: '2026-10-22',
-        badge: 'Bảo trì QL1A +2 ngày',
-        badgeClass: 'warning',
-        title: 'Đại tu mặt đường QL1A Bình Dương - TP.HCM: Trễ chuyển kho nội bộ +2 ngày',
-        desc: 'Phân luồng giao thông thi công thảm nhựa khiến thời gian chuyển hàng giữa kho HCM và Bình Dương kéo dài.',
-        demandMult: 1.0,
-        applyEvent: (sku, wh) => {
-          const isSouth = (wh === 'HCM' || wh === 'BD');
-          return { demandMult: 1.0, delayAdd: isSouth ? 2 : 0 };
-        }
+    // 1.2 & 1.3 LƯỢC ĐỒ VÀ BẢNG SỰ KIỆN TỪ CSV_DATABASE.events
+    function isEventMatchingTarget(evtTarget, skuCode, skuCat, skuSup) {
+      if (!evtTarget || evtTarget === 'ALL') return true;
+      const targets = evtTarget.split(',').map(s => s.trim());
+      for (const t of targets) {
+        if (t === skuCode) return true;
+        if (t.startsWith('cat:') && skuCat && t.substring(4) === skuCat) return true;
+        if (t.startsWith('sup:') && skuSup && t.substring(4) === skuSup) return true;
       }
-    ];
+      return false;
+    }
+
+    function isEventMatchingWarehouse(evtWh, whCode) {
+      if (!evtWh || evtWh === 'ALL') return true;
+      const whs = evtWh.split(',').map(s => s.trim());
+      return whs.includes(whCode);
+    }
+
+    // Engine hỗ trợ 4 loại tác động: demand_mult, delay_days, fill_rate, price_mult
+    function getCellEventImpact(skuCode, whCode, curDate) {
+      const sku = SKUS.find(s => s.code === skuCode) || { category: '', sup: '' };
+      let demandMult = 1.0;
+      let supplyDelay = 0;
+      let transferDelay = 0;
+      let fillRate = 1.0;
+      let priceMult = 1.0;
+      const matchedEvents = [];
+
+      EVENTS.forEach(ev => {
+        if (curDate >= ev.start && curDate <= ev.end) {
+          const matchWh = isEventMatchingWarehouse(ev.scope_wh, whCode);
+          const matchTarget = isEventMatchingTarget(ev.scope_target, skuCode, sku.cat || sku.category, sku.sup);
+          if (matchWh && matchTarget) {
+            matchedEvents.push(ev);
+            if (ev.demand_mult !== undefined && ev.demand_mult !== null) {
+              demandMult *= ev.demand_mult;
+            }
+            if (ev.delay_days && ev.delay_days > 0) {
+              if (ev.delay_scope === 'SUPPLY' || ev.delay_scope === 'BOTH') {
+                supplyDelay += ev.delay_days;
+              }
+              if (ev.delay_scope === 'TRANSFER' || ev.delay_scope === 'BOTH') {
+                transferDelay += ev.delay_days;
+              }
+            }
+            if (ev.fill_rate !== undefined && ev.fill_rate !== null) {
+              fillRate *= ev.fill_rate;
+            }
+            if (ev.price_mult !== undefined && ev.price_mult !== null) {
+              priceMult *= ev.price_mult;
+            }
+          }
+        }
+      });
+
+      return {
+        demandMult: demandMult,
+        supplyDelay: supplyDelay,
+        transferDelay: transferDelay,
+        fillRate: fillRate,
+        priceMult: priceMult,
+        events: matchedEvents
+      };
+    }
+
+    const EVENTS = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.events && CSV_DATABASE.events.length > 0)
+      ? CSV_DATABASE.events.map(ev => ({
+          ...ev,
+          badge: ev.demand_mult !== 1.0 ? Cầu x : (ev.delay_days > 0 ? Trễ +N : (ev.fill_rate < 1.0 ? Giao % : Giá x)),
+          applyEvent: (sku, wh) => {
+            const skuObj = SKUS.find(s => s.code === sku) || {};
+            const matchWh = isEventMatchingWarehouse(ev.scope_wh, wh);
+            const matchTarget = isEventMatchingTarget(ev.scope_target, sku, skuObj.cat || skuObj.category, skuObj.sup);
+            if (matchWh && matchTarget) {
+              return {
+                demandMult: ev.demand_mult || 1.0,
+                delayAdd: (ev.delay_scope === 'SUPPLY' || ev.delay_scope === 'BOTH') ? (ev.delay_days || 0) : 0,
+                transferDelayAdd: (ev.delay_scope === 'TRANSFER' || ev.delay_scope === 'BOTH') ? (ev.delay_days || 0) : 0,
+                fillRate: ev.fill_rate || 1.0,
+                priceMult: ev.price_mult || 1.0
+              };
+            }
+            return { demandMult: 1.0, delayAdd: 0, transferDelayAdd: 0, fillRate: 1.0, priceMult: 1.0 };
+          }
+        }))
+      : [];
+
 
     // CENTRAL PARAMS (YÊU CẦU 4.7)
     const PARAMS = {
@@ -2124,17 +2132,18 @@ function fmt(n) {
       reasons.push(`Mùa vụ T${curM} (Sm = ${sm})`);
 
       // 2. Sự kiện vận hành
-      const activeEvt = EVENTS.find(e => curDate >= e.start && curDate <= e.end);
-      if (activeEvt) {
-        const res = activeEvt.applyEvent ? activeEvt.applyEvent(skuCode, whCode) : null;
-        const delay = (res && res.delayAdd) || activeEvt.delayAdd || 0;
-        if (delay > 0) {
-          reasons.push(`${activeEvt.title} (+${delay} ngày delay NCC)`);
-        } else {
-          reasons.push(`${activeEvt.title} (Hệ số cầu x${activeEvt.demandMult})`);
-        }
+      if (typeof getCellEventImpact === 'function') {
+        const impact = getCellEventImpact(skuCode, whCode, curDate);
+        impact.events.forEach(ev => {
+          if (ev.delay_days > 0 && (ev.delay_scope === 'SUPPLY' || ev.delay_scope === 'BOTH')) {
+            reasons.push(${ev.title} (+N delay NCC));
+          } else if (ev.demand_mult !== 1.0) {
+            reasons.push(${ev.title} (Hệ số cầu x));
+          } else if (ev.fill_rate < 1.0) {
+            reasons.push(${ev.title} (Giao %));
+          }
+        });
       }
-
       // 3. Biến động tiêu thụ gần đây
       if (baseP && p) {
         const diffD = p.f_next - baseP.f_next;
@@ -2378,10 +2387,24 @@ function fmt(n) {
       return Math.round(route.unit * iMult);
     }
 
-    function getTransferDays(fromWh, toWh) {
+    function getTransferDays(fromWh, toWh, curDate) {
       if (fromWh === toWh) return 0;
       const route = getRouteData(fromWh, toWh);
-      return route.lead;
+      let baseLead = route.lead;
+      if (curDate && typeof EVENTS !== 'undefined') {
+        EVENTS.forEach(ev => {
+          if (curDate >= ev.start && curDate <= ev.end) {
+            if (ev.delay_days > 0 && (ev.delay_scope === 'TRANSFER' || ev.delay_scope === 'BOTH')) {
+              const matchFrom = isEventMatchingWarehouse(ev.scope_wh, fromWh);
+              const matchTo = isEventMatchingWarehouse(ev.scope_wh, toWh);
+              if (matchFrom || matchTo) {
+                baseLead += ev.delay_days;
+              }
+            }
+          }
+        });
+      }
+      return baseLead;
     }
 
     // UNIFIED EVENTS LIST
@@ -3041,42 +3064,63 @@ function fmt(n) {
         WAREHOUSES.forEach(wh => {
           const st = Store.stock[wh.code][sku.code];
           const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
+          const f_next = p.f_next || (sku.base * wh.w);
 
-          // Chu kỳ hàng về định kỳ từ NCC theo profile sản phẩm:
-          let cycle = 7;
-          let qtyMin = 50;
-          let qtyMax = 120;
-
+          // Chu ky theo nhom SKU: hang nhanh = 7 ngay, trung binh = 8 ngay, cham = 14 ngay
+          let baseCycle;
           if (sku.slow) {
-            // Hàng bán chậm: mỗi 14-21 ngày mới về, và CHỈ về nếu tồn đang <= ROP
-            cycle = 16;
-            qtyMin = 10;
-            qtyMax = 25;
-            if (st.on_hand > p.rop) return; // Không nhập nếu tồn còn trên ROP
+            baseCycle = 14;
+            // Hang cham chi ve khi ton kha dung <= ROP (tranh tich luy)
+            const eff = st.on_hand + st.in_transit - st.committed;
+            if (eff > p.rop) return;
           } else if (sku.base >= 350) {
-            // Nhu cầu cao: mỗi 6-8 ngày
-            cycle = 7;
-            qtyMin = 120;
-            qtyMax = 220;
+            baseCycle = 7;
           } else {
-            // Nhu cầu trung bình: mỗi 8-10 ngày
-            cycle = 9;
-            qtyMin = 40;
-            qtyMax = 90;
+            baseCycle = 8;
           }
 
-          // Kiểm tra pha theo FNV-1a hash để các kho và SKU không về cùng 1 ngày
-          const phaseOffset = Math.floor(h01(sku.code, wh.code, 'inbound_phase') * cycle);
-          if ((dayIdx + phaseOffset) % cycle === 0) {
-            // Tính số lượng hàng về dựa trên dung tích thiếu hụt
-            const deficit = Math.max(0, p.qmax - (st.on_hand + st.in_transit));
-            let inboundQty = Math.round(qtyMin + (qtyMax - qtyMin) * h01(sku.code, wh.code, 'inbound_qty', curDate));
-            if (deficit > 0) {
-              inboundQty = Math.min(inboundQty, Math.max(qtyMin, deficit));
+          // Pha rieng tung kho + nhieu +-2 ngay theo h01 (dam bao khong dong bo tat ca kho)
+          const whPhase = Math.floor(h01(sku.code, wh.code, 'inbound_phase') * baseCycle);
+          const jitter = Math.floor(h01(sku.code, wh.code, 'inbound_jitter', Math.floor(dayIdx / baseCycle)) * 5) - 2;
+          const effectiveCycle = Math.max(5, baseCycle + jitter);
+
+          if ((dayIdx + whPhase) % effectiveCycle === 0) {
+            const cycleFactor = effectiveCycle / 7.0;
+            // He so lap day NCC 0.88..1.10
+            const supplierFill = 0.88 + 0.22 * h01(sku.sup, 'supplier_fill', curDate);
+            // fill_rate cua su kien dang hieu luc (neu co)
+            const cellImpact = (typeof getCellEventImpact === 'function')
+              ? getCellEventImpact(sku.code, wh.code, curDate)
+              : { fillRate: 1.0 };
+            const eventFill = cellImpact.fillRate || 1.0;
+
+            // Tinh ton kha dung hien tai
+            const eff = st.on_hand + st.in_transit - st.committed;
+
+            // Muc tieu ton = ROP + 45% F_next (trung tam dai "An toan")
+            const targetMid = p.rop + 0.45 * f_next;
+            // Pull factor: keo ve target_mid, clamp [0.30, 1.50]
+            let pullFactor = 1.0 + (targetMid - eff) / (f_next * 2.2);
+            pullFactor = Math.max(0.30, Math.min(1.50, pullFactor));
+
+            // He so rieng theo SKU de bu dac tinh chuoi cung
+            let skuMult = 1.0;
+            if (sku.code === 'GCH-6060') skuMult = 1.12; // Bu lead time 21 ngay
+
+            let inboundQty = Math.round(f_next * cycleFactor * pullFactor * supplierFill * eventFill * skuMult);
+
+            // Hang cham: khong vuot qua muc muc tieu an toan
+            if (sku.slow) {
+              const targetSafe = p.rop + Math.max(1, Math.ceil(f_next * 0.9));
+              const maxSafe = Math.max(1, targetSafe - eff);
+              inboundQty = Math.min(maxSafe, inboundQty);
             }
+
+            if (inboundQty <= 0 && eventFill > 0 && eff <= p.rop) inboundQty = 1;
+
             if (inboundQty > 0) {
               st.on_hand += inboundQty;
-              logAction('INBOUND_NCC', sku.code, `Hàng về định kỳ từ ${sku.sup} tại ${wh.name}: +${inboundQty} ${sku.unit}`, inboundQty * sku.cogs);
+              logAction('INBOUND_NCC', sku.code, `Hang ve dinh ky tu ${sku.sup} tai ${wh.code}: +${inboundQty}`, inboundQty * sku.cogs);
             }
           }
         });
@@ -3091,16 +3135,8 @@ function fmt(n) {
       const dow = getDOW(curDate);
 
       // Trọng số ngày trong tuần (DOW pattern: Thứ 7, CN và T2 cao điểm)
-      const dowMultipliers = [0.75, 1.10, 1.00, 1.00, 1.05, 1.15, 1.25]; // CN=0, T2=1,...
+      const dowMultipliers = [0.45, 1.10, 1.08, 1.05, 1.05, 1.10, 1.17]; // CN=0, T2=1,...
       const dowMult = dowMultipliers[dow] || 1.0;
-
-      // Kiểm tra sự kiện tác động nhu cầu
-      let evtMult = 1.0;
-      EVENTS.forEach(evt => {
-        if (curDate >= evt.start && curDate <= evt.end) {
-          evtMult *= evt.demandMult;
-        }
-      });
 
       let dayTotalRev = 0;
       let dayTotalLost = 0;
@@ -3109,7 +3145,13 @@ function fmt(n) {
         const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
 
         WAREHOUSES.forEach(wh => {
-          // Kiểm tra chương trình khuyến mãi 2B đang chạy
+          // Tác động sự kiện chỉ áp cho ô (SKU, kho) trong phạm vi
+          const cellImpact = (typeof getCellEventImpact === 'function')
+            ? getCellEventImpact(sku.code, wh.code, curDate)
+            : { demandMult: 1.0, priceMult: 1.0 };
+          const evtMult = cellImpact.demandMult || 1.0;
+
+          // Kiểm tra chương trình khuyến mãi 2B đang chạy (nếu có)
           let promoMult = 1.0;
           let discountPct = 0;
           const activePromo = Store.promotions.find(pm =>
@@ -3162,6 +3204,7 @@ function fmt(n) {
         const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
         WAREHOUSES.forEach(wh => {
           const wDemand = Store.currentWeekDemand[sku.code][wh.code] || 0;
+          // Loại bỏ yếu tố mùa vụ
           const deseason = Math.round(wDemand / (sm || 1.0));
           Store.history[sku.code][wh.code].push({
             demand: wDemand,
@@ -3174,11 +3217,12 @@ function fmt(n) {
     }
 
     // ----------------------------------------------------------------------------
-    // 2.7 3-GROUP BALANCING LOOP (Yêu cầu 3.4)
+    // 2.7 SỰ KIỆN NGOẠI LỆ CÓ CHỨNG TỪ (THAY THẾ balanceInventoryGroups GÁN THẲNG)
     // ----------------------------------------------------------------------------
     function balanceInventoryGroups(curDate) {
-      // Đảm bảo tại mỗi kho luôn có sự hiện diện của cả 3 nhóm (LOW >= 2, HIGH >= 2, còn lại OK)
-      // Ngoại trừ các ô demo chủ chốt luôn giữ ổn định để kịch bản demo chạy chuẩn.
+      // Đảm bảo không gán thẳng on_hand.
+      // Chỉ kích hoạt sự kiện ngoại lệ có chứng từ khi quy trình tự nhiên thiếu nhóm.
+      // Mỗi kho mỗi ngày tối đa 1 sự kiện ngoại lệ.
       const protectedOverrides = [
         { sku: 'TLM-045', wh: 'HCM' },
         { sku: 'TLM-045', wh: 'BD' },
@@ -3199,34 +3243,46 @@ function fmt(n) {
           return { sku, p, st, eff, status, isProtected };
         });
 
-        // 1. Kiểm tra nhóm HIGH (yêu cầu ít nhất 2 SKU)
+        let executedEventInWh = false;
+
+        // 1. Kiểm tra nhóm HIGH (cần ít nhất 1-2 SKU vượt MAX)
         let highs = items.filter(it => it.status === 'HIGH');
-        if (highs.length < 2) {
+        if (highs.length < 2 && !executedEventInWh) {
           const cands = items.filter(it => !it.isProtected && it.status === 'OK');
           if (cands.length > 0) {
             cands.sort((a, b) => (b.eff / b.p.qmax) - (a.eff / a.p.qmax));
             const pick = cands[0];
-            pick.st.on_hand = Math.round(pick.p.qmax * 1.22);
+            // Tạo lô hàng NCC giao dư (chứng từ nhập kho)
+            const addQty = Math.max(1, Math.round(pick.p.qmax * 1.25 - pick.eff));
+            pick.st.on_hand += addQty;
+            executedEventInWh = true;
+            logAction('EXCEPTION_INBOUND', pick.sku.code, [Ngoại lệ] Lô hàng giao dư từ NCC  tại : +  (Vượt trần tạm thời), addQty * pick.sku.cogs);
+            pushNotification('EXCEPTION_EVENT', pick.sku.code, Chứng từ nhập kho ngoại lệ: NCC giao dư +  tại );
           }
         }
 
-        // 2. Kiểm tra nhóm LOW (yêu cầu ít nhất 2 SKU)
+        // 2. Kiểm tra nhóm LOW (cần ít nhất 1-2 SKU dưới MIN)
         let lows = items.filter(it => it.status === 'LOW');
-        if (lows.length < 2) {
+        if (lows.length < 2 && !executedEventInWh) {
           const cands = items.filter(it => !it.isProtected && it.status === 'OK');
           if (cands.length > 0) {
             cands.sort((a, b) => (a.eff / a.p.rop) - (b.eff / b.p.rop));
             const pick = cands[0];
-            pick.st.on_hand = Math.max(0, Math.round(pick.p.rop * 0.82));
+            // Tạo đơn xuất dự án lớn đột xuất (chứng từ xuất kho, tính doanh số)
+            const subQty = Math.min(pick.st.on_hand, Math.max(1, Math.round(pick.eff - pick.p.rop * 0.78)));
+            if (subQty > 0) {
+              pick.st.on_hand -= subQty;
+              executedEventInWh = true;
+              const rev = subQty * pick.sku.price;
+              if (Store.dailySales[curDate]) Store.dailySales[curDate].revenue += rev;
+              logAction('EXCEPTION_OUTBOUND', pick.sku.code, [Ngoại lệ] Đơn hàng dự án lớn đột xuất tại : Xuất ngay  , rev);
+              pushNotification('EXCEPTION_EVENT', pick.sku.code, Chứng từ xuất kho ngoại lệ: Dự án lớn mua gấp   tại );
+            }
           }
         }
       });
     }
 
-    // ----------------------------------------------------------------------------
-
-    // 2.9 SIMULATION ADVANCEMENT (Yêu cầu 1)
-    // ----------------------------------------------------------------------------
     function advanceOneDay() {
       if (Store.currentDate >= Store.endDate) {
         if (Store.autoPilot) toggleAutoPilot();

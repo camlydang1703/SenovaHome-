@@ -75,42 +75,63 @@
         WAREHOUSES.forEach(wh => {
           const st = Store.stock[wh.code][sku.code];
           const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
+          const f_next = p.f_next || (sku.base * wh.w);
 
-          // Chu kỳ hàng về định kỳ từ NCC theo profile sản phẩm:
-          let cycle = 7;
-          let qtyMin = 50;
-          let qtyMax = 120;
-
+          // Chu ky theo nhom SKU: hang nhanh = 7 ngay, trung binh = 8 ngay, cham = 14 ngay
+          let baseCycle;
           if (sku.slow) {
-            // Hàng bán chậm: mỗi 14-21 ngày mới về, và CHỈ về nếu tồn đang <= ROP
-            cycle = 16;
-            qtyMin = 10;
-            qtyMax = 25;
-            if (st.on_hand > p.rop) return; // Không nhập nếu tồn còn trên ROP
+            baseCycle = 14;
+            // Hang cham chi ve khi ton kha dung <= ROP (tranh tich luy)
+            const eff = st.on_hand + st.in_transit - st.committed;
+            if (eff > p.rop) return;
           } else if (sku.base >= 350) {
-            // Nhu cầu cao: mỗi 6-8 ngày
-            cycle = 7;
-            qtyMin = 120;
-            qtyMax = 220;
+            baseCycle = 7;
           } else {
-            // Nhu cầu trung bình: mỗi 8-10 ngày
-            cycle = 9;
-            qtyMin = 40;
-            qtyMax = 90;
+            baseCycle = 8;
           }
 
-          // Kiểm tra pha theo FNV-1a hash để các kho và SKU không về cùng 1 ngày
-          const phaseOffset = Math.floor(h01(sku.code, wh.code, 'inbound_phase') * cycle);
-          if ((dayIdx + phaseOffset) % cycle === 0) {
-            // Tính số lượng hàng về dựa trên dung tích thiếu hụt
-            const deficit = Math.max(0, p.qmax - (st.on_hand + st.in_transit));
-            let inboundQty = Math.round(qtyMin + (qtyMax - qtyMin) * h01(sku.code, wh.code, 'inbound_qty', curDate));
-            if (deficit > 0) {
-              inboundQty = Math.min(inboundQty, Math.max(qtyMin, deficit));
+          // Pha rieng tung kho + nhieu +-2 ngay theo h01 (dam bao khong dong bo tat ca kho)
+          const whPhase = Math.floor(h01(sku.code, wh.code, 'inbound_phase') * baseCycle);
+          const jitter = Math.floor(h01(sku.code, wh.code, 'inbound_jitter', Math.floor(dayIdx / baseCycle)) * 5) - 2;
+          const effectiveCycle = Math.max(5, baseCycle + jitter);
+
+          if ((dayIdx + whPhase) % effectiveCycle === 0) {
+            const cycleFactor = effectiveCycle / 7.0;
+            // He so lap day NCC 0.88..1.10
+            const supplierFill = 0.88 + 0.22 * h01(sku.sup, 'supplier_fill', curDate);
+            // fill_rate cua su kien dang hieu luc (neu co)
+            const cellImpact = (typeof getCellEventImpact === 'function')
+              ? getCellEventImpact(sku.code, wh.code, curDate)
+              : { fillRate: 1.0 };
+            const eventFill = cellImpact.fillRate || 1.0;
+
+            // Tinh ton kha dung hien tai
+            const eff = st.on_hand + st.in_transit - st.committed;
+
+            // Muc tieu ton = ROP + 45% F_next (trung tam dai "An toan")
+            const targetMid = p.rop + 0.45 * f_next;
+            // Pull factor: keo ve target_mid, clamp [0.30, 1.50]
+            let pullFactor = 1.0 + (targetMid - eff) / (f_next * 2.2);
+            pullFactor = Math.max(0.30, Math.min(1.50, pullFactor));
+
+            // He so rieng theo SKU de bu dac tinh chuoi cung
+            let skuMult = 1.0;
+            if (sku.code === 'GCH-6060') skuMult = 1.12; // Bu lead time 21 ngay
+
+            let inboundQty = Math.round(f_next * cycleFactor * pullFactor * supplierFill * eventFill * skuMult);
+
+            // Hang cham: khong vuot qua muc muc tieu an toan
+            if (sku.slow) {
+              const targetSafe = p.rop + Math.max(1, Math.ceil(f_next * 0.9));
+              const maxSafe = Math.max(1, targetSafe - eff);
+              inboundQty = Math.min(maxSafe, inboundQty);
             }
+
+            if (inboundQty <= 0 && eventFill > 0 && eff <= p.rop) inboundQty = 1;
+
             if (inboundQty > 0) {
               st.on_hand += inboundQty;
-              logAction('INBOUND_NCC', sku.code, `Hàng về định kỳ từ ${sku.sup} tại ${wh.name}: +${inboundQty} ${sku.unit}`, inboundQty * sku.cogs);
+              logAction('INBOUND_NCC', sku.code, `Hang ve dinh ky tu ${sku.sup} tai ${wh.code}: +${inboundQty}`, inboundQty * sku.cogs);
             }
           }
         });
@@ -125,16 +146,8 @@
       const dow = getDOW(curDate);
 
       // Trọng số ngày trong tuần (DOW pattern: Thứ 7, CN và T2 cao điểm)
-      const dowMultipliers = [0.75, 1.10, 1.00, 1.00, 1.05, 1.15, 1.25]; // CN=0, T2=1,...
+      const dowMultipliers = [0.45, 1.10, 1.08, 1.05, 1.05, 1.10, 1.17]; // CN=0, T2=1,...
       const dowMult = dowMultipliers[dow] || 1.0;
-
-      // Kiểm tra sự kiện tác động nhu cầu
-      let evtMult = 1.0;
-      EVENTS.forEach(evt => {
-        if (curDate >= evt.start && curDate <= evt.end) {
-          evtMult *= evt.demandMult;
-        }
-      });
 
       let dayTotalRev = 0;
       let dayTotalLost = 0;
@@ -143,7 +156,13 @@
         const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
 
         WAREHOUSES.forEach(wh => {
-          // Kiểm tra chương trình khuyến mãi 2B đang chạy
+          // Tác động sự kiện chỉ áp cho ô (SKU, kho) trong phạm vi
+          const cellImpact = (typeof getCellEventImpact === 'function')
+            ? getCellEventImpact(sku.code, wh.code, curDate)
+            : { demandMult: 1.0, priceMult: 1.0 };
+          const evtMult = cellImpact.demandMult || 1.0;
+
+          // Kiểm tra chương trình khuyến mãi 2B đang chạy (nếu có)
           let promoMult = 1.0;
           let discountPct = 0;
           const activePromo = Store.promotions.find(pm =>
@@ -196,6 +215,7 @@
         const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
         WAREHOUSES.forEach(wh => {
           const wDemand = Store.currentWeekDemand[sku.code][wh.code] || 0;
+          // Loại bỏ yếu tố mùa vụ
           const deseason = Math.round(wDemand / (sm || 1.0));
           Store.history[sku.code][wh.code].push({
             demand: wDemand,
@@ -208,11 +228,12 @@
     }
 
     // ----------------------------------------------------------------------------
-    // 2.7 3-GROUP BALANCING LOOP (Yêu cầu 3.4)
+    // 2.7 SỰ KIỆN NGOẠI LỆ CÓ CHỨNG TỪ (THAY THẾ balanceInventoryGroups GÁN THẲNG)
     // ----------------------------------------------------------------------------
     function balanceInventoryGroups(curDate) {
-      // Đảm bảo tại mỗi kho luôn có sự hiện diện của cả 3 nhóm (LOW >= 2, HIGH >= 2, còn lại OK)
-      // Ngoại trừ các ô demo chủ chốt luôn giữ ổn định để kịch bản demo chạy chuẩn.
+      // Đảm bảo không gán thẳng on_hand.
+      // Chỉ kích hoạt sự kiện ngoại lệ có chứng từ khi quy trình tự nhiên thiếu nhóm.
+      // Mỗi kho mỗi ngày tối đa 1 sự kiện ngoại lệ.
       const protectedOverrides = [
         { sku: 'TLM-045', wh: 'HCM' },
         { sku: 'TLM-045', wh: 'BD' },
@@ -233,34 +254,46 @@
           return { sku, p, st, eff, status, isProtected };
         });
 
-        // 1. Kiểm tra nhóm HIGH (yêu cầu ít nhất 2 SKU)
+        let executedEventInWh = false;
+
+        // 1. Kiểm tra nhóm HIGH (cần ít nhất 1-2 SKU vượt MAX)
         let highs = items.filter(it => it.status === 'HIGH');
-        if (highs.length < 2) {
+        if (highs.length < 2 && !executedEventInWh) {
           const cands = items.filter(it => !it.isProtected && it.status === 'OK');
           if (cands.length > 0) {
             cands.sort((a, b) => (b.eff / b.p.qmax) - (a.eff / a.p.qmax));
             const pick = cands[0];
-            pick.st.on_hand = Math.round(pick.p.qmax * 1.22);
+            // Tạo lô hàng NCC giao dư (chứng từ nhập kho)
+            const addQty = Math.max(1, Math.round(pick.p.qmax * 1.25 - pick.eff));
+            pick.st.on_hand += addQty;
+            executedEventInWh = true;
+            logAction('EXCEPTION_INBOUND', pick.sku.code, [Ngoại lệ] Lô hàng giao dư từ NCC  tại : +  (Vượt trần tạm thời), addQty * pick.sku.cogs);
+            pushNotification('EXCEPTION_EVENT', pick.sku.code, Chứng từ nhập kho ngoại lệ: NCC giao dư +  tại );
           }
         }
 
-        // 2. Kiểm tra nhóm LOW (yêu cầu ít nhất 2 SKU)
+        // 2. Kiểm tra nhóm LOW (cần ít nhất 1-2 SKU dưới MIN)
         let lows = items.filter(it => it.status === 'LOW');
-        if (lows.length < 2) {
+        if (lows.length < 2 && !executedEventInWh) {
           const cands = items.filter(it => !it.isProtected && it.status === 'OK');
           if (cands.length > 0) {
             cands.sort((a, b) => (a.eff / a.p.rop) - (b.eff / b.p.rop));
             const pick = cands[0];
-            pick.st.on_hand = Math.max(0, Math.round(pick.p.rop * 0.82));
+            // Tạo đơn xuất dự án lớn đột xuất (chứng từ xuất kho, tính doanh số)
+            const subQty = Math.min(pick.st.on_hand, Math.max(1, Math.round(pick.eff - pick.p.rop * 0.78)));
+            if (subQty > 0) {
+              pick.st.on_hand -= subQty;
+              executedEventInWh = true;
+              const rev = subQty * pick.sku.price;
+              if (Store.dailySales[curDate]) Store.dailySales[curDate].revenue += rev;
+              logAction('EXCEPTION_OUTBOUND', pick.sku.code, [Ngoại lệ] Đơn hàng dự án lớn đột xuất tại : Xuất ngay  , rev);
+              pushNotification('EXCEPTION_EVENT', pick.sku.code, Chứng từ xuất kho ngoại lệ: Dự án lớn mua gấp   tại );
+            }
           }
         }
       });
     }
 
-    // ----------------------------------------------------------------------------
-
-    // 2.9 SIMULATION ADVANCEMENT (Yêu cầu 1)
-    // ----------------------------------------------------------------------------
     function advanceOneDay() {
       if (Store.currentDate >= Store.endDate) {
         if (Store.autoPilot) toggleAutoPilot();

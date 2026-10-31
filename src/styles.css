@@ -624,7 +624,7 @@
       font-size: 11.5px;
       padding: 10px 14px;
     }
-    .log-accordion-body.open { display: block; }
+    .log-accordion-body.open, .log-accordion-body.active { display: block; }
     .log-line { margin-bottom: 4px; line-height: 1.4; }
     .log-time { color: #94A3B8; margin-right: 8px; }
     .log-type { color: #38BDF8; margin-right: 6px; font-weight: 600; }

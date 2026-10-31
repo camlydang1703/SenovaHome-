@@ -1,13 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-SenNova Home IMS Build Script
-Assembles modular files in src/ into dist/sennova_ims.html
-Loads CSV files from data/ directly to guarantee 100% single source of truth.
-"""
-import sys
-import os
-import csv
-import json
+import sys, os, csv, json
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -77,17 +68,91 @@ def compile_csv_database():
                     'note': r.get('note', '')
                 })
 
+    # 4. warehouses_master.csv
+    warehouses = []
+    wh_path = os.path.join(DATA_DIR, 'warehouses_master.csv')
+    if os.path.exists(wh_path):
+        with open(wh_path, 'r', encoding='utf-8') as f:
+            for r in csv.DictReader(f):
+                warehouses.append({
+                    'code': r['warehouse_code'],
+                    'name': r['warehouse_name'],
+                    'address': r.get('address', ''),
+                    'region': r.get('region', 'Central'),
+                    'w': float(r.get('weight', 0.20))
+                })
+
+    # 5. suppliers_master.csv
+    suppliers = {}
+    sup_path = os.path.join(DATA_DIR, 'suppliers_master.csv')
+    if os.path.exists(sup_path):
+        with open(sup_path, 'r', encoding='utf-8') as f:
+            for r in csv.DictReader(f):
+                suppliers[r['supplier_code']] = {
+                    'code': r['supplier_code'],
+                    'name': r['supplier_name'],
+                    'lead_weeks': float(r.get('lead_time_weeks', 1.0)),
+                    'lead': int(r.get('lead_time_days', 7)),
+                    'delay': int(r.get('expected_delay_days', 2))
+                }
+
+    # 6. products_master.csv
+    products = []
+    prod_path = os.path.join(DATA_DIR, 'products_master.csv')
+    if os.path.exists(prod_path):
+        with open(prod_path, 'r', encoding='utf-8') as f:
+            for r in csv.DictReader(f):
+                products.append({
+                    'code': r['product_code'],
+                    'name': r['product_name'],
+                    'category': r['category'],
+                    'unit': r['unit'],
+                    'cogs': int(r['cogs']),
+                    'price': int(r['selling_price']),
+                    'sup': r['supplier_code'],
+                    'base': int(r.get('base_weekly_demand', 100)),
+                    'slow': bool(int(r.get('is_slow_moving', 0)))
+                })
+
+    # 7. events.csv
+    events = []
+    evt_path = os.path.join(DATA_DIR, 'events.csv')
+    if os.path.exists(evt_path):
+        with open(evt_path, 'r', encoding='utf-8') as f:
+            for r in csv.DictReader(f):
+                events.append({
+                    'id': r['id'],
+                    'start': r['start'],
+                    'end': r['end'],
+                    'type': r['type'],
+                    'severity': r['severity'],
+                    'scope_wh': r['scope_wh'],
+                    'scope_target': r['scope_target'],
+                    'demand_mult': float(r.get('demand_mult', 1.0)),
+                    'delay_days': int(r.get('delay_days', 0)),
+                    'delay_scope': r.get('delay_scope', 'SUPPLY'),
+                    'fill_rate': float(r.get('fill_rate', 1.0)),
+                    'price_mult': float(r.get('price_mult', 1.0)),
+                    'advisory_days': int(r.get('advisory_days', 3)),
+                    'title': r['title'],
+                    'desc': r['desc']
+                })
+
     js_code = f"""// AUTO-GENERATED FROM data/*.csv BY build.py — NGUỒN SỰ THẬT DUY NHẤT
 const CSV_DATABASE = {{
   inventory_opening: {json.dumps(inv_opening, ensure_ascii=False)},
   seasonal_parameters: {json.dumps(seasonal, ensure_ascii=False)},
-  routes: {json.dumps(routes, ensure_ascii=False)}
+  routes: {json.dumps(routes, ensure_ascii=False)},
+  warehouses: {json.dumps(warehouses, ensure_ascii=False)},
+  suppliers: {json.dumps(suppliers, ensure_ascii=False)},
+  products: {json.dumps(products, ensure_ascii=False)},
+  events: {json.dumps(events, ensure_ascii=False)}
 }};
 """
     csv_js_path = os.path.join(SRC_DIR, 'js', 'csv_data.js')
     with open(csv_js_path, 'w', encoding='utf-8') as f:
         f.write(js_code)
-    print(f"Compiled CSV Database from data/ ({len(inv_opening)} opening records, {len(seasonal)} seasonal indices)")
+    print(f"Compiled CSV Database from data/ ({len(inv_opening)} opening, {len(warehouses)} wh, {len(products)} products, {len(events)} events)")
 
 def build():
     # 0. Compile CSVs into JS

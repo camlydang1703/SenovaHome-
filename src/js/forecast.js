@@ -170,17 +170,18 @@ function fmt(n) {
       reasons.push(`Mùa vụ T${curM} (Sm = ${sm})`);
 
       // 2. Sự kiện vận hành
-      const activeEvt = EVENTS.find(e => curDate >= e.start && curDate <= e.end);
-      if (activeEvt) {
-        const res = activeEvt.applyEvent ? activeEvt.applyEvent(skuCode, whCode) : null;
-        const delay = (res && res.delayAdd) || activeEvt.delayAdd || 0;
-        if (delay > 0) {
-          reasons.push(`${activeEvt.title} (+${delay} ngày delay NCC)`);
-        } else {
-          reasons.push(`${activeEvt.title} (Hệ số cầu x${activeEvt.demandMult})`);
-        }
+      if (typeof getCellEventImpact === 'function') {
+        const impact = getCellEventImpact(skuCode, whCode, curDate);
+        impact.events.forEach(ev => {
+          if (ev.delay_days > 0 && (ev.delay_scope === 'SUPPLY' || ev.delay_scope === 'BOTH')) {
+            reasons.push(${ev.title} (+N delay NCC));
+          } else if (ev.demand_mult !== 1.0) {
+            reasons.push(${ev.title} (Hệ số cầu x));
+          } else if (ev.fill_rate < 1.0) {
+            reasons.push(${ev.title} (Giao %));
+          }
+        });
       }
-
       // 3. Biến động tiêu thụ gần đây
       if (baseP && p) {
         const diffD = p.f_next - baseP.f_next;
