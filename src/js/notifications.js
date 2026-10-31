@@ -169,10 +169,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(act)
       }).catch(err => {
-        if (!Store._ledgerWarned) {
-          Store._ledgerWarned = true;
-          showToast('⚠️ Chưa ghi được ledger.csv - server chưa khởi động', 'warning');
-        }
+        // Actions logged in Store.actions; silent catch when offline
       });
     }
 

@@ -59,8 +59,7 @@
         const destSt = Store.stock[w.code][skuCode];
         const destEff = destSt.on_hand + destSt.in_transit - destSt.committed;
         const tDays = getTransferDays(whCode, w.code);
-        const unitRate = getUnitFreightRate(whCode, w.code, skuCode);
-        const freight = excess * unitRate;
+        const freight = calcFreightCost(whCode, w.code, skuCode, excess);
         const isLow = destEff <= destP.rop;
         const capacity = Math.max(0, destP.qmax - destEff);
         const ratio = destP.rop > 0 ? (destEff / destP.rop) : 1;
@@ -71,7 +70,6 @@
           st: destSt,
           eff: destEff,
           tDays: tDays,
-          unitRate: unitRate,
           freight: freight,
           isLow: isLow,
           capacity: capacity,
@@ -82,110 +80,77 @@
       const bestTarget = candidateWhs[0];
 
       const title = document.getElementById('overstockModalTitle');
-      if (title) title.textContent = `Chiến lược Thoát hàng Tồn dư Vượt MAX: ${sku.code} tại ${wh.name}`;
+      if (title) title.textContent = `Điều phối San tải Tồn dư Vượt MAX: ${sku.code} tại ${wh.name}`;
 
       const body = document.getElementById('overstockModalBody');
       if (body) {
         body.innerHTML = `
-          <div style="background:#FFFBEB;border:1px solid #FDE68A;padding:12px;border-radius:6px;margin-bottom:16px;">
-            <div style="font-weight:700;color:#92400E;margin-bottom:4px;">
-              Cảnh báo tồn trữ: ${sku.name} (${sku.code})
+          <div style="background:#F8FAFC;border:1px solid var(--border-color);padding:14px;border-radius:6px;margin-bottom:16px;">
+            <div style="font-weight:700;color:var(--navy-main);font-size:13px;margin-bottom:6px;">
+              Tình trạng tồn trữ: ${sku.name} (${sku.code})
             </div>
-            <div style="font-size:12px;color:#78350F;line-height:1.5;">
-              Tồn kho hiện tại: <strong>${st.on_hand}</strong> ${sku.unit} | Ngưỡng MAX: ${dualQmax} | Tồn dư vượt đỉnh: <strong style="color:var(--status-red);">${excess}</strong> ${sku.unit}<br>
-              <div style="font-size:11px;color:#B45309;margin-top:2px;"><em>${driver}</em></div>
-              Vốn bị chiếm dụng ước tính: <strong>${fmtVND(excess * sku.cogs)}</strong>. Chọn một trong hai phương án bên dưới để giải phóng vốn:
+            <div style="font-size:12px;color:var(--text-sub);line-height:1.6;">
+              Tồn kho hiện tại: <strong>${st.on_hand}</strong> ${sku.unit} | Ngưỡng MAX an toàn: <strong>${p.qmax}</strong> | Tồn dư vượt đỉnh: <strong style="color:var(--status-red);">${excess}</strong> ${sku.unit}<br>
+              Vốn bị chiếm dụng cần giải phóng: <strong style="color:var(--navy-main);">${fmtVND(excess * sku.cogs)}</strong>.
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px;">
-            <!-- PHƯƠNG ÁN 2A: ĐIỀU CHUYỂN TOÀN MẠNG LƯỚI -->
-            <div style="border:2px solid var(--navy-accent);border-radius:8px;padding:14px;background:#FFFFFF;display:flex;flex-direction:column;justify-content:space-between;">
-              <div>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="status-pill status-pill-high" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;">Phương án 2A</span>
-                    <strong style="font-size:13px;color:var(--navy-main);">Điều chuyển san tải nội bộ</strong>
-                  </div>
-                  <span class="status-pill status-pill-ok" style="font-size:11px;">Khuyến nghị ưu tiên</span>
-                </div>
-                <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px 0;line-height:1.4;">
-                  Hệ thống phân tích mạng lưới và xếp hạng các kho nhận theo mức độ cấp thiết (ưu tiên kho đang dưới MIN / thiếu hụt):
-                </p>
-
-                <!-- DANH SÁCH CÁC KHO CÓ THỂ NHẬN HÀNG -->
-                <div style="border:1px solid var(--border-subtle);border-radius:6px;overflow:hidden;margin-bottom:12px;">
-                  <table style="width:100%;font-size:11.5px;border-collapse:collapse;">
-                    <thead>
-                      <tr style="background:var(--bg-subtle);border-bottom:1px solid var(--border-subtle);text-align:left;">
-                        <th style="padding:6px 8px;">Chọn kho nhận</th>
-                        <th style="padding:6px 8px;text-align:right;">Tồn / MIN</th>
-                        <th style="padding:6px 8px;">Tình trạng</th>
-                        <th style="padding:6px 8px;text-align:right;">Thời gian</th>
-                        <th style="padding:6px 8px;text-align:right;">Ước tính cước</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${candidateWhs.map((cw, idx) => `
-                        <tr style="border-bottom:1px solid var(--border-subtle);${idx === 0 ? 'background:#F0FDF4;' : ''}">
-                          <td style="padding:6px 8px;">
-                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;">
-                              <input type="radio" name="overstockWhSelect" value="${cw.code}" ${idx === 0 ? 'checked' : ''} onchange="document.getElementById('overstockTargetWh').value='${cw.code}'">
-                              ${cw.name}
-                              ${idx === 0 ? '<span style="font-size:10px;background:#15803D;color:#fff;padding:1px 5px;border-radius:3px;">Tối ưu</span>' : ''}
-                            </label>
-                          </td>
-                          <td style="padding:6px 8px;text-align:right;">
-                            ${cw.eff} / ${cw.p.rop}
-                          </td>
-                          <td style="padding:6px 8px;">
-                            ${cw.isLow 
-                              ? '<span style="color:var(--status-red);font-weight:700;">Dưới MIN (Cần hàng)</span>' 
-                              : (cw.capacity > 0 ? '<span style="color:var(--status-green);">Còn sức chứa</span>' : '<span style="color:var(--status-yellow);">Gần trần MAX</span>')}
-                          </td>
-                          <td style="padding:6px 8px;text-align:right;">${cw.tDays} ngày</td>
-                          <td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--navy-accent);">${fmtVND(cw.freight)}</td>
-                        </tr>
-                      `).join('')}
-                    </tbody>
-                  </table>
-                </div>
-
-                <input type="hidden" id="overstockTargetWh" value="${bestTarget.code}">
-
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;background:#F8FAFC;padding:8px 10px;border-radius:6px;">
-                  <label style="font-size:12px;font-weight:600;color:var(--navy-main);">Số lượng san tải:</label>
-                  <input type="number" id="overstockQtyInput" value="${excess}" min="1" max="${excess}" style="width:80px;padding:3px 6px;border:1px solid var(--border-subtle);border-radius:4px;font-size:12px;font-weight:700;">
-                  <span style="font-size:11.5px;color:var(--text-muted);">${sku.unit} (khuyến nghị san toàn bộ ${excess} ${sku.unit} tồn dư)</span>
-                </div>
-              </div>
-
-              <button class="btn-large" onclick="executeBatch2ATransfer('${sku.code}', '${wh.code}')">
-                Thực thi San tải 2A sang kho đã chọn
-              </button>
+          <div style="border:1px solid var(--border-color);border-radius:8px;padding:16px;background:#FFFFFF;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <strong style="font-size:13px;color:var(--navy-main);">Chọn Kho Nhận Viện trợ (Xếp hạng theo mức độ cấp thiết)</strong>
+              <span class="status-pill status-pill-ok" style="font-size:11px;">Tối ưu chi phí & nhu cầu</span>
             </div>
 
-            <!-- PHƯƠNG ÁN 2B: CHIẾN DỊCH KHUYẾN MÃI (KM-0001) -->
-            <div style="border:1px solid var(--border-color);border-radius:8px;padding:14px;background:#FFFFFF;display:flex;flex-direction:column;justify-content:space-between;">
-              <div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                  <span class="status-pill status-pill-low" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">Phương án 2B</span>
-                  <strong style="font-size:13px;color:var(--navy-main);">Flash Sale Xả tồn Cục bộ</strong>
-                </div>
-                <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px 0;line-height:1.5;">
-                  Kích hoạt chương trình chiết khấu giá bán từ 10% - 20% trong 7 ngày tại kho này nhằm tăng tốc độ thoát hàng, thu hồi dòng tiền nhanh.
-                </p>
-                <div class="form-row" style="margin-bottom:8px;">
-                  <label class="form-lbl" style="font-size:11.5px;">Mức chiết khấu giảm giá:</label>
-                  <select class="form-ctrl" id="promoDiscountSelect" style="font-size:12px;">
-                    <option value="10">Giảm 10% (Giá mới: ${fmtVND(sku.price * 0.9)})</option>
-                    <option value="15" selected>Giảm 15% (Giá mới: ${fmtVND(sku.price * 0.85)})</option>
-                    <option value="20">Giảm 20% (Giá mới: ${fmtVND(sku.price * 0.8)})</option>
-                  </select>
-                </div>
-              </div>
-              <button class="btn-large" style="background:#D97706;" onclick="execute2BPromotion('${sku.code}', '${wh.code}')">
-                Kích hoạt Flash Sale 2B (Mã KM)
+            <!-- DANH SÁCH CÁC KHO CÓ THỂ NHẬN HÀNG -->
+            <div style="border:1px solid var(--border-subtle);border-radius:6px;overflow:hidden;margin-bottom:14px;">
+              <table style="width:100%;font-size:12px;border-collapse:collapse;">
+                <thead>
+                  <tr style="background:#F8FAFC;border-bottom:1px solid var(--border-color);text-align:left;">
+                    <th style="padding:8px 10px;">Kho nhận</th>
+                    <th style="padding:8px 10px;text-align:right;">Tồn hiện tại / MIN</th>
+                    <th style="padding:8px 10px;">Tình trạng nhu cầu</th>
+                    <th style="padding:8px 10px;text-align:right;">Thời gian giao</th>
+                    <th style="padding:8px 10px;text-align:right;">Chi phí vận chuyển</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${candidateWhs.map((cw, idx) => `
+                    <tr style="border-bottom:1px solid var(--border-subtle);${idx === 0 ? 'background:#F0FDF4;' : ''}">
+                      <td style="padding:8px 10px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+                          <input type="radio" name="overstockWhSelect" value="${cw.code}" ${idx === 0 ? 'checked' : ''} onchange="document.getElementById('overstockTargetWh').value='${cw.code}'">
+                          ${cw.name}
+                          ${idx === 0 ? '<span style="font-size:10px;background:#15803D;color:#fff;padding:1px 6px;border-radius:3px;font-weight:700;">Khuyến nghị</span>' : ''}
+                        </label>
+                      </td>
+                      <td style="padding:8px 10px;text-align:right;font-weight:600;">
+                        ${cw.eff} / ${cw.p.rop}
+                      </td>
+                      <td style="padding:8px 10px;">
+                        ${cw.isLow 
+                          ? '<span style="color:var(--status-red);font-weight:700;">Dưới MIN (Thiếu hụt hàng)</span>' 
+                          : (cw.capacity > 0 ? '<span style="color:var(--status-green);font-weight:600;">Còn sức chứa kho</span>' : '<span style="color:var(--status-yellow);">Gần trần MAX</span>')}
+                      </td>
+                      <td style="padding:8px 10px;text-align:right;">${cw.tDays} ngày</td>
+                      <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy-accent);">${fmtVND(cw.freight)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <input type="hidden" id="overstockTargetWh" value="${bestTarget.code}">
+
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;background:#F8FAFC;padding:10px 14px;border-radius:6px;border:1px solid var(--border-subtle);">
+              <label style="font-size:12.5px;font-weight:600;color:var(--navy-main);">Số lượng điều chuyển san tải:</label>
+              <input type="number" id="overstockQtyInput" value="${excess}" min="1" max="${excess}" style="width:90px;padding:4px 8px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;font-weight:700;">
+              <span style="font-size:12px;color:var(--text-muted);">${sku.unit} (khuyến nghị san toàn bộ ${excess} ${sku.unit} tồn dư để đưa kho về mức an toàn)</span>
+            </div>
+
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+              <button class="btn-large-sec" onclick="closeModal('overstockModal')">Hủy bỏ</button>
+              <button class="btn-large" onclick="executeBatch2ATransfer('${sku.code}', '${wh.code}')">
+                Thực thi chuyển kho san tải
               </button>
             </div>
           </div>
@@ -349,7 +314,7 @@
 
       const tDays = getTransferDays(ctx.sourceWh, ctx.toWh);
       const unitFreight = getUnitFreightRate(ctx.sourceWh, ctx.toWh, ctx.skuCode);
-      const totalFreight = ctx.customQty * unitFreight;
+      const totalFreight = calcFreightCost(ctx.sourceWh, ctx.toWh, ctx.skuCode, ctx.customQty);
 
       const supLead = ctx.sku.lead;
       const supCost = ctx.customQty * ctx.sku.cogs;
@@ -491,7 +456,7 @@
 
         const tDays = getTransferDays(ctx.sourceWh, ctx.toWh);
         const unitFreight = getUnitFreightRate(ctx.sourceWh, ctx.toWh, ctx.skuCode);
-        const totalFreight = ctx.customQty * unitFreight;
+        const totalFreight = calcFreightCost(ctx.sourceWh, ctx.toWh, ctx.skuCode, ctx.customQty);
         const trId = padSeq('TR');
 
         srcSt.on_hand -= ctx.customQty;

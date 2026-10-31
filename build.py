@@ -73,6 +73,7 @@ def compile_csv_database():
                     'to': r['to_wh'],
                     'lead': int(r['lead_days']),
                     'rate': int(r['freight_rate_base']),
+                    'unit': int(r.get('unit_rate_base', 25000)),
                     'note': r.get('note', '')
                 })
 

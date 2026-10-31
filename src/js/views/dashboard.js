@@ -38,7 +38,13 @@ function renderDashboardView() {
     {
       key: 'wh',
       header: 'Kho nhận',
-      render: r => `<strong>${whObj.name}</strong>`
+      render: r => {
+        if (r.type === 'OVERSTOCK') {
+          const dstObj = WAREHOUSES.find(w => w.code === r.dstWh);
+          return `<strong>${dstObj ? dstObj.name : r.dstWh}</strong>`;
+        }
+        return `<strong>${whObj.name}</strong>`;
+      }
     },
     {
       key: 'type',
@@ -70,7 +76,11 @@ function renderDashboardView() {
           const supObj = SUPPLIERS[r.sup];
           return `<strong>${supObj ? supObj.name : (r.sup || 'Nhà cung cấp')}</strong>`;
         }
-        return 'Nội bộ kho';
+        if (r.type === 'OVERSTOCK') {
+          const sWh = WAREHOUSES.find(w => w.code === r.srcWh);
+          return `<strong>${sWh ? sWh.name : whObj.name}</strong>`;
+        }
+        return `<strong>${whObj.name}</strong>`;
       }
     },
     {
@@ -82,7 +92,7 @@ function renderDashboardView() {
       key: 'cost',
       header: 'Chi phí vận chuyển',
       align: 'right',
-      render: r => r.freightCost > 0 ? fmtVND(r.freightCost) : '-'
+      render: r => r.freightCost > 0 ? `<strong style="color:var(--navy-accent);">${fmtVND(r.freightCost)}</strong>` : '—'
     },
     {
       key: 'status',
@@ -189,7 +199,7 @@ function renderDashboardView() {
       key: 'cost',
       header: 'Chi phí vận chuyển',
       align: 'right',
-      render: r => r.freightCost > 0 ? fmtVND(r.freightCost) : '-'
+      render: r => r.freightCost > 0 ? `<strong style="color:var(--navy-accent);">${fmtVND(r.freightCost)}</strong>` : '—'
     },
     {
       key: 'status',
@@ -239,7 +249,7 @@ function renderDashboardView() {
         whTotals[wh.code][status.toLowerCase()]++;
 
         let cellClass = 'matrix-cell cell-ok';
-        let tagText = 'OK';
+        let tagText = 'An toàn';
         if (status === 'LOW') {
           cellClass = 'matrix-cell cell-low';
           tagText = 'Dưới MIN';
@@ -249,7 +259,7 @@ function renderDashboardView() {
         }
 
         if (status === 'OK' && st.on_hand <= p.rop && st.in_transit > 0) {
-          tagText = 'OK (nhờ hàng về)';
+          tagText = 'An toàn (hàng đang về)';
         }
 
         const transitText = st.in_transit > 0 ? ` (+${st.in_transit} đang về)` : '';

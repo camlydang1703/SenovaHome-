@@ -5,36 +5,49 @@
     function getRouteMultiplier(fromWh, toWh) {
       if (fromWh === toWh) return 0;
       const sameSouth = (fromWh === 'HCM' && toWh === 'BD') || (fromWh === 'BD' && toWh === 'HCM');
-      const sameCentral = (fromWh === 'DN' && toWh === 'DN_CITY') || (fromWh === 'DN_CITY' && toWh === 'DN');
-      if (sameSouth || sameCentral) return 1.0;
-
-      const southCentral = (fromWh === 'HCM' || fromWh === 'BD') && (toWh === 'DN' || toWh === 'DN_CITY');
-      const centralSouth = (fromWh === 'DN' || fromWh === 'DN_CITY') && (toWh === 'HCM' || toWh === 'BD');
+      if (sameSouth) return 1.0;
+      const centralNorth = (fromWh === 'DN' && toWh === 'HN') || (fromWh === 'HN' && toWh === 'DN');
+      if (centralNorth) return 1.5;
+      const haGiangNorth = (fromWh === 'HN' && toWh === 'DN_CITY') || (fromWh === 'DN_CITY' && toWh === 'HN');
+      if (haGiangNorth) return 1.2;
+      const southCentral = (fromWh === 'HCM' || fromWh === 'BD') && toWh === 'DN';
+      const centralSouth = toWh === 'DN' && (fromWh === 'HCM' || fromWh === 'BD');
       if (southCentral || centralSouth) return 1.8;
+      return 2.2;
+    }
 
-      const centralNorth = (fromWh === 'DN' || fromWh === 'DN_CITY') && toWh === 'HN';
-      const northCentral = fromWh === 'HN' && (toWh === 'DN' || toWh === 'DN_CITY');
-      if (centralNorth || northCentral) return 1.6;
+    function getRouteData(fromWh, toWh) {
+      if (fromWh === toWh) return { lead: 0, base: 0, unit: 0 };
+      if (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.routes) {
+        const r = CSV_DATABASE.routes.find(x => x.from === fromWh && x.to === toWh);
+        if (r) {
+          return {
+            lead: r.lead || 3,
+            base: r.rate || 1100000,
+            unit: r.unit || 25000
+          };
+        }
+      }
+      return { lead: 3, base: 1100000, unit: 25000 };
+    }
 
-      const southNorth = (fromWh === 'HCM' || fromWh === 'BD') && toWh === 'HN';
-      const northSouth = fromWh === 'HN' && (toWh === 'HCM' || toWh === 'BD');
-      if (southNorth || northSouth) return 2.2;
-
-      return 1.8;
+    function calcFreightCost(fromWh, toWh, skuCode, qty) {
+      if (fromWh === toWh || qty <= 0) return 0;
+      const route = getRouteData(fromWh, toWh);
+      const iMult = ITEM_FREIGHT_MULT[skuCode] || 1.0;
+      return route.base + Math.round(qty * route.unit * iMult);
     }
 
     function getUnitFreightRate(fromWh, toWh, skuCode) {
-      const rMult = getRouteMultiplier(fromWh, toWh);
+      const route = getRouteData(fromWh, toWh);
       const iMult = ITEM_FREIGHT_MULT[skuCode] || 1.0;
-      return Math.round(5000 * rMult * iMult);
+      return Math.round(route.unit * iMult);
     }
 
     function getTransferDays(fromWh, toWh) {
       if (fromWh === toWh) return 0;
-      const rMult = getRouteMultiplier(fromWh, toWh);
-      if (rMult === 1.0) return 1;
-      if (rMult === 1.6 || rMult === 1.8) return 3;
-      return 4;
+      const route = getRouteData(fromWh, toWh);
+      return route.lead;
     }
 
     // UNIFIED EVENTS LIST

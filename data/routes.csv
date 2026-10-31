@@ -1,21 +1,21 @@
-from_wh,to_wh,lead_days,freight_rate_base,note
-HCM,BD,1,18000,Noi vung Dong Nam Bo
-HCM,DN,3,65000,Lien vung Nam - Trung
-HCM,DN_CITY,3,75000,Lien vung Nam - Trung
-HCM,HN,4,95000,Lien vung Bac - Nam
-BD,HCM,1,18000,Noi vung Dong Nam Bo
-BD,DN,3,60000,Lien vung Nam - Trung
-BD,DN_CITY,3,70000,Lien vung Nam - Trung
-BD,HN,4,90000,Lien vung Bac - Nam
-DN,HCM,3,65000,Lien vung Trung - Nam
-DN,BD,3,60000,Lien vung Trung - Nam
-DN,DN_CITY,1,22000,Noi thanh Da Nang
-DN,HN,3,80000,Lien vung Trung - Bac
-DN_CITY,HCM,3,75000,Lien vung Trung - Nam
-DN_CITY,BD,3,70000,Lien vung Trung - Nam
-DN_CITY,DN,1,22000,Noi thanh Da Nang
-DN_CITY,HN,3,85000,Lien vung Trung - Bac
-HN,HCM,4,95000,Lien vung Bac - Nam
-HN,BD,4,90000,Lien vung Bac - Nam
-HN,DN,3,80000,Lien vung Bac - Trung
-HN,DN_CITY,3,85000,Lien vung Bac - Trung
+from_wh,to_wh,lead_days,freight_rate_base,unit_rate_base,note
+HCM,BD,1,450000,15000,Noi vung Dong Nam Bo
+HCM,DN,3,1200000,25000,Lien vung Nam - Trung
+HCM,DN_CITY,4,2200000,40000,Lien vung Nam - Ha Giang
+HCM,HN,4,1800000,35000,Lien vung Bac - Nam
+BD,HCM,1,450000,15000,Noi vung Dong Nam Bo
+BD,DN,3,1150000,25000,Lien vung Nam - Trung
+BD,DN_CITY,4,2150000,40000,Lien vung Nam - Ha Giang
+BD,HN,4,1750000,35000,Lien vung Bac - Nam
+DN,HCM,3,1200000,25000,Lien vung Trung - Nam
+DN,BD,3,1150000,25000,Lien vung Trung - Nam
+DN,DN_CITY,3,1350000,30000,Lien vung Da Nang - Ha Giang
+DN,HN,3,1100000,25000,Lien vung Trung - Bac
+DN_CITY,HCM,4,2200000,40000,Lien vung Ha Giang - Nam
+DN_CITY,BD,4,2150000,40000,Lien vung Ha Giang - Nam
+DN_CITY,DN,3,1350000,30000,Lien vung Ha Giang - Da Nang
+DN_CITY,HN,2,650000,20000,Lien vung Ha Giang - Ha Noi
+HN,HCM,4,1800000,35000,Lien vung Bac - Nam
+HN,BD,4,1750000,35000,Lien vung Bac - Nam
+HN,DN,3,1100000,25000,Lien vung Bac - Trung
+HN,DN_CITY,2,650000,20000,Lien vung Ha Noi - Ha Giang

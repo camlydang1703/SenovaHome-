@@ -100,7 +100,7 @@ function renderAllViews() {
   const picker = document.getElementById('simDatePicker');
   if (picker) {
     picker.value = Store.currentDate;
-    picker.min = Store.currentDate; // Forward-only enforcement
+    picker.min = Store.startDate; // Forward-only enforcement
   }
 
   updateNotificationBadge();
@@ -288,7 +288,7 @@ function toggleAutoPilot() {
       showToast('Đã ở ngày kết thúc mô phỏng', 'info');
       return;
     }
-    autoPilotTimer = setInterval(() => {
+    // autoPilotTimer = setInterval(() => {
       if (Store.currentDate >= Store.endDate || !Store.autoPilot) {
         clearInterval(autoPilotTimer);
         Store.autoPilot = false;
@@ -300,7 +300,7 @@ function toggleAutoPilot() {
       const picker = document.getElementById('simDatePicker');
       if (picker) {
         picker.value = Store.currentDate;
-        picker.min = Store.currentDate;
+        picker.min = Store.startDate;
       }
       renderAllViews();
     }, 700);

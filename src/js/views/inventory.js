@@ -149,9 +149,9 @@ function renderInventoryView() {
           return '<span class="status-pill status-pill-high">Vượt MAX</span>';
         }
         if (r.st.on_hand <= r.p.rop && r.st.in_transit > 0) {
-          return '<span class="status-pill status-pill-ok" title="Tồn thực dưới ROP nhưng an toàn nhờ hàng đang về">OK (nhờ hàng về)</span>';
+          return '<span class="status-pill status-pill-ok" title="Tồn thực dưới ROP nhưng an toàn nhờ hàng đang về">An toàn (hàng đang về)</span>';
         }
-        return '<span class="status-pill status-pill-ok">Bình thường</span>';
+        return '<span class="status-pill status-pill-ok">An toàn</span>';
       }
     },
     {

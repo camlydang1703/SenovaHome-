@@ -5,8 +5,8 @@
     const WAREHOUSES = [
       { code: 'HCM',     name: 'Kho TP. Hồ Chí Minh', region: 'South',   w: 0.30 },
       { code: 'BD',      name: 'Kho Bình Dương',       region: 'South',   w: 0.20 },
-      { code: 'DN',      name: 'Kho Tổng Đà Nẵng',    region: 'Central', w: 0.12 },
-      { code: 'DN_CITY', name: 'Kho Nội Thành Đà Nẵng', region: 'Central', w: 0.08 },
+      { code: 'DN',      name: 'Kho Đà Nẵng',          region: 'Central', w: 0.12 },
+      { code: 'DN_CITY', name: 'Kho Hà Giang',         region: 'North',   w: 0.08 },
       { code: 'HN',      name: 'Kho Hà Nội',           region: 'North',   w: 0.30 }
     ];
 

@@ -112,19 +112,39 @@
               };
             }
           } else if (status === 'HIGH') {
-            // Tồn dư vượt đỉnh MAX -> Đề xuất giải pháp thoát hàng (2A hoặc 2B)
+            // Tồn dư vượt đỉnh MAX -> Đề xuất điều chuyển san tải sang kho cần hàng
             const excessQty = st.on_hand - p.qmax;
+            let bestRecipient = null;
+            let lowestRatio = 999;
+            WAREHOUSES.forEach(otherWh => {
+              if (otherWh.code !== wh.code) {
+                const otherSt = Store.stock[otherWh.code][sku.code];
+                const otherP = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
+                const otherEff = otherSt.on_hand + otherSt.in_transit - otherSt.committed;
+                const ratio = otherP.rop > 0 ? (otherEff / otherP.rop) : 1;
+                if (ratio < lowestRatio) {
+                  lowestRatio = ratio;
+                  bestRecipient = otherWh.code;
+                }
+              }
+            });
+            const targetDstWh = bestRecipient || (wh.code === 'HCM' ? 'HN' : 'HCM');
+            const transferDays = getTransferDays(wh.code, targetDstWh);
+            const freightCost = calcFreightCost(wh.code, targetDstWh, sku.code, excessQty);
+
             Store.proposals[pairKey] = {
               id: dxId,
               date: curDate,
               sku: sku.code,
               wh: wh.code,
+              srcWh: wh.code,
+              dstWh: targetDstWh,
               type: 'OVERSTOCK',
-              action: 'Xả tồn / Điều chuyển (2A/2B)',
+              action: 'Điều chuyển san tải',
               qty: excessQty,
-              leadDays: 1,
-              arrivalDate: curDate,
-              freightCost: 0,
+              leadDays: transferDays,
+              arrivalDate: addDays(curDate, transferDays),
+              freightCost: freightCost,
               status: 'Cần giải phóng vốn',
               hasActiveRfq: false
             };
