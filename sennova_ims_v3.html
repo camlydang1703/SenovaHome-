@@ -2147,37 +2147,56 @@ function fmt(n) {
 
       const eff = st.on_hand + st.in_transit - st.committed;
       const proj7OnHand = Math.round(st.on_hand + arriving7 - (dailyRate * 7));
+      const daysOfSupply = Math.round((eff / dailyRate) * 10) / 10;
       const daysUntilRop = Math.round((st.on_hand - p.rop) / dailyRate);
 
-      if (proj7OnHand <= 0) {
+      // 1. Nguy cơ đứt hàng hoàn toàn (Stockout) trong 7 ngày tới
+      if (daysOfSupply <= 7 || proj7OnHand <= 0) {
         return {
           tag: 'STOCKOUT',
           label: 'Nguy cơ đứt hàng',
           tagClass: 'risk-tag risk-tag-stockout',
-          subText: daysUntilRop <= 0 ? 'Đã hết hàng' : `Đứt hàng ngày +${Math.max(1, Math.round(st.on_hand / dailyRate))}`
+          subText: daysOfSupply <= 0 ? 'Đã hết hàng' : `Hết hàng sau ~${daysOfSupply} ngày`
         };
       }
-      if (proj7OnHand <= p.rop) {
+
+      // 2. Nếu hiện tại đang trên MIN nhưng tiêu thụ trong 7 ngày tới sẽ làm rơi dưới ROP
+      if (st.on_hand > p.rop && proj7OnHand <= p.rop) {
         return {
           tag: 'WARN_LOW',
-          label: 'Nguy cơ thiếu hàng',
+          label: 'Sắp chạm MIN',
           tagClass: 'risk-tag risk-tag-low',
-          subText: daysUntilRop <= 0 ? 'Đã dưới MIN' : `Thủng MIN ngày +${daysUntilRop}`
+          subText: `Rơi dưới ROP sau ~${Math.max(1, daysUntilRop)} ngày`
         };
       }
-      if (proj7OnHand > p.qmax) {
+
+      // 3. Nếu hiện tại ĐÃ DƯỚI MIN nhưng tồn khả dụng vẫn đủ phục vụ qua 7 ngày
+      if (eff <= p.rop) {
+        return {
+          tag: 'WARN_LOW',
+          label: 'Đang dưới MIN',
+          tagClass: 'risk-tag risk-tag-low',
+          subText: `Đủ bán ${daysOfSupply} ngày (Cần bổ sung)`
+        };
+      }
+
+      // 4. Nguy cơ tồn ứ đọng vượt trần MAX
+      if (proj7OnHand > p.qmax || eff > p.qmax) {
+        const excess = Math.max(0, eff - p.qmax);
         return {
           tag: 'WARN_HIGH',
           label: 'Nguy cơ ứ đọng',
           tagClass: 'risk-tag risk-tag-high',
-          subText: `Dư +${proj7OnHand - p.qmax} sp`
+          subText: `Dư vượt MAX +${excess} sp`
         };
       }
+
+      // 5. An toàn
       return {
         tag: 'SAFE',
         label: 'An toàn 7N',
         tagClass: 'risk-tag risk-tag-safe',
-        subText: `Tồn dự phóng: ~${proj7OnHand}`
+        subText: `Tồn dự phóng 7N: ~${proj7OnHand} sp`
       };
     }
 
@@ -4472,8 +4491,14 @@ function renderDashboardView() {
       key: 'source',
       header: 'Kho nguồn / NCC',
       render: r => {
-        if (r.type === 'TRANSFER') return `Kho ${r.srcWh}`;
-        if (r.type === 'RFQ') return r.sup || 'Nhà cung cấp';
+        if (r.type === 'TRANSFER') {
+          const sWh = WAREHOUSES.find(w => w.code === r.srcWh);
+          return `<strong>${sWh ? sWh.name : r.srcWh}</strong>`;
+        }
+        if (r.type === 'RFQ') {
+          const supObj = SUPPLIERS[r.sup];
+          return `<strong>${supObj ? supObj.name : (r.sup || 'Nhà cung cấp')}</strong>`;
+        }
         return 'Nội bộ kho';
       }
     },
@@ -4861,14 +4886,12 @@ function renderInventoryView() {
       align: 'center',
       render: r => {
         if (r.status === 'HIGH') {
-          return `<button class="btn-table btn-action-xaton" onclick="openOverstockModal('${r.sku.code}','${r.wh.code}')">Xả tồn</button>
-                  <button class="btn-table-sec btn-action-detail" onclick="openSkuDetailModal('${r.sku.code}','${r.wh.code}')">Chi tiết</button>`;
+          return `<button class="btn-table btn-action-xaton" onclick="openOverstockModal('${r.sku.code}','${r.wh.code}')">Xả tồn</button>`;
         }
         if (r.status === 'LOW') {
-          return `<button class="btn-table btn-action-bosung" onclick="openReplenishModal('${r.sku.code}','${r.wh.code}')">Bổ sung</button>
-                  <button class="btn-table-sec btn-action-detail" onclick="openSkuDetailModal('${r.sku.code}','${r.wh.code}')">Chi tiết</button>`;
+          return `<button class="btn-table btn-action-bosung" onclick="openReplenishModal('${r.sku.code}','${r.wh.code}')">Bổ sung</button>`;
         }
-        return `<button class="btn-table-sec btn-action-detail" onclick="openSkuDetailModal('${r.sku.code}','${r.wh.code}')">Chi tiết</button>`;
+        return `<span style="color:var(--text-muted);font-size:13px;font-weight:600;">—</span>`;
       }
     }
   ];
@@ -4935,7 +4958,11 @@ function renderTransfersView() {
     {
       key: 'route',
       header: 'Tuyến chuyển',
-      render: tr => `Kho <strong>${tr.srcWh}</strong> ➔ Kho <strong>${tr.dstWh}</strong>`
+      render: tr => {
+        const sWh = WAREHOUSES.find(w => w.code === tr.srcWh);
+        const dWh = WAREHOUSES.find(w => w.code === tr.dstWh);
+        return `<strong>${sWh ? sWh.name : tr.srcWh}</strong> ➔ <strong>${dWh ? dWh.name : tr.dstWh}</strong>`;
+      }
     },
     {
       key: 'qty',
@@ -5033,12 +5060,19 @@ function renderRfqView() {
     {
       key: 'wh',
       header: 'Kho nhận',
-      render: rfq => `<strong>${rfq.wh}</strong>`
+      render: rfq => {
+        const wh = WAREHOUSES.find(w => w.code === rfq.wh);
+        return `<strong>${wh ? wh.name : rfq.wh}</strong>`;
+      }
     },
     {
       key: 'sup',
       header: 'Nhà cung cấp / Đại lý',
-      render: rfq => rfq.sup
+      render: rfq => {
+        const supObj = SUPPLIERS[rfq.sup];
+        const supName = supObj ? supObj.name : rfq.sup;
+        return `<strong>${supName}</strong><br><span style="font-size:11px;color:var(--text-muted);">${rfq.sup}</span>`;
+      }
     },
     {
       key: 'qty',

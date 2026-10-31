@@ -47,7 +47,11 @@ function renderTransfersView() {
     {
       key: 'route',
       header: 'Tuyến chuyển',
-      render: tr => `Kho <strong>${tr.srcWh}</strong> ➔ Kho <strong>${tr.dstWh}</strong>`
+      render: tr => {
+        const sWh = WAREHOUSES.find(w => w.code === tr.srcWh);
+        const dWh = WAREHOUSES.find(w => w.code === tr.dstWh);
+        return `<strong>${sWh ? sWh.name : tr.srcWh}</strong> ➔ <strong>${dWh ? dWh.name : tr.dstWh}</strong>`;
+      }
     },
     {
       key: 'qty',

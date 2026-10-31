@@ -160,14 +160,12 @@ function renderInventoryView() {
       align: 'center',
       render: r => {
         if (r.status === 'HIGH') {
-          return `<button class="btn-table btn-action-xaton" onclick="openOverstockModal('${r.sku.code}','${r.wh.code}')">Xả tồn</button>
-                  <button class="btn-table-sec btn-action-detail" onclick="openSkuDetailModal('${r.sku.code}','${r.wh.code}')">Chi tiết</button>`;
+          return `<button class="btn-table btn-action-xaton" onclick="openOverstockModal('${r.sku.code}','${r.wh.code}')">Xả tồn</button>`;
         }
         if (r.status === 'LOW') {
-          return `<button class="btn-table btn-action-bosung" onclick="openReplenishModal('${r.sku.code}','${r.wh.code}')">Bổ sung</button>
-                  <button class="btn-table-sec btn-action-detail" onclick="openSkuDetailModal('${r.sku.code}','${r.wh.code}')">Chi tiết</button>`;
+          return `<button class="btn-table btn-action-bosung" onclick="openReplenishModal('${r.sku.code}','${r.wh.code}')">Bổ sung</button>`;
         }
-        return `<button class="btn-table-sec btn-action-detail" onclick="openSkuDetailModal('${r.sku.code}','${r.wh.code}')">Chi tiết</button>`;
+        return `<span style="color:var(--text-muted);font-size:13px;font-weight:600;">—</span>`;
       }
     }
   ];

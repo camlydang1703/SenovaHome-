@@ -62,8 +62,14 @@ function renderDashboardView() {
       key: 'source',
       header: 'Kho nguồn / NCC',
       render: r => {
-        if (r.type === 'TRANSFER') return `Kho ${r.srcWh}`;
-        if (r.type === 'RFQ') return r.sup || 'Nhà cung cấp';
+        if (r.type === 'TRANSFER') {
+          const sWh = WAREHOUSES.find(w => w.code === r.srcWh);
+          return `<strong>${sWh ? sWh.name : r.srcWh}</strong>`;
+        }
+        if (r.type === 'RFQ') {
+          const supObj = SUPPLIERS[r.sup];
+          return `<strong>${supObj ? supObj.name : (r.sup || 'Nhà cung cấp')}</strong>`;
+        }
         return 'Nội bộ kho';
       }
     },

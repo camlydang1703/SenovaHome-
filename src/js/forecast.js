@@ -238,37 +238,56 @@ function fmt(n) {
 
       const eff = st.on_hand + st.in_transit - st.committed;
       const proj7OnHand = Math.round(st.on_hand + arriving7 - (dailyRate * 7));
+      const daysOfSupply = Math.round((eff / dailyRate) * 10) / 10;
       const daysUntilRop = Math.round((st.on_hand - p.rop) / dailyRate);
 
-      if (proj7OnHand <= 0) {
+      // 1. Nguy cơ đứt hàng hoàn toàn (Stockout) trong 7 ngày tới
+      if (daysOfSupply <= 7 || proj7OnHand <= 0) {
         return {
           tag: 'STOCKOUT',
           label: 'Nguy cơ đứt hàng',
           tagClass: 'risk-tag risk-tag-stockout',
-          subText: daysUntilRop <= 0 ? 'Đã hết hàng' : `Đứt hàng ngày +${Math.max(1, Math.round(st.on_hand / dailyRate))}`
+          subText: daysOfSupply <= 0 ? 'Đã hết hàng' : `Hết hàng sau ~${daysOfSupply} ngày`
         };
       }
-      if (proj7OnHand <= p.rop) {
+
+      // 2. Nếu hiện tại đang trên MIN nhưng tiêu thụ trong 7 ngày tới sẽ làm rơi dưới ROP
+      if (st.on_hand > p.rop && proj7OnHand <= p.rop) {
         return {
           tag: 'WARN_LOW',
-          label: 'Nguy cơ thiếu hàng',
+          label: 'Sắp chạm MIN',
           tagClass: 'risk-tag risk-tag-low',
-          subText: daysUntilRop <= 0 ? 'Đã dưới MIN' : `Thủng MIN ngày +${daysUntilRop}`
+          subText: `Rơi dưới ROP sau ~${Math.max(1, daysUntilRop)} ngày`
         };
       }
-      if (proj7OnHand > p.qmax) {
+
+      // 3. Nếu hiện tại ĐÃ DƯỚI MIN nhưng tồn khả dụng vẫn đủ phục vụ qua 7 ngày
+      if (eff <= p.rop) {
+        return {
+          tag: 'WARN_LOW',
+          label: 'Đang dưới MIN',
+          tagClass: 'risk-tag risk-tag-low',
+          subText: `Đủ bán ${daysOfSupply} ngày (Cần bổ sung)`
+        };
+      }
+
+      // 4. Nguy cơ tồn ứ đọng vượt trần MAX
+      if (proj7OnHand > p.qmax || eff > p.qmax) {
+        const excess = Math.max(0, eff - p.qmax);
         return {
           tag: 'WARN_HIGH',
           label: 'Nguy cơ ứ đọng',
           tagClass: 'risk-tag risk-tag-high',
-          subText: `Dư +${proj7OnHand - p.qmax} sp`
+          subText: `Dư vượt MAX +${excess} sp`
         };
       }
+
+      // 5. An toàn
       return {
         tag: 'SAFE',
         label: 'An toàn 7N',
         tagClass: 'risk-tag risk-tag-safe',
-        subText: `Tồn dự phóng: ~${proj7OnHand}`
+        subText: `Tồn dự phóng 7N: ~${proj7OnHand} sp`
       };
     }
 

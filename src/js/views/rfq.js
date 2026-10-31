@@ -36,12 +36,19 @@ function renderRfqView() {
     {
       key: 'wh',
       header: 'Kho nhận',
-      render: rfq => `<strong>${rfq.wh}</strong>`
+      render: rfq => {
+        const wh = WAREHOUSES.find(w => w.code === rfq.wh);
+        return `<strong>${wh ? wh.name : rfq.wh}</strong>`;
+      }
     },
     {
       key: 'sup',
       header: 'Nhà cung cấp / Đại lý',
-      render: rfq => rfq.sup
+      render: rfq => {
+        const supObj = SUPPLIERS[rfq.sup];
+        const supName = supObj ? supObj.name : rfq.sup;
+        return `<strong>${supName}</strong><br><span style="font-size:11px;color:var(--text-muted);">${rfq.sup}</span>`;
+      }
     },
     {
       key: 'qty',
