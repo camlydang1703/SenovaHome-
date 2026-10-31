@@ -6120,41 +6120,9 @@ function onManualDateChange(newVal) {
   advanceToDate(newVal);
 }
 
-let autoPilotTimer = null;
+// Autopilot removed from UI; stub retained for compatibility
 function toggleAutoPilot() {
-  Store.autoPilot = !Store.autoPilot;
-  const btn = document.getElementById('autoPilotToggle');
-  if (Store.autoPilot) {
-    if (btn) btn.classList.add('active');
-    if (Store.currentDate >= Store.endDate) {
-      Store.autoPilot = false;
-      if (btn) btn.classList.remove('active');
-      showToast('Đã ở ngày kết thúc mô phỏng', 'info');
-      return;
-    }
-    // autoPilotTimer = setInterval(() => {
-      if (Store.currentDate >= Store.endDate || !Store.autoPilot) {
-        clearInterval(autoPilotTimer);
-        Store.autoPilot = false;
-        if (btn) btn.classList.remove('active');
-        renderAllViews();
-        return;
-      }
-      advanceOneDay();
-      const picker = document.getElementById('simDatePicker');
-      if (picker) {
-        picker.value = Store.currentDate;
-        picker.min = Store.startDate;
-      }
-      renderAllViews();
-    }, 700);
-  } else {
-    if (btn) btn.classList.remove('active');
-    if (autoPilotTimer) {
-      clearInterval(autoPilotTimer);
-      autoPilotTimer = null;
-    }
-  }
+  showToast('Chức năng Autopilot đã được tắt bỏ.', 'info');
 }
 
 // DOM INITIALIZATION (C1: HASH SYNC)
