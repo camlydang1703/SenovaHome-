@@ -9,7 +9,7 @@
           { code: 'HCM',     name: 'Kho TP. Hồ Chí Minh', region: 'South',   w: 0.35 },
           { code: 'BD',      name: 'Kho Bình Dương',       region: 'South',   w: 0.15 },
           { code: 'DN',      name: 'Kho Đà Nẵng',          region: 'Central', w: 0.12 },
-          { code: 'DN_CITY', name: 'Kho Hà Giang',         region: 'North',   w: 0.08 },
+          { code: 'HG', name: 'Kho Hà Giang',         region: 'North',   w: 0.08 },
           { code: 'HN',      name: 'Kho Hà Nội',           region: 'North',   w: 0.30 }
         ];
 
@@ -39,54 +39,63 @@
         ];
 
     // SEASONAL INDEX Sm (LẤY TRỰC TIẾP TỪ data/seasonal_parameters.csv)
+    // Lưu ý: SI chỉ là object month -> index (1..12). KHÔNG gán SI[sku.code] = SI (lỗi tự tham chiếu vòng).
     const SI = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.seasonal_parameters)
       ? { ...CSV_DATABASE.seasonal_parameters }
       : { 1:1.15, 2:0.60, 3:1.10, 4:1.15, 5:0.90, 6:0.80, 7:0.80, 8:0.85, 9:0.90, 10:1.05, 11:1.20, 12:1.25 };
-    SKUS.forEach(s => {
-      SI[s.code] = SI;
-    });
 
     // DANH MỤC NHÀ CUNG CẤP & ĐẠI LÝ THEO NGÀNH HÀNG
+    const BASE_SUPPLIERS = {
+      'SUP-SENVIET':   { code: 'SUP-SENVIET',   name: 'Nhà máy Tôn Sen Việt',              cat: 'Tôn thép',   leadDays: 7,  delay: 2, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-HOASEN':    { code: 'SUP-HOASEN',    name: 'Đại lý Tôn Hoa Sen Phía Nam',  cat: 'Tôn thép',   leadDays: 5,  delay: 1, priceMult: 1.025, freightMult: 1.0 },
+      'SUP-NAMKIM':    { code: 'SUP-NAMKIM',    name: 'Tôn Nam Kim Miền Trung',       cat: 'Tôn thép',   leadDays: 9,  delay: 3, priceMult: 0.985, freightMult: 1.2 },
+
+      'SUP-VIETSTEEL': { code: 'SUP-VIETSTEEL', name: 'Nhà máy Ống thép Việt Steel',       cat: 'Ống thép',   leadDays: 10, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-HOAPHAT':   { code: 'SUP-HOAPHAT',   name: 'Đại lý Thép Hòa Phát',         cat: 'Ống thép',   leadDays: 8,  delay: 2, priceMult: 1.02,  freightMult: 1.1 },
+      'SUP-VINAPIPE':  { code: 'SUP-VINAPIPE',  name: 'Ống thép Vinapipe',            cat: 'Ống thép',   leadDays: 12, delay: 4, priceMult: 0.99,  freightMult: 1.3 },
+
+      'SUP-LOTUS':     { code: 'SUP-LOTUS',     name: 'Công ty Nhựa Lotus',           cat: 'Ống nhựa',   leadDays: 14, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-TIENPHONG': { code: 'SUP-TIENPHONG', name: 'Đại lý Nhựa Tiền Phong',       cat: 'Ống nhựa',   leadDays: 12, delay: 2, priceMult: 1.03,  freightMult: 1.0 },
+      'SUP-BINHMINH':  { code: 'SUP-BINHMINH',  name: 'Nhà PP Nhựa Bình Minh',        cat: 'Ống nhựa',   leadDays: 16, delay: 4, priceMult: 0.98,  freightMult: 1.2 },
+
+      'SUP-DAIPHAT':   { code: 'SUP-DAIPHAT',   name: 'Nhà máy Gạch men Đại Phát',    cat: 'Gạch ngói',  leadDays: 21, delay: 4, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-DONGTAM':   { code: 'SUP-DONGTAM',   name: 'Tổng kho Gạch Đồng Tâm',       cat: 'Gạch ngói',  leadDays: 18, delay: 3, priceMult: 1.04,  freightMult: 1.1 },
+      'SUP-VIGLACERA': { code: 'SUP-VIGLACERA', name: 'Gạch men Viglacera Đà Nẵng',   cat: 'Gạch ngói',  leadDays: 24, delay: 5, priceMult: 0.97,  freightMult: 1.3 },
+
+      'SUP-MINHAN':    { code: 'SUP-MINHAN',    name: 'Tổng công ty Sơn & Thiết bị Minh An',    cat: 'Sơn & TBVS', leadDays: 5,  delay: 1, priceMult: 1.0,   freightMult: 1.0 },
+      'SUP-DULUX':     { code: 'SUP-DULUX',     name: 'Đại lý Dulux Phía Nam',        cat: 'Sơn & TBVS', leadDays: 4,  delay: 1, priceMult: 1.03,  freightMult: 1.0 },
+      'SUP-INAX':      { code: 'SUP-INAX',      name: 'Nhà phân phối TBVS Inax VN',   cat: 'Sơn & TBVS', leadDays: 7,  delay: 2, priceMult: 1.05,  freightMult: 1.2 }
+    };
+
     const SUPPLIERS = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.suppliers && Object.keys(CSV_DATABASE.suppliers).length > 0)
-      ? {
-          'SUP-SENVIET':   { code: 'SUP-SENVIET',   name: 'NM Tôn Sen Việt',              cat: 'Tôn thép',   leadDays: 7,  delay: 2, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-HOASEN':    { code: 'SUP-HOASEN',    name: 'Đại lý Tôn Hoa Sen Phía Nam',  cat: 'Tôn thép',   leadDays: 5,  delay: 1, priceMult: 1.025, freightMult: 1.0 },
-          'SUP-NAMKIM':    { code: 'SUP-NAMKIM',    name: 'Tôn Nam Kim Miền Trung',       cat: 'Tôn thép',   leadDays: 9,  delay: 3, priceMult: 0.985, freightMult: 1.2 },
-          
-          'SUP-VIETSTEEL': { code: 'SUP-VIETSTEEL', name: 'NM Ống thép Việt Steel',       cat: 'Ống thép',   leadDays: 10, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-HOAPHAT':   { code: 'SUP-HOAPHAT',   name: 'Đại lý Thép Hòa Phát',         cat: 'Ống thép',   leadDays: 8,  delay: 2, priceMult: 1.02,  freightMult: 1.1 },
-          'SUP-VINAPIPE':  { code: 'SUP-VINAPIPE',  name: 'Ống thép Vinapipe',            cat: 'Ống thép',   leadDays: 12, delay: 4, priceMult: 0.99,  freightMult: 1.3 },
-
-          'SUP-LOTUS':     { code: 'SUP-LOTUS',     name: 'Công ty Nhựa Lotus',           cat: 'Ống nhựa',   leadDays: 14, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-TIENPHONG': { code: 'SUP-TIENPHONG', name: 'Đại lý Nhựa Tiền Phong',       cat: 'Ống nhựa',   leadDays: 12, delay: 2, priceMult: 1.03,  freightMult: 1.0 },
-          'SUP-BINHMINH':  { code: 'SUP-BINHMINH',  name: 'Nhà PP Nhựa Bình Minh',        cat: 'Ống nhựa',   leadDays: 16, delay: 4, priceMult: 0.98,  freightMult: 1.2 },
-
-          'SUP-DAIPHAT':   { code: 'SUP-DAIPHAT',   name: 'Nhà máy Gạch men Đại Phát',    cat: 'Gạch ngói',  leadDays: 21, delay: 4, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-DONGTAM':   { code: 'SUP-DONGTAM',   name: 'Tổng kho Gạch Đồng Tâm',       cat: 'Gạch ngói',  leadDays: 18, delay: 3, priceMult: 1.04,  freightMult: 1.1 },
-          'SUP-VIGLACERA': { code: 'SUP-VIGLACERA', name: 'Gạch men Viglacera Đà Nẵng',   cat: 'Gạch ngói',  leadDays: 24, delay: 5, priceMult: 0.97,  freightMult: 1.3 },
-
-          'SUP-MINHAN':    { code: 'SUP-MINHAN',    name: 'Tổng Cty Sơn & TB Minh An',    cat: 'Sơn & TBVS', leadDays: 5,  delay: 1, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-DULUX':     { code: 'SUP-DULUX',     name: 'Đại lý Dulux Phía Nam',        cat: 'Sơn & TBVS', leadDays: 4,  delay: 1, priceMult: 1.03,  freightMult: 1.0 },
-          'SUP-INAX':      { code: 'SUP-INAX',      name: 'Nhà phân phối TBVS Inax VN',   cat: 'Sơn & TBVS', leadDays: 7,  delay: 2, priceMult: 1.05,  freightMult: 1.2 },
-          ...CSV_DATABASE.suppliers
-        }
-      : {
-          'SUP-SENVIET':   { code: 'SUP-SENVIET',   name: 'NM Tôn Sen Việt',              cat: 'Tôn thép',   leadDays: 7,  delay: 2, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-HOASEN':    { code: 'SUP-HOASEN',    name: 'Đại lý Tôn Hoa Sen Phía Nam',  cat: 'Tôn thép',   leadDays: 5,  delay: 1, priceMult: 1.025, freightMult: 1.0 },
-          'SUP-NAMKIM':    { code: 'SUP-NAMKIM',    name: 'Tôn Nam Kim Miền Trung',       cat: 'Tôn thép',   leadDays: 9,  delay: 3, priceMult: 0.985, freightMult: 1.2 },
-          'SUP-VIETSTEEL': { code: 'SUP-VIETSTEEL', name: 'NM Ống thép Việt Steel',       cat: 'Ống thép',   leadDays: 10, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-HOAPHAT':   { code: 'SUP-HOAPHAT',   name: 'Đại lý Thép Hòa Phát',         cat: 'Ống thép',   leadDays: 8,  delay: 2, priceMult: 1.02,  freightMult: 1.1 },
-          'SUP-VINAPIPE':  { code: 'SUP-VINAPIPE',  name: 'Ống thép Vinapipe',            cat: 'Ống thép',   leadDays: 12, delay: 4, priceMult: 0.99,  freightMult: 1.3 },
-          'SUP-LOTUS':     { code: 'SUP-LOTUS',     name: 'Công ty Nhựa Lotus',           cat: 'Ống nhựa',   leadDays: 14, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-TIENPHONG': { code: 'SUP-TIENPHONG', name: 'Đại lý Nhựa Tiền Phong',       cat: 'Ống nhựa',   leadDays: 12, delay: 2, priceMult: 1.03,  freightMult: 1.0 },
-          'SUP-BINHMINH':  { code: 'SUP-BINHMINH',  name: 'Nhà PP Nhựa Bình Minh',        cat: 'Ống nhựa',   leadDays: 16, delay: 4, priceMult: 0.98,  freightMult: 1.2 },
-          'SUP-DAIPHAT':   { code: 'SUP-DAIPHAT',   name: 'Nhà máy Gạch men Đại Phát',    cat: 'Gạch ngói',  leadDays: 21, delay: 4, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-DONGTAM':   { code: 'SUP-DONGTAM',   name: 'Tổng kho Gạch Đồng Tâm',       cat: 'Gạch ngói',  leadDays: 18, delay: 3, priceMult: 1.04,  freightMult: 1.1 },
-          'SUP-VIGLACERA': { code: 'SUP-VIGLACERA', name: 'Gạch men Viglacera Đà Nẵng',   cat: 'Gạch ngói',  leadDays: 24, delay: 5, priceMult: 0.97,  freightMult: 1.3 },
-          'SUP-MINHAN':    { code: 'SUP-MINHAN',    name: 'Tổng Cty Sơn & TB Minh An',    cat: 'Sơn & TBVS', leadDays: 5,  delay: 1, priceMult: 1.0,   freightMult: 1.0 },
-          'SUP-DULUX':     { code: 'SUP-DULUX',     name: 'Đại lý Dulux Phía Nam',        cat: 'Sơn & TBVS', leadDays: 4,  delay: 1, priceMult: 1.03,  freightMult: 1.0 },
-          'SUP-INAX':      { code: 'SUP-INAX',      name: 'Nhà phân phối TBVS Inax VN',   cat: 'Sơn & TBVS', leadDays: 7,  delay: 2, priceMult: 1.05,  freightMult: 1.2 }
-        };
+      ? (() => {
+          const merged = { ...BASE_SUPPLIERS };
+          Object.keys(CSV_DATABASE.suppliers).forEach(key => {
+            const csvSup = CSV_DATABASE.suppliers[key];
+            if (merged[key]) {
+              // Merge: CSV override name, lead, delay; keep cat, leadDays, priceMult, freightMult from BASE
+              merged[key] = {
+                ...merged[key],
+                name: csvSup.name || merged[key].name,
+                leadDays: csvSup.lead !== undefined ? csvSup.lead : merged[key].leadDays,
+                delay: csvSup.delay !== undefined ? csvSup.delay : merged[key].delay
+              };
+            } else {
+              // New supplier from CSV, add minimal required fields
+              merged[key] = {
+                code: csvSup.code || key,
+                name: csvSup.name || key,
+                cat: 'Khác',
+                leadDays: csvSup.lead || 7,
+                delay: csvSup.delay || 2,
+                priceMult: 1.0,
+                freightMult: 1.0
+              };
+            }
+          });
+          return merged;
+        })()
+      : BASE_SUPPLIERS;
 
     // ITEM FREIGHT MULTIPLIERS (Phụ phí theo tính chất cồng kềnh/nặng)
     const ITEM_FREIGHT_MULT = {
@@ -199,6 +208,10 @@
       H: 0.20,
       orderCostFixed: 500000,
       dailyHoldingWaitRate: 0.0005,
+      // Chi phí thật của một đơn vị MẤT BÁN: biên lợi nhuận mất đi (1.0) + gia công/chi phí lấy lại khách (0.5)
+      stockoutPenaltyMult: 1.5,
+      // Trần cước vận chuyển (đã gồm phí chuyến phân bổ) so với biên lợi nhuận gộp/đơn vị — ngưỡng sàng lọc tuyến điều chuyển
+      freightMarginCap: 0.8,
       slowMovingWeeks: 30,
       DOW: [0.45, 1.10, 1.08, 1.05, 1.05, 1.10, 1.17] // CN=0, T2=1, ..., T7=6
     };

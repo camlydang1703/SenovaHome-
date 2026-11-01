@@ -52,11 +52,6 @@
         </div>
       </div>
 
-      <!-- KHUNG LỊCH SỰ KIỆN CỦA KHO (Phase 3.3) -->
-      <div class="card-panel event-schedule-card" id="warehouseEventsScheduleCard" style="margin-bottom:16px;">
-        <!-- Rendered dynamically by renderWarehouseEventsSchedule(activeWh) -->
-      </div>
-
     </div>
   </header>
 
@@ -69,6 +64,11 @@
     <div class="wh-segmented-control" id="whSegmentedControl">
       <!-- 5 buttons dynamically rendered with dynamic MIN/MAX badges -->
     </div>
+  </div>
+
+  <!-- KHUNG LỊCH SỰ KIỆN CỦA KHO (Phase 3.3) — nằm trong main-body -->
+  <div class="card-panel event-schedule-card" id="warehouseEventsScheduleCard" style="margin-bottom:16px;">
+    <!-- Rendered dynamically by renderWarehouseEventsSchedule(activeWh) -->
   </div>
 
   <!-- NAVIGATION TABS -->
@@ -140,7 +140,7 @@
         <div class="kpi-card">
           <div class="kpi-title">Vốn Ứ Đọng Vượt MAX</div>
           <div class="kpi-val" id="kpi-trapped-cap">0 tr đ</div>
-          <div class="kpi-sub">Giá trị vốn cần giải phóng</div>
+          <div class="kpi-sub">Tổng giá vốn vượt MAX tại kho đang xem — giảm dần khi xuất chuyển hàng đi</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-title">Tiết Kiệm Chi Phí Nhờ Chuyển Kho</div>
@@ -173,12 +173,17 @@
 
         <!-- OUTBOUND PROPOSALS (C2) -->
         <div class="card-head" style="margin-top:20px;border-top:1px solid var(--border-subtle);padding-top:16px;">
-          <div class="card-title" id="outboundQueueTitle">
-            Hàng đợi Điều chuyển Xuất đi từ Kho
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <div class="card-title" id="outboundQueueTitle">
+              Hàng đợi Điều chuyển Xuất đi từ Kho
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);">
+              Các đề xuất điều chuyển lấy hàng từ kho này để chi viện cho kho khác trong mạng lưới
+            </div>
           </div>
-          <div style="font-size:12px;color:var(--text-muted);">
-            Các đề xuất điều chuyển lấy hàng từ kho này để chi viện cho kho khác trong mạng lưới
-          </div>
+          <button class="btn-small" onclick="confirmAllTransferOutbound()">
+            ✓ Xác nhận tất cả gửi hàng
+          </button>
         </div>
         <div class="table-container">
           <table class="data-tbl" id="outboundTable">
@@ -208,7 +213,7 @@
                 <th style="text-align:center;" class="col-wh-HCM" id="th-wh-HCM">Kho HCM</th>
                 <th style="text-align:center;" class="col-wh-BD" id="th-wh-BD">Kho Bình Dương</th>
                 <th style="text-align:center;" class="col-wh-DN" id="th-wh-DN">Kho Đà Nẵng</th>
-                <th style="text-align:center;" class="col-wh-DN_CITY" id="th-wh-DN_CITY">Kho Hà Giang</th>
+                <th style="text-align:center;" class="col-wh-HG" id="th-wh-HG">Kho Hà Giang</th>
                 <th style="text-align:center;" class="col-wh-HN" id="th-wh-HN">Kho Hà Nội</th>
               </tr>
             </thead>
@@ -254,7 +259,7 @@
               <option value="HCM">Kho HCM</option>
               <option value="BD">Kho Bình Dương</option>
               <option value="DN">Kho Đà Nẵng</option>
-              <option value="DN_CITY">Kho Hà Giang</option>
+              <option value="HG">Kho Hà Giang</option>
               <option value="HN">Kho Hà Nội</option>
             </select>
             <select class="time-input" id="invCatFilter" onchange="renderInventoryView()">
@@ -367,7 +372,7 @@
               <option value="HCM">Kho HCM</option>
               <option value="BD">Kho Bình Dương</option>
               <option value="DN">Kho Đà Nẵng</option>
-              <option value="DN_CITY">Kho Hà Giang</option>
+              <option value="HG">Kho Hà Giang</option>
               <option value="HN">Kho Hà Nội</option>
             </select>
           </div>
@@ -459,7 +464,7 @@
               <option value="HCM">Kho HCM</option>
               <option value="BD">Kho Bình Dương</option>
               <option value="DN">Kho Đà Nẵng</option>
-              <option value="DN_CITY">Kho Hà Giang</option>
+              <option value="HG">Kho Hà Giang</option>
               <option value="HN">Kho Hà Nội</option>
             </select>
           </div>
@@ -597,7 +602,7 @@
             <option value="HCM">Kho HCM</option>
             <option value="BD" selected>Kho Bình Dương</option>
             <option value="DN">Kho Đà Nẵng</option>
-            <option value="DN_CITY">Kho Hà Giang</option>
+            <option value="HG">Kho Hà Giang</option>
             <option value="HN">Kho Hà Nội</option>
           </select>
         </div>
@@ -607,7 +612,7 @@
             <option value="HCM" selected>Kho HCM</option>
             <option value="BD">Kho Bình Dương</option>
             <option value="DN">Kho Đà Nẵng</option>
-            <option value="DN_CITY">Kho Hà Giang</option>
+            <option value="HG">Kho Hà Giang</option>
             <option value="HN">Kho Hà Nội</option>
           </select>
         </div>
@@ -626,6 +631,21 @@
       <div class="modal-foot">
         <button class="btn-large-sec" onclick="closeModal('manualTransferModal')">Hủy bỏ</button>
         <button class="btn-large" id="btnConfirmManualTransfer" onclick="executeManualTransfer()">Tạo Lệnh Chuyển</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2b. TRANSFER REQUEST DETAIL MODAL (kho nguồn xem trước khi xác nhận gửi) -->
+  <div class="modal-overlay" id="transferRequestDetailModal">
+    <div class="modal-box" style="max-width:580px;">
+      <div class="modal-head">
+        <span id="trdTitle">Chi tiết yêu cầu gửi hàng</span>
+        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('transferRequestDetailModal')">✕</button>
+      </div>
+      <div class="modal-body" id="trdBody"></div>
+      <div class="modal-foot">
+        <button class="btn-large-sec" id="trdRejectBtn">Từ chối</button>
+        <button class="btn-large" id="trdConfirmBtn">Xác nhận gửi hàng</button>
       </div>
     </div>
   </div>
@@ -667,7 +687,7 @@
   <div class="modal-overlay" id="selfTestModal">
     <div class="modal-box wide">
       <div class="modal-head">
-        <span>Bảng Tự kiểm tra & Nghiệm thu Hệ thống (12 Tiêu chí)</span>
+        <span>Bảng Tự kiểm tra & Nghiệm thu Hệ thống (14 Tiêu chí)</span>
         <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('selfTestModal')">✕</button>
       </div>
       <div class="modal-body" style="padding:16px 20px;">

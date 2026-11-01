@@ -38,7 +38,9 @@ function renderInventoryView() {
         ? Store.stock[wh.code][sku.code]
         : { on_hand: 0, in_transit: 0, committed: 0 };
       const p  = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
-      const eff = st.on_hand + st.in_transit - st.committed;
+      // Cộng lại giữ chỗ chưa gửi hàng (đề xuất chờ duyệt / lệnh XC chờ xác nhận kho nguồn)
+      const reserve = (typeof getPendingProposalReserve === 'function') ? getPendingProposalReserve(sku.code, wh.code) : 0;
+      const eff = st.on_hand + st.in_transit - st.committed + reserve;
       const status = getStatus(eff, p);
 
       if (stFilter !== 'ALL' && status !== stFilter) return;

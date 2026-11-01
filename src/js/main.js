@@ -70,8 +70,14 @@ function renderWarehouseBar() {
       const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
         ? Store.stock[wh.code][sku.code]
         : { on_hand: 0, in_transit: 0, committed: 0 };
-      const p = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
-      const eff = st.on_hand + st.in_transit - st.committed;
+      let p = { rop: 0, qmax: 0 };
+      try {
+        p = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+      } catch (e) {
+        p = { rop: 0, qmax: 0 };
+      }
+      const reserve = (typeof getPendingProposalReserve === 'function') ? getPendingProposalReserve(sku.code, wh.code) : 0;
+      const eff = st.on_hand + st.in_transit - st.committed + reserve;
       const status = getStatus(eff, p);
       if (status === 'LOW') low++;
       else if (status === 'HIGH') high++;
@@ -99,7 +105,11 @@ function renderAllViews() {
   // 1. Header Date Picker & Badges
   const picker = document.getElementById('simDatePicker');
   if (picker) {
-    picker.value = Store.currentDate;
+    // Không gán lại picker.value = Store.currentDate khi đang xem lại quá khứ (viewDate)
+    // vì sẽ làm ô chọn日期 nhảy về hiện tại, mất chế độ xem quá khứ.
+    if (!Store.ui || !Store.ui.viewDate) {
+      picker.value = Store.currentDate;
+    }
     picker.min = Store.startDate; // Forward-only enforcement
   }
 
@@ -149,10 +159,11 @@ function renderAllViews() {
       evtBadge.style.display = 'block';
       evtBadge.innerHTML = `<span class="dot-pill low">${activeEvt.badge || 'Sự kiện đặc biệt'}</span>`;
     }
-    const delay = (activeEvt.delayAdd || (activeEvt.applyEvent ? (activeEvt.applyEvent('TLM-045', activeWh).delayAdd) : 0) || 0);
+    const activeSku = (Store.ui && Store.ui.activeSku) ? Store.ui.activeSku : 'TLM-045';
+    const skuDelay = (activeEvt.applyEvent ? (activeEvt.applyEvent(activeSku, activeWh).delayAdd) : 0) || 0;
     if (evtTitle) evtTitle.textContent = `${activeEvt.icon || '⚠️'} ${activeEvt.title}`;
     if (evtDesc)  evtDesc.textContent = `${activeEvt.desc} (Thời gian: ${fmtDateVN(activeEvt.start)} - ${fmtDateVN(activeEvt.end)})`;
-    if (evtImpact) evtImpact.textContent = `Tác động tại ${whObj.name}: Hệ số cầu x${activeEvt.demandMult} | Độ trễ NCC: +${delay} ngày`;
+    if (evtImpact) evtImpact.textContent = `Tác động tại ${whObj.name}: Hệ số cầu x${activeEvt.demand_mult || activeEvt.demandMult || 1.0} | Độ trễ NCC: +${skuDelay} ngày`;
   } else {
     if (evtBadge) {
       evtBadge.style.display = 'block';
@@ -163,43 +174,19 @@ function renderAllViews() {
     if (evtImpact) evtImpact.textContent = `Hệ số cầu: 1.00 | Không trễ chuyến`;
   }
 
-  // 4. KPIs OF ACTIVE WAREHOUSE (C2, C4)
-  let lowCount = 0;
-  let highCount = 0;
-  let trappedCap = 0;
+  // Render active tab + Dashboard + Inventory
+  const activeTab = Store.activeTab || 'dashboard';
+  if (activeTab === 'dashboard') renderDashboardView();
+  else if (activeTab === 'inventory') renderInventoryView();
+  else if (activeTab === 'transfers') renderTransfersView();
+  else if (activeTab === 'rfq') renderRfqView();
+  else if (activeTab === 'movement') renderMovementView();
+  else if (activeTab === 'params') renderParamsView();
+  else if (activeTab === 'analytics') renderAnalyticsView();
 
-  SKUS.forEach(sku => {
-    const st = (Store.stock && Store.stock[activeWh] && Store.stock[activeWh][sku.code])
-      ? Store.stock[activeWh][sku.code]
-      : { on_hand: 0, in_transit: 0, committed: 0 };
-    const p = calcSKUParams(sku.code, activeWh, Store.currentDate, Store.history);
-    const eff = st.on_hand + st.in_transit - st.committed;
-    const status = getStatus(eff, p);
-
-    if (status === 'LOW') lowCount++;
-    if (status === 'HIGH') {
-      highCount++;
-      if (st.on_hand > p.qmax) {
-        trappedCap += (st.on_hand - p.qmax) * sku.cogs;
-      }
-    }
-  });
-
-  const kpiLow = document.getElementById('kpi-under-min');
-  const kpiHigh = document.getElementById('kpi-over-max');
-  const kpiCap = document.getElementById('kpi-trapped-cap');
-  const kpiCost = document.getElementById('kpi-cost-diff');
-
-  if (kpiLow)  kpiLow.textContent = lowCount;
-  if (kpiHigh) kpiHigh.textContent = highCount;
-  if (kpiCap)  kpiCap.textContent = fmtVND(trappedCap);
-  if (kpiCost) kpiCost.textContent = fmtVND(Math.round(trappedCap * 0.05));
-
-  // 5. Render active view
-  renderDashboardView();
-  renderInventoryView();
+  // Always render these common components
+  renderWarehouseEventsSchedule(activeWh);
   renderSystemLog(activeWh);
-  switchNavTab(Store.activeTab);
 }
 
 // SIMULATION TIME CONTROL
@@ -287,6 +274,23 @@ window.addEventListener('DOMContentLoaded', () => {
   // 1. Initialize Seeded 12-week history
   Store.history = initSeededHistory();
 
+  // 1b. Khởi tạo TẤT CẢ collections TRƯỚC (tránh undefined khi buildInitialStock/renderAllViews)
+  Store.transfers = [];
+  Store.movements = [];
+  Store.rfqs = [];
+  Store.proposals = {};
+  Store.promotions = [];
+  Store.notifications = [];
+  Store.log = [];
+  Store.dxIds = {};
+  Store.dailySales = {};
+  Store.snapshots = [];
+  Store.currentWeekDemand = {};
+  Store.weekBaseDemand = {};
+  Store.lostSales = {};
+  Store.baseParams = {};
+  Store.rejectedRoutes = {};
+
   // 2. Initialize Day 0 Params for all 55 pairs
   const day0Params = {};
   SKUS.forEach(sku => {
@@ -303,8 +307,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // 4. Initialize Weekly Accumulators & Lost Sales
   SKUS.forEach(sku => {
     Store.currentWeekDemand[sku.code] = {};
+    Store.weekBaseDemand[sku.code] = {};
     WAREHOUSES.forEach(wh => {
       Store.currentWeekDemand[sku.code][wh.code] = 0;
+      Store.weekBaseDemand[sku.code][wh.code] = 0;
     });
   });
 

@@ -93,8 +93,8 @@ function renderTransfersView() {
           const late = getReceiveTiming(tr, Store.currentDate).diff;
           return `<span class="status-pill" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">📦 ${late > 0 ? `Quá hạn ${late} ngày - chờ nhận` : 'Đã đến - chờ nhận hàng'}</span>`;
         }
-        if (tr.status === 'Chờ kho nhận đồng ý') {
-          return `<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">⏳ Chờ kho nhận duyệt</span>`;
+        if (tr.status === 'Chờ kho nguồn xác nhận') {
+          return `<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">⏳ Chờ kho nguồn xác nhận gửi</span>`;
         }
         if (tr.status === 'Bị từ chối') {
           return `<span class="status-pill status-pill-low" style="background:#FEE2E2;color:#991B1B;border-color:#FECACA;">✕ Bị từ chối</span>`;
@@ -107,19 +107,19 @@ function renderTransfersView() {
       header: 'Thao tác',
       align: 'center',
       render: tr => {
-        // Nếu là kho nhận và lệnh đang ở trạng thái 'Chờ kho nhận đồng ý'
-        if (tr.status === 'Chờ kho nhận đồng ý') {
-          if (tr.dstWh === activeWh) {
+        // Lệnh XC chờ kho nguồn: hiện nút xác nhận/từ chối ngay tại tab Điều chuyển
+        if (tr.status === 'Chờ kho nguồn xác nhận') {
+          if (tr.srcWh === activeWh) {
             return `
-              <div style="display:flex;gap:4px;justify-content:center;">
-                <button class="btn-table" style="background:#15803D;border-color:#15803D;" onclick="acceptTransferInbound('${tr.id}')">✓ Đồng ý nhận</button>
-                <button class="btn-table-sec" style="color:#DC2626;border-color:#FCA5A5;" onclick="rejectTransferInbound('${tr.id}')">✕ Từ chối</button>
+              <div style="display:inline-flex;gap:4px;">
+                <button class="btn-table btn-table-sec" onclick="openTransferRequestDetail('${tr.id}')">Chi tiết</button>
+                <button class="btn-table" onclick="confirmTransferOutbound('${tr.id}')">Xác nhận gửi hàng</button>
+                <button class="btn-table btn-table-danger" onclick="rejectTransferRequest('${tr.id}')">Từ chối</button>
               </div>
             `;
           }
-          return `<span style="font-size:11.5px;color:var(--status-yellow);font-weight:600;">Chờ kho ${tr.dstWh} duyệt</span>`;
+          return '<span style="font-size:11.5px;color:var(--text-muted);">Đang chờ kho nguồn xác nhận</span>';
         }
-
         // Nếu đang chuyển
         if (tr.status === 'Đang chuyển' || tr.status === 'Đã đến kho') {
           if (tr.dstWh === activeWh) {

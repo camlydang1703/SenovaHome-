@@ -2,5 +2,5 @@ warehouse_code,warehouse_name,address,region,weight
 HCM,Kho TP. Hồ Chí Minh,TP. Hồ Chí Minh,South,0.35
 BD,Kho Bình Dương,Tỉnh Bình Dương,South,0.15
 DN,Kho Đà Nẵng,TP. Đà Nẵng,Central,0.12
-DN_CITY,Kho Hà Giang,Tỉnh Hà Giang,North,0.08
+HG,Kho Hà Giang,Tỉnh Hà Giang,North,0.08
 HN,Kho Hà Nội,TP. Hà Nội,North,0.3

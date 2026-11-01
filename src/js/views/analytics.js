@@ -49,8 +49,8 @@
       const ch = h - pad.t - pad.b;
       if (cw <= 10 || ch <= 10) return;
 
-      // Aggregated 12-week data for active warehouse
-      const weeks = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'];
+      // 12 tuần gần nhất (không chỉ 12 tuần seed đầu tiên)
+      const weeks = ['T-11', 'T-10', 'T-9', 'T-8', 'T-7', 'T-6', 'T-5', 'T-4', 'T-3', 'T-2', 'T-1', 'Tuần này'];
       const actuals = [];
       const forecasts = [];
 
@@ -62,13 +62,13 @@
           if (selectedSku !== 'ALL' && sku.code !== selectedSku) return;
           const wh = whObj;
           const h = Store.history[sku.code] && Store.history[sku.code][wh.code];
-          if (h && h[wi]) {
-            actSum += h[wi].demand;
-            // Dự báo AI dựa trên mô hình trung bình động giải mùa vụ (D_SMA4) của 4 tuần trước đó nhân hệ số mùa vụ Sm tuần hiện tại
-            // Đối với các tuần đầu (wi < 4), dùng trung bình lũy kế của các tuần đã qua
-            const prevSlice = wi >= 4 ? h.slice(wi - 4, wi) : h.slice(0, Math.max(1, wi));
-            const sma = prevSlice.reduce((s, x) => s + x.deseason, 0) / prevSlice.length;
-            fcSum += Math.round(sma * h[wi].sm);
+          const idx = h ? h.length - 12 + wi : -1;
+          if (h && idx >= 0 && h[idx]) {
+            actSum += h[idx].demand;
+            // Dự báo AI: SMA4 khử mùa vụ của 4 tuần trước nhân hệ số mùa vụ tuần hiện tại
+            const prevSlice = idx >= 4 ? h.slice(idx - 4, idx) : h.slice(0, Math.max(1, idx));
+            const sma = prevSlice.length ? prevSlice.reduce((s, x) => s + x.deseason, 0) / prevSlice.length : 0;
+            fcSum += Math.round(sma * h[idx].sm);
           } else {
             actSum += Math.round(sku.base * wh.w);
             fcSum  += Math.round(sku.base * wh.w * 0.98);

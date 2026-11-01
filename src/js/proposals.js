@@ -6,25 +6,24 @@
     // ----------------------------------------------------------------------------
         // ----------------------------------------------------------------------------
     // RECALCULATE COMMITTED STOCK FROM ACTIVE PROPOSALS & TRANSFERS
+    //    Giữ nguyên committed đầu kỳ (từ CSV) — không reset về 0 như trước đây.
+    //    Chỉ cộng thêm lượng giữ chỗ của các đề xuất TRANSFER chưa được duyệt.
     // ----------------------------------------------------------------------------
     function recalcCommittedStock() {
       if (!Store.stock) return;
-      WAREHOUSES.forEach(wh => {
-        SKUS.forEach(sku => {
-          if (Store.stock[wh.code] && Store.stock[wh.code][sku.code]) {
-            Store.stock[wh.code][sku.code].committed = 0;
-          }
-        });
-      });
 
-      if (Store.transfers) {
-        Store.transfers.forEach(tr => {
-          if (tr.status === 'Chờ kho nhận đồng ý' && Store.stock[tr.srcWh] && Store.stock[tr.srcWh][tr.sku]) {
-            Store.stock[tr.srcWh][tr.sku].committed += tr.qty;
-          }
+      // Khôi phục committed từ snapshot đầu kỳ nếu có
+      if (Store.openingCommitted) {
+        WAREHOUSES.forEach(wh => {
+          SKUS.forEach(sku => {
+            if (Store.stock[wh.code] && Store.stock[wh.code][sku.code]) {
+              Store.stock[wh.code][sku.code].committed = Store.openingCommitted[wh.code] && Store.openingCommitted[wh.code][sku.code] || 0;
+            }
+          });
         });
       }
 
+      // Cộng thêm giữ chỗ của đề xuất TRANSFER đang chờ duyệt
       if (Store.proposals) {
         Object.values(Store.proposals).forEach(p => {
           if (p.type === 'TRANSFER' && p.status === 'Chờ duyệt' && p.srcWh && Store.stock[p.srcWh] && Store.stock[p.srcWh][p.sku]) {
@@ -32,10 +31,38 @@
           }
         });
       }
+
+      // Cộng giữ chỗ của lệnh điều chuyển kho nhận đã xác nhận, đang chờ kho nguồn gửi hàng
+      if (Store.transfers) {
+        Store.transfers.forEach(tr => {
+          if (tr.kind === 'TRANSFER' && tr.status === 'Chờ kho nguồn xác nhận' && Store.stock[tr.srcWh] && Store.stock[tr.srcWh][tr.sku]) {
+            Store.stock[tr.srcWh][tr.sku].committed += tr.qty;
+          }
+        });
+      }
+    }
+
+    // Phần giữ chỗ CHƯA GỬI HÀNG thật sự tại một ô (đề xuất 'Chờ duyệt' + lệnh XC
+    // 'Chờ kho nguồn xác nhận') — dùng cho hiển thị để ô nguồn vẫn hiện đúng
+    // bản chất Vượt MAX trước khi hàng thực sự rời kho.
+    function getPendingProposalReserve(skuCode, whCode) {
+      let sum = 0;
+      if (Store.proposals) {
+        Object.values(Store.proposals).forEach(p => {
+          if (p.type === 'TRANSFER' && p.status === 'Chờ duyệt' && p.sku === skuCode && p.srcWh === whCode) sum += p.qty;
+        });
+      }
+      if (Store.transfers) {
+        Store.transfers.forEach(tr => {
+          if (tr.kind === 'TRANSFER' && tr.status === 'Chờ kho nguồn xác nhận' && tr.sku === skuCode && tr.srcWh === whCode) sum += tr.qty;
+        });
+      }
+      return sum;
     }
 
 // Sau mọi thao tác làm đổi số lượng: quét lại đề xuất + snapshot ngày hiện tại rồi vẽ lại mọi tab
 function refreshAfterStockChange() {
+  if (typeof invalidateParamCache === 'function') invalidateParamCache();
   if (!(Store.ui && Store.ui.viewDate)) {
     scanAndGenerateProposals(Store.currentDate);
     if (typeof recordDailySnapshot === 'function') recordDailySnapshot(Store.currentDate);
@@ -84,7 +111,7 @@ function scanAndGenerateProposals(curDate) {
       };
       const effOf = (skuCode, whCode) => {
         const s = Store.stock[whCode][skuCode];
-        return s.on_hand + s.in_transit - s.committed + getPendingInboundQty(whCode, skuCode);
+        return s.on_hand + s.in_transit - s.committed;
       };
       const plannedInbound = {}; // `${sku}-${wh}` -> qty từ các đề xuất vừa sinh trong lần quét này
 
@@ -110,10 +137,17 @@ function scanAndGenerateProposals(curDate) {
         const pairKey = `${sku.code}-${wh.code}`;
         const dxId = getDxId(pairKey);
         const activeRfq = Store.rfqs.find(r => r.sku === sku.code && r.wh === wh.code && r.status === 'Đã gửi NCC');
-        const ev = evaluateReplenishmentOptions(sku.code, wh.code, curDate);
+        const ev = evaluateReplenishmentOptions(sku.code, wh.code, curDate,
+          { blockedSrcWhs: (typeof getBlockedSrcWhs === 'function') ? getBlockedSrcWhs(sku.code, wh.code, curDate) : [] });
         const best = ev.best;
 
         if (best.type === 'TRANSFER') {
+          // Bỏ qua nếu ô nhận đã có lệnh XC chờ kho nguồn xác nhận gửi hàng —
+          // tránh đặt trùng đề xuất mới khi hàng chưa rời kho nguồn.
+          const xcPending = (Store.transfers || []).some(t =>
+            t.kind === 'TRANSFER' && t.status === 'Chờ kho nguồn xác nhận' &&
+            t.sku === sku.code && t.dstWh === wh.code);
+          if (xcPending) return;
           Store.proposals[pairKey] = {
             id: dxId,
             date: curDate,
@@ -151,7 +185,7 @@ function scanAndGenerateProposals(curDate) {
             rfqCost: ev.rfq.total,
             noTransferReason: ev.sources.every(s => s.transferable < 1)
               ? 'Không kho nào còn tồn dư an toàn'
-              : (ev.bestTransfer ? 'Điều chuyển đắt hơn RFQ' : 'Cước điều chuyển vượt 50% biên LN'),
+              : (ev.bestTransfer ? 'Điều chuyển đắt hơn RFQ' : `Cước điều chuyển vượt ${Math.round((PARAMS.freightMarginCap || 0.5) * 100)}% biên LN`),
             status: activeRfq ? 'Đang chờ NCC báo giá' : 'Chờ gửi RFQ',
             hasActiveRfq: !!activeRfq,
             rfqId: activeRfq ? activeRfq.id : null
@@ -183,7 +217,8 @@ function scanAndGenerateProposals(curDate) {
             const qty = Math.min(excessQty, room);
             const freight = calcFreightCost(wh.code, otherWh.code, sku.code, qty, curDate);
             const unit = getUnitFreightRate(wh.code, otherWh.code, sku.code);
-            if (unit > (sku.price - sku.cogs) * 0.5) return; // cước/đv phải <= 50% biên LN gộp (phí chuyến tính vào tổng)
+            // Ngưỡng sàng lọc dùng cước THỰC TẾ/đv của lô (đã chia phí chuyến), khớp evaluateReplenishmentOptions
+            if (qty < 1 || freight / qty > (sku.price - sku.cogs) * (PARAMS.freightMarginCap || 0.5)) return;
             const tDays = getTransferDays(wh.code, otherWh.code, curDate);
             const score = (oEff <= oP.rop ? 0 : 1e9) + unit * 10 + tDays * 1000 - qty;
             if (!best || score < best.score) best = { dst: otherWh.code, qty, unit, freight, tDays, score };
@@ -238,42 +273,20 @@ function scanAndGenerateProposals(curDate) {
       if (!p) return;
 
       if (p.type === 'TRANSFER') {
-        const srcSt = Store.stock[p.srcWh][p.sku];
-        // Ràng buộc cứng điều chuyển (cộng lại phần giữ chỗ của chính đề xuất này)
-        const safety = checkTransferSafety(p.sku, p.srcWh, p.qty, Store.currentDate, p.qty);
-        if (!safety.ok) {
-          showToast(safety.msg, 'error');
-          return;
-        }
-
-        // Cập nhật tồn kho
-        srcSt.on_hand -= p.qty;
-        srcSt.committed = Math.max(0, srcSt.committed - p.qty);
-        Store.stock[p.dstWh][p.sku].in_transit += p.qty;
-
-        const trId = padSeq('TR');
-        Store.transfers.unshift({
-          id: trId,
-          date: Store.currentDate,
+        // BƯỚC 1/2: kho nhận xác nhận yêu cầu — tạo lệnh chờ, kho nguồn phải bấm "Xác nhận gửi hàng" mới xuất
+        const result = createTransferRequest({
           sku: p.sku,
           srcWh: p.srcWh,
           dstWh: p.dstWh,
           qty: p.qty,
-          shipDate: Store.currentDate,
-          arrivalDate: p.arrivalDate,
-          status: 'Đang chuyển',
-          cost: calcFreightCost(p.srcWh, p.dstWh, p.sku, p.qty, Store.currentDate)
+          savingVsRfq: p.savingVsRfq || 0,
+          proposalKey: key
         });
-
-        delete Store.proposals[key]; // Yêu cầu 0.2
-        pushNotification('TRANSFER_APPROVED', trId,
-          `Đã duyệt lệnh điều chuyển ${p.qty} ${p.sku} từ ${p.srcWh} -> ${p.dstWh}`
-        );
-        logAction('APPROVE_TRANSFER', trId,
-          `Lệnh chuyển ${p.qty} ${p.sku} (${p.srcWh} -> ${p.dstWh}), dự kiến đến: ${fmtDateVN(p.arrivalDate)}`,
-          p.freightCost
-        );
-        showToast(`Đã duyệt thành công lệnh điều chuyển ${trId}`, 'success');
+        if (!result.ok) {
+          showToast(result.msg, 'error');
+          return;
+        }
+        showToast(result.msg, 'success');
         refreshAfterStockChange();
 
       } else if (p.type === 'RFQ') {

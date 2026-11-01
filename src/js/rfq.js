@@ -43,7 +43,7 @@
               ${matchingSups.map(s => `
                 <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #E2E8F0;">
                   <strong>✓ ${s} - ${SUPPLIERS[s].name}</strong>
-                  <span style="color:var(--text-muted);">Lead time: ~${SUPPLIERS[s].leadDays} ngày</span>
+                  <span style="color:var(--text-muted);">Leadtime đặt hàng: ~${(sku.lead || 0) + (sku.delay || 0)} ngày (hồ sơ NCC: ${SUPPLIERS[s].leadDays}n, trễ ${SUPPLIERS[s].delay || 0}n)</span>
                 </div>
               `).join('')}
             </div>

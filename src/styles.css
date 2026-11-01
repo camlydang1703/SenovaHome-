@@ -9,6 +9,7 @@
       --text-sub: #44474E;
       
       --navy-main: #1E3A5F;
+      --navy-accent: #2563EB;
       --navy-hover: #152B47;
       --navy-subtle: #F0F4F8;
       --navy-border: #CBD5E1;
@@ -681,6 +682,15 @@
     .btn-table-sec:hover {
       background-color: var(--navy-subtle);
     }
+    .btn-table-danger {
+      background-color: #FFFFFF;
+      color: var(--status-red, #B91C1C);
+      border: 1px solid #FCA5A5;
+      margin-left: 3px;
+    }
+    .btn-table-danger:hover {
+      background-color: #FEE2E2;
+    }
 
     /* --- STATUS PILLS & BADGES --- */
     .status-pill {
@@ -1034,3 +1044,18 @@
 /* Dòng được mở từ thông báo */
 .row-highlight td { background: #FEF9C3 !important; animation: rowFlash 1.2s ease-in-out 3; }
 @keyframes rowFlash { 50% { background: #FDE68A !important; } }
+
+/* Bảng dữ liệu dùng chung */
+.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.data-table th { background: #F8FAFC; color: var(--navy-main); text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--border-color); font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; }
+.data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); }
+.data-table tr:hover td { background: #F8FAFC; }
+
+/* Nút phụ */
+.btn-secondary { background: #FFFFFF; color: var(--navy-main); border: 1px solid var(--border-color); border-radius: 6px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.btn-secondary:hover { background: #F1F5F9; }
+
+/* Modal */
+.modal-close { background: transparent; border: none; font-size: 18px; line-height: 1; color: var(--text-muted); cursor: pointer; padding: 2px 8px; border-radius: 4px; }
+.modal-close:hover { background: #F1F5F9; color: var(--navy-main); }
+.modal-title { font-size: 15px; font-weight: 800; color: var(--navy-main); margin: 0; }

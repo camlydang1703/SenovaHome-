@@ -1,21 +1,21 @@
 from_wh,to_wh,lead_days,freight_rate_base,unit_rate_base,note
 HCM,BD,1,450000,15000,Noi vung Dong Nam Bo
-HCM,DN,3,1200000,25000,Lien vung Nam - Trung
-HCM,DN_CITY,4,2200000,40000,Lien vung Nam - Ha Giang
-HCM,HN,4,1800000,35000,Lien vung Bac - Nam
+HCM,DN,3,1200000,16500,Lien vung Nam - Trung | gom loi lien vung
+HCM,HG,4,2200000,16000,Lien vung Nam - Ha Giang | gom loi lien vung
+HCM,HN,4,1800000,17000,Lien vung Bac - Nam | gom loi lien vung
 BD,HCM,1,450000,15000,Noi vung Dong Nam Bo
-BD,DN,3,1150000,25000,Lien vung Nam - Trung
-BD,DN_CITY,4,2150000,40000,Lien vung Nam - Ha Giang
-BD,HN,4,1750000,35000,Lien vung Bac - Nam
-DN,HCM,3,1200000,25000,Lien vung Trung - Nam
-DN,BD,3,1150000,25000,Lien vung Trung - Nam
-DN,DN_CITY,3,1350000,30000,Lien vung Da Nang - Ha Giang
-DN,HN,3,1100000,25000,Lien vung Trung - Bac
-DN_CITY,HCM,4,2200000,40000,Lien vung Ha Giang - Nam
-DN_CITY,BD,4,2150000,40000,Lien vung Ha Giang - Nam
-DN_CITY,DN,3,1350000,30000,Lien vung Ha Giang - Da Nang
-DN_CITY,HN,2,650000,20000,Lien vung Ha Giang - Ha Noi
-HN,HCM,4,1800000,35000,Lien vung Bac - Nam
-HN,BD,4,1750000,35000,Lien vung Bac - Nam
-HN,DN,3,1100000,25000,Lien vung Bac - Trung
-HN,DN_CITY,2,650000,20000,Lien vung Ha Noi - Ha Giang
+BD,DN,3,1150000,16500,Lien vung Nam - Trung | gom loi lien vung
+BD,HG,4,2150000,16000,Lien vung Nam - Ha Giang | gom loi lien vung
+BD,HN,4,1750000,17000,Lien vung Bac - Nam | gom loi lien vung
+DN,HCM,3,1200000,16000,Lien vung Trung - Nam | gom loi lien vung
+DN,BD,3,1150000,16000,Lien vung Trung - Nam | gom loi lien vung
+DN,HG,3,1350000,12000,Lien vung Da Nang - Ha Giang | gom loi lien vung
+DN,HN,3,1100000,15500,Lien vung Trung - Bac | gom loi lien vung
+HG,HCM,4,2200000,15500,Lien vung Ha Giang - Nam | gom loi lien vung
+HG,BD,4,2150000,15500,Lien vung Ha Giang - Nam | gom loi lien vung
+HG,DN,3,1350000,12000,Lien vung Ha Giang - Da Nang | gom loi lien vung
+HG,HN,2,650000,15000,Lien vung Ha Giang - Ha Noi | gom loi lien vung
+HN,HCM,4,1800000,16500,Lien vung Bac - Nam | gom loi lien vung
+HN,BD,4,1750000,16500,Lien vung Bac - Nam | gom loi lien vung
+HN,DN,3,1100000,16000,Lien vung Bac - Trung | gom loi lien vung
+HN,HG,2,650000,15500,Lien vung Ha Noi - Ha Giang | gom loi lien vung

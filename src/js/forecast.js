@@ -18,6 +18,18 @@
       return parseInt(dateStr.split('-')[1], 10);
     }
 
+    // XSS Prevention: Escape HTML special characters
+    function escapeHtml(text) {
+      if (text === null || text === undefined) return '';
+      const str = String(text);
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     
 function fmtNum(n) {
   if (n === null || n === undefined || isNaN(n)) return '0';
@@ -99,11 +111,17 @@ function fmt(n) {
     }
 
     // PARAMETER CALCULATION PER SKU x WAREHOUSE (YÊU CẦU 0.4, 0.7)
+    // Cache theo (skuCode, whCode, dateStr, historyLength) để không tính lại hàng trăm lần mỗi ngày.
+    let _paramCache = {};
     function calcSKUParams(skuCode, whCode, dateStr, historyOverride) {
-      const sku = SKUS.find(s => s.code === skuCode);
-      const wh = WAREHOUSES.find(w => w.code === whCode);
       const hist = historyOverride || Store.history;
       const weeks = (hist && hist[skuCode] && hist[skuCode][whCode]) ? hist[skuCode][whCode] : [];
+      const histLen = weeks.length;
+      const cacheKey = `${skuCode}|${whCode}|${dateStr}|${histLen}`;
+      if (_paramCache[cacheKey]) return _paramCache[cacheKey];
+
+      const sku = SKUS.find(s => s.code === skuCode);
+      const wh = WAREHOUSES.find(w => w.code === whCode);
 
       // D_SMA4 = Average of last 4 weeks of DESEASONALIZED demand
       const last4 = weeks.slice(-4);
@@ -112,19 +130,25 @@ function fmt(n) {
       // Current Month and Seasonal Index Sm
       const curMonth = getMonthFromDate(dateStr);
       const sm = SI[curMonth] || 1.0;
-      const f_next = d_sma4 * sm;
 
-      // Lead time: CỘNG DỒN tất cả delay sự kiện, KHÔNG lấy max (Yêu cầu 0.4)
-      let totalEventDelay = 0;
-      EVENTS.forEach(ev => {
-        if (dateStr >= ev.start && dateStr <= ev.end) {
-          const res = ev.applyEvent(skuCode, whCode);
-          if (res && res.delayAdd) totalEventDelay += res.delayAdd;
-        }
-      });
-
-      const L = (sku.lead + (sku.delay || 0) + totalEventDelay) / 7.0;
-      const d_lead = f_next * L;
+      // Lead time: dùng HỒ SƠ NCC THẬT — lead_time_days (7–21 ngày) + expected_delay_days + cộng dồn
+    // trễ sự kiện đang diễn ra. Trước đây lấy SUPPLIER_SHIP_DAYS (2 ngày) khiến ROP chỉ cover
+    // 2 ngày trong khi mô hình phải chờ NCC tới 2–3 tuần → thiếu hàng hệ thống.
+    const impact = (typeof getCellEventImpact === 'function')
+      ? getCellEventImpact(skuCode, whCode, dateStr)
+      : { demandMult: 1.0, supplyDelay: 0 };
+    const leadDays = (sku.lead || 0) + (sku.delay || 0) + (impact.supplyDelay || 0);
+    const L = leadDays / 7.0;
+    // Sm trung bình trên cửa sổ lead (đơn hàng về trong tương lai, không phải tháng hiện tại)
+    let smSum = 0, smCount = 0;
+    for (let d = 7; d <= leadDays; d += 7) {
+      smSum += (SI[getMonthFromDate(addDays(dateStr, d))] || 1.0);
+      smCount++;
+    }
+    const smLead = smCount > 0 ? (smSum / smCount) : sm;
+    const eventMult = impact.demandMult || 1.0;   // nhân tích, cho phép cả sự kiện GIẢM cầu (<1)
+    const f_next = d_sma4 * sm * eventMult;       // cầu 1 tuần của tháng hiện tại (dùng cho band MAX)
+    const d_lead = (d_sma4 / 7.0) * smLead * eventMult * leadDays;
 
       // Sigma error: Lấy 8 tuần CUỐI của history (Yêu cầu 0.7)
       const errors = [];
@@ -160,8 +184,16 @@ function fmt(n) {
         ss: Math.round(ss * 10) / 10,
         rop: rop,
         qmax: qmax,
-        totalEventDelay: totalEventDelay
+        leadDays: leadDays,
+        smLead: Math.round(smLead * 100) / 100,
+        eventMult: Math.round(eventMult * 100) / 100,
+        totalEventDelay: impact.supplyDelay || 0
       };
+    }
+
+    // Xóa bộ nhớ cache khi lịch sử hoặc stock thay đổi (sau mỗi ngày / sau mỗi thao tác)
+    function invalidateParamCache() {
+      _paramCache = {};
     }
 
     // ----------------------------------------------------------------------------
@@ -314,17 +346,21 @@ function fmt(n) {
 
       // 1. Nguồn sự thật 100% từ CSV_DATABASE (data/inventory_opening.csv)
       if (typeof CSV_DATABASE !== 'undefined' && Array.isArray(CSV_DATABASE.inventory_opening)) {
+        const openingCommitted = {};
+        WAREHOUSES.forEach(wh => { openingCommitted[wh.code] = {}; });
         CSV_DATABASE.inventory_opening.forEach(row => {
           if (stock[row.wh] && stock[row.wh][row.sku]) {
             stock[row.wh][row.sku].on_hand = row.on_hand;
             stock[row.wh][row.sku].in_transit = 0;
             stock[row.wh][row.sku].committed = row.committed;
+            openingCommitted[row.wh][row.sku] = row.committed;
             // Hàng đầu kỳ đang về phải có chứng từ để theo dõi và bấm "Nhận hàng"
             if (row.in_transit > 0 && typeof createSupplierShipment === 'function' && typeof Store !== 'undefined') {
               createSupplierShipment(row.sku, row.wh, row.in_transit, Store.startDate, 1 + (Store.transfers.length % 3), 'Hàng NCC đầu kỳ đang về', stock);
             }
           }
         });
+        Store.openingCommitted = openingCommitted;
         return stock;
       }
 
@@ -379,9 +415,9 @@ function fmt(n) {
       stock['HCM']['GCH-DEC'].on_hand = 220;
       stock['DN']['GCH-DEC'].on_hand = 4;
 
-      // 5. TBV-LAV tại HCM: 180 | tại DN_CITY: 0
+      // 5. TBV-LAV tại HCM: 180 | tại HG: 0
       stock['HCM']['TBV-LAV'].on_hand = 180;
-      stock['DN_CITY']['TBV-LAV'].on_hand = 0;
+      stock['HG']['TBV-LAV'].on_hand = 0;
 
       return stock;
     }

@@ -120,14 +120,15 @@
             <div style="margin-top:5px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};"></span></div>
             <div style="flex:1;">
               <div style="font-size:12px;color:var(--text-main);font-weight:${n.read ? '500' : '700'};line-height:1.4;">
-                ${n.text}
+                ${escapeHtml(n.text)}
               </div>
-              <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;display:flex;gap:8px;">
+              <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;display:flex;gap:8px;align-items:center;">
                 <span>${fmtDateVN(n.date)}</span>
                 <span>•</span>
                 <span style="color:${color};font-weight:600;">${n.type}</span>
                 <span>•</span>
                 <span>${n.refId}</span>
+                ${n.type === 'TRANSFER_REQUEST' ? `<span style="color:var(--navy-accent);font-weight:700;cursor:pointer;text-decoration:underline;" onclick="event.stopPropagation(); openTransferRequestDetail('${n.refId}')">Chi tiết ▸</span>` : ''}
               </div>
             </div>
             ${n.read ? '' : '<span style="width:7px;height:7px;border-radius:50%;background:var(--navy-accent);display:inline-block;margin-top:6px;"></span>'}
@@ -277,7 +278,8 @@
         wh: targetWh,
         srcWh: srcWh,
         dstWh: dstWh,
-        sku: sku
+        sku: sku,
+        ledgerDeltas: extra.ledgerDeltas || null
       };
 
       Store.actions.unshift(act);
@@ -292,7 +294,20 @@
       if (typeof fetch !== 'function') return;
       const lines = [];
       const note = `[${act.time}] ${act.details}`;
-      if (act.srcWh && act.dstWh) {
+      if (act.ledgerDeltas) {
+        // Delta tồn kho thật do caller cung cấp (createTransfer, applyShipmentReceipt, ...)
+        Object.keys(act.ledgerDeltas).forEach(whCode => {
+          const d = act.ledgerDeltas[whCode] || {};
+          lines.push({
+            warehouse_code: whCode,
+            sku: act.sku || d.sku || '',
+            delta_on_hand: d.on_hand || 0,
+            delta_in_transit: d.in_transit || 0,
+            delta_on_order: d.on_order || 0,
+            note: note
+          });
+        });
+      } else if (act.srcWh && act.dstWh) {
         lines.push({
           warehouse_code: act.srcWh,
           sku: act.sku || '',
@@ -513,7 +528,7 @@
             <div class="log-time" style="color:#94A3B8;white-space:nowrap;min-width:130px;">${fmtDateVN(act.date)} ${act.time}</div>
             <div class="log-tag" style="background:#334155;color:#F8FAFC;padding:1px 6px;border-radius:3px;font-size:10.5px;font-weight:600;white-space:nowrap;">${act.type}</div>
             <div class="log-desc" style="flex:1;color:#CBD5E1;">
-              <strong>${act.target}</strong>: ${act.details}
+              <strong>${escapeHtml(act.target)}</strong>: ${escapeHtml(act.details)}
               ${roleBadge}
             </div>
             <div class="log-cost" style="color:#FBBF24;font-weight:600;white-space:nowrap;">${act.cost > 0 ? fmtVND(act.cost) : '-'}</div>

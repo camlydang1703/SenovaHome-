@@ -7,6 +7,58 @@ function renderDashboardView() {
   const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
 
   // --------------------------------------------------------------------------
+  // 0. KPI METRICS UPDATE
+  // --------------------------------------------------------------------------
+  let underMinCount = 0;
+  let overMaxCount = 0;
+  let trappedCap = 0;
+  let costDiff = 0;
+
+  SKUS.forEach(sku => {
+    WAREHOUSES.forEach(wh => {
+      const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
+        ? Store.stock[wh.code][sku.code]
+        : { on_hand: 0, in_transit: 0, committed: 0 };
+      const p = calcSKUParams(sku.code, wh.code, Store.currentDate, Store.history);
+      // Cộng lại phần giữ chỗ của đề xuất CHỜ DUYỆT (chỉ để hiển thị):
+      // thấy đúng mức tồn thật → ô Vượt MAX không bị ẩn sau khi sinh đề xuất
+      const eff = st.on_hand + st.in_transit - st.committed + getPendingProposalReserve(sku.code, wh.code);
+      const status = getStatus(eff, p);
+
+      if (status === 'LOW') underMinCount++;
+      else if (status === 'HIGH') {
+        overMaxCount++;
+        // Vốn ứ đọng = tổng giá vốn (COGS) phần vượt MAX, CHỈ tính cho kho đang xem;
+        // khi kho xác nhận gửi hàng, on_hand giảm → vốn ứ đọng giảm theo phần vốn chuyển đi
+        if (wh.code === activeWh) {
+          const excess = eff - p.qmax;
+          if (excess > 0) trappedCap += excess * sku.cogs;
+        }
+      }
+    });
+  });
+
+  // Tính tiết kiệm chi phí TỪ LỆNH ĐÃ THỰC HIỆN GỬI HÀNG, quy về kho nhận đang xem
+  Store.transfers.forEach(tr => {
+    if (tr.kind === 'TRANSFER' && tr.dstWh === activeWh &&
+        tr.status !== 'Chờ kho nguồn xác nhận' && tr.savingVsRfq > 0) {
+      costDiff += tr.savingVsRfq;
+    }
+  });
+
+  const kpiUnderMin = document.getElementById('kpi-under-min');
+  if (kpiUnderMin) kpiUnderMin.textContent = underMinCount;
+
+  const kpiOverMax = document.getElementById('kpi-over-max');
+  if (kpiOverMax) kpiOverMax.textContent = overMaxCount;
+
+  const kpiTrappedCap = document.getElementById('kpi-trapped-cap');
+  if (kpiTrappedCap) kpiTrappedCap.textContent = (trappedCap / 1000000).toFixed(2) + ' tr đ';
+
+  const kpiCostDiff = document.getElementById('kpi-cost-diff');
+  if (kpiCostDiff) kpiCostDiff.textContent = (costDiff / 1000000).toFixed(2) + ' tr đ';
+
+  // --------------------------------------------------------------------------
   // 1. Inbound Proposal Queue (Kho nhận = activeWh) (C2)
   // --------------------------------------------------------------------------
   const titleEl = document.getElementById('proposalQueueTitle');
@@ -40,6 +92,7 @@ function renderDashboardView() {
       header: 'Kho nhận',
       render: r => {
         if (r.type === 'OVERSTOCK') {
+          if (!r.dstWh) return '<span style="color:var(--text-muted);">—</span><div style="font-size:11px;color:var(--text-muted);">Các kho đều đã đủ hàng</div>';
           const dstObj = WAREHOUSES.find(w => w.code === r.dstWh);
           return `<strong>${dstObj ? dstObj.name : r.dstWh}</strong>`;
         }
@@ -113,7 +166,8 @@ function renderDashboardView() {
         let pillClass = 'status-pill-ok';
         if (r.type === 'RFQ' || r.status.includes('Chờ')) pillClass = 'status-pill-low';
         if (r.type === 'OVERSTOCK') pillClass = 'status-pill-high';
-        return `<span class="status-pill ${pillClass}">${r.status}</span>`;
+        const label = (r.type === 'OVERSTOCK' && !r.dstWh) ? 'Cần giải phóng vốn · chưa có kho nhận' : r.status;
+        return `<span class="status-pill ${pillClass}">${label}</span>`;
       }
     },
     {
@@ -137,9 +191,10 @@ function renderDashboardView() {
             </div>
           `;
         } else {
+          const btnLabel = r.dstWh ? 'Xử lý' : 'Chọn kho nhận';
           return `
             <div style="display:flex;gap:4px;justify-content:center;">
-              <button class="btn-table" onclick="openOverstockModal('${r.sku}', '${r.wh}')">Xử lý</button>
+              <button class="btn-table" onclick="openOverstockModal('${r.sku}', '${r.wh}')">${btnLabel}</button>
             </div>
           `;
         }
@@ -157,16 +212,24 @@ function renderDashboardView() {
   });
 
   // --------------------------------------------------------------------------
-  // 2. Outbound Proposal Queue (Kho xuất = activeWh) (C2)
+  // 2. Outbound Queue (Kho xuất = activeWh) — bước 2 của quy trình hai bước:
+  //    lệnh XC (kho nhận đã đồng ý) hiện nút xác nhận/từ chối;
+  //    đề xuất TRANSFER 'Chờ duyệt' hiển thị thông tin, chờ kho nhận bấm nhận.
   // --------------------------------------------------------------------------
   const outTitleEl = document.getElementById('outboundQueueTitle');
   if (outTitleEl) {
     outTitleEl.textContent = `Hàng đợi Điều chuyển Xuất đi từ ${whObj.name}`;
   }
 
-  const outboundRows = propKeys
+  const xcRows = Store.transfers
+    .filter(t => t.kind === 'TRANSFER' && t.status === 'Chờ kho nguồn xác nhận' && t.srcWh === activeWh)
+    .map(t => ({ key: t.id, ...t, isXc: true }));
+
+  const outPropRows = propKeys
     .filter(k => Store.proposals[k].type === 'TRANSFER' && Store.proposals[k].srcWh === activeWh)
-    .map(k => ({ key: k, ...Store.proposals[k] }));
+    .map(k => ({ key: k, ...Store.proposals[k], isXc: false }));
+
+  const outboundRows = [...xcRows, ...outPropRows];
 
   const outboundColumns = [
     {
@@ -187,7 +250,8 @@ function renderDashboardView() {
       key: 'dstWh',
       header: 'Kho nhận viện trợ',
       render: r => {
-        const dest = WAREHOUSES.find(w => w.code === r.wh) || { name: r.wh };
+        const code = r.dstWh || r.wh;
+        const dest = WAREHOUSES.find(w => w.code === code) || { name: code };
         return `<strong>${dest.name}</strong>`;
       }
     },
@@ -203,18 +267,41 @@ function renderDashboardView() {
     {
       key: 'arrival',
       header: 'Thời gian đến',
-      render: r => `${fmtDateVN(r.arrivalDate)} (${r.leadDays} ngày)`
+      render: r => r.arrivalDate ? `${fmtDateVN(r.arrivalDate)} (${r.leadDays} ngày)` : '—'
     },
     {
       key: 'cost',
       header: 'Chi phí vận chuyển',
       align: 'right',
-      render: r => r.freightCost > 0 ? `<strong style="color:var(--navy-accent);">${fmtVND(r.freightCost)}</strong>` : '—'
+      render: r => {
+        const freight = r.isXc ? r.cost : r.freightCost;
+        return freight > 0 ? `<strong style="color:var(--navy-accent);">${fmtVND(freight)}</strong>` : '—';
+      }
     },
     {
       key: 'status',
       header: 'Trạng thái',
-      render: r => `<span class="status-pill status-pill-high">${r.status}</span>`
+      render: r => r.isXc
+        ? `<span class="status-pill status-pill-high">${r.status}</span>`
+        : '<span class="status-pill status-pill-low">Chờ kho nhận bấm nhận hàng</span>'
+    },
+    {
+      key: 'actions',
+      header: 'Thao tác',
+      align: 'center',
+      width: '190px',
+      render: r => {
+        if (r.isXc) {
+          return `
+            <div style="display:flex;gap:4px;justify-content:center;">
+              <button class="btn-table btn-table-sec" onclick="openTransferRequestDetail('${r.id}')">Chi tiết</button>
+              <button class="btn-table" onclick="confirmTransferOutbound('${r.id}')">Xác nhận gửi hàng</button>
+              <button class="btn-table btn-table-danger" onclick="rejectTransferRequest('${r.id}')">Từ chối</button>
+            </div>
+          `;
+        }
+        return '<span style="font-size:11px;color:var(--text-muted);">Chuyển sang tab kho nhận để bấm nhận</span>';
+      }
     }
   ];
 
@@ -248,7 +335,7 @@ function renderDashboardView() {
       HCM:     { low: 0, ok: 0, high: 0 },
       BD:      { low: 0, ok: 0, high: 0 },
       DN:      { low: 0, ok: 0, high: 0 },
-      DN_CITY: { low: 0, ok: 0, high: 0 },
+      HG: { low: 0, ok: 0, high: 0 },
       HN:      { low: 0, ok: 0, high: 0 }
     };
 
@@ -264,7 +351,9 @@ function renderDashboardView() {
         // Matrix: chi hien MIN/MAX hien tai cua he thong (khong dual AI/baseline)
         const ropRender = fmtNum(p.rop);
         const qmaxRender = fmtNum(p.qmax);
-        const eff = st.on_hand + st.in_transit - st.committed;
+        // Cong lai giu cho chua gui hang de thay dung ban chat ton that cua o
+        const reserveMx = (typeof getPendingProposalReserve === 'function') ? getPendingProposalReserve(sku.code, wh.code) : 0;
+        const eff = st.on_hand + st.in_transit - st.committed + reserveMx;
         const status = getStatus(eff, p);
 
         whTotals[wh.code][status.toLowerCase()]++;
@@ -333,12 +422,15 @@ function renderWarehouseEventsSchedule(activeWh) {
   const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
   const curDate = Store.currentDate;
 
-  // Filter events matching activeWh
-  const whEvents = EVENTS.filter(ev => isEventMatchingWarehouse(ev.scope_wh, activeWh));
+  // Chỉ giữ sự kiện có tác động thật đến tồn kho: hệ số cầu != 1, trễ NCC, hoặc fill rate < 100%
+  const whEvents = EVENTS.filter(ev =>
+    isEventMatchingWarehouse(ev.scope_wh, activeWh) &&
+    ((ev.demand_mult !== undefined && ev.demand_mult !== null && ev.demand_mult !== 1.0) ||
+     ((ev.delay_days || 0) > 0) ||
+     (ev.fill_rate !== undefined && ev.fill_rate !== null && ev.fill_rate < 1.0)));
 
   const activeEvts = whEvents.filter(ev => curDate >= ev.start && curDate <= ev.end);
   const upcomingEvts = whEvents.filter(ev => ev.start > curDate && ev.start <= addDays(curDate, 14));
-  const pastEvts = whEvents.filter(ev => ev.end < curDate).sort((a, b) => (b.end > a.end ? 1 : -1)).slice(0, 5);
 
   function renderEvtRow(ev, badgeStatus) {
     let sevBadge = '<span class="status-pill status-pill-ok" style="background:#E0F2FE;color:#0369A1;border:1px solid #BAE6FD;font-weight:700;">Thấp</span>';
@@ -405,18 +497,6 @@ function renderWarehouseEventsSchedule(activeWh) {
       ${upcomingEvts.length > 0 ? upcomingEvts.map(e => renderEvtRow(e, 'UPCOMING')).join('') : '<div style="font-size:11.5px;color:var(--text-muted);padding:4px 8px;font-style:italic;">Chưa có sự kiện nào sắp tới trong 14 ngày tới.</div>'}
     </div>
   `;
-
-  // 3. Đã qua
-  if (pastEvts.length > 0) {
-    html += `
-      <div style="margin-top:12px;">
-        <div style="font-size:11px;font-weight:700;color:#64748B;background:#F8FAFC;padding:4px 8px;border-radius:4px;border-left:3px solid #94A3B8;margin-bottom:6px;">
-          ĐÃ KẾT THÚC GẦN ĐÂY (${pastEvts.length})
-        </div>
-        ${pastEvts.map(e => renderEvtRow(e, 'PAST')).join('')}
-      </div>
-    `;
-  }
 
   container.innerHTML = html;
 }

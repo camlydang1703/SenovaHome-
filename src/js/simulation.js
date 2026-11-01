@@ -44,12 +44,11 @@
       const dayLost = Store.dailySales[dateStr] ? Store.dailySales[dateStr].lostSalesVal : 0;
       const dayRev  = Store.dailySales[dateStr] ? Store.dailySales[dateStr].revenue : 0;
 
-      // Accumulate per-warehouse demand for Service Level chart
+      // Nhu cầu phát sinh trong ngày theo kho (không dùng cumulative tuần để tránh cộng trùng ở Chart B)
+      const daySalesSnap = Store.dailySales[dateStr];
       const whDemand = {};
       WAREHOUSES.forEach(wh => {
-        whDemand[wh.code] = SKUS.reduce((sum, sku) => {
-          return sum + (Store.currentWeekDemand[sku.code][wh.code] || 0);
-        }, 0);
+        whDemand[wh.code] = (daySalesSnap && daySalesSnap.unitsByWh && daySalesSnap.unitsByWh[wh.code]) || 0;
       });
 
       Store.daily[dateStr] = {
@@ -69,9 +68,8 @@
 
     // ----------------------------------------------------------------------------
     // 2.4 PERIODIC INBOUND REPLENISHMENT (Yêu cầu 3.2)
+    //    Lead NCC thật lấy từ hồ sơ NCC (lead_time_days + expected_delay) qua calcSKUParams().leadDays
     // ----------------------------------------------------------------------------
-    const SUPPLIER_SHIP_DAYS = 2;
-
     function processInboundReplenishment(curDate, dayIdx) {
       const whDayInbound = {};
       WAREHOUSES.forEach(wh => { whDayInbound[wh.code] = { total: 0, cost: 0, skus: [] }; });
@@ -82,26 +80,24 @@
           const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
           const f_next = p.f_next || (sku.base * wh.w);
 
-          // Chu ky theo nhom SKU: hang nhanh = 7 ngay, trung binh = 8 ngay, cham = 14 ngay
+          // Chu ky ra don theo nhom SKU: ban nhanh = 3 ngay, trung binh = 4 ngay, cham = 10 ngay.
+          // Review ky ngắn (R << khoang dai dai MIN->MAX) de vi tri ton phan lon o giua dai,
+          // chi LOW khi thuc su bi xao tron (su kien, don dot bien) - khong do nhieu roi MIN.
           let baseCycle;
           if (sku.slow) {
-            baseCycle = 14;
-            // Hang cham chi ve khi ton kha dung <= ROP (tranh tich luy)
-            const eff = st.on_hand + st.in_transit - st.committed;
-            if (eff > p.rop) return;
+            baseCycle = 10;
           } else if (sku.base >= 350) {
-            baseCycle = 7;
+            baseCycle = 3;
           } else {
-            baseCycle = 8;
+            baseCycle = 4;
           }
 
           // Pha rieng tung kho + nhieu +-2 ngay theo h01 (dam bao khong dong bo tat ca kho)
           const whPhase = Math.floor(h01(sku.code, wh.code, 'inbound_phase') * baseCycle);
           const jitter = Math.floor(h01(sku.code, wh.code, 'inbound_jitter', Math.floor(dayIdx / baseCycle)) * 5) - 2;
-          const effectiveCycle = Math.max(5, baseCycle + jitter);
+          const effectiveCycle = Math.max(2, baseCycle + jitter);
 
           if ((dayIdx + whPhase) % effectiveCycle === 0) {
-            const cycleFactor = effectiveCycle / 7.0;
             // He so lap day NCC 0.88..1.10
             const supplierFill = 0.88 + 0.22 * h01(sku.sup, 'supplier_fill', curDate);
             // fill_rate cua su kien dang hieu luc (neu co)
@@ -115,17 +111,17 @@
             // Kho dang vuot MAX thi khong nhan them hang NCC dinh ky (chinh sach Min/Max)
             if (eff > p.qmax) return;
 
-            // Muc tieu ton = ROP + 45% F_next (trung tam dai An toan)
-            const targetMid = p.rop + 0.45 * f_next;
-            // Pull factor: keo ve target_mid, clamp [0.30, 1.50]
-            let pullFactor = 1.0 + (targetMid - eff) / (f_next * 2.2);
-            pullFactor = Math.max(0.30, Math.min(1.50, pullFactor));
+            // Muc tieu ton theo chinh sach Min/Max (R, s, S): vi tri <= ROP thi dat bu ve tran MAX,
+            // ngung khac giu o giua dai an toan. Chinh sach "dat theo chu ky" cu khong du duong
+            // ong cho lead 7-21 ngay -> toan mang thieu hang lien tuc.
+            const targetLevel = (eff <= p.rop) ? p.qmax : (p.rop + 0.45 * f_next);
+            const gap = Math.max(0, targetLevel - eff);
 
             // He so rieng theo SKU de bu dac tinh chuoi cung
             let skuMult = 1.0;
             if (sku.code === 'GCH-6060') skuMult = 1.12; // Bu lead time 21 ngay
 
-            let inboundQty = Math.round(f_next * cycleFactor * pullFactor * supplierFill * eventFill * skuMult);
+            let inboundQty = Math.round(gap * supplierFill * eventFill * skuMult);
 
             // Hang cham: khong vuot qua muc muc tieu an toan
             if (sku.slow) {
@@ -138,7 +134,9 @@
 
             if (inboundQty > 0) {
               // NCC xuất hàng -> chứng từ "Hàng NCC đang về", kho bấm "Nhận hàng" khi hàng tới
-              createSupplierShipment(sku.code, wh.code, inboundQty, curDate, SUPPLIER_SHIP_DAYS);
+              // Số ngày = lead NCC thật (lead_time_days + expected_delay + trễ sự kiện) — cùng nguồn với ROP
+              const totalDays = p.leadDays || ((sku.lead || 0) + (sku.delay || 0));
+              createSupplierShipment(sku.code, wh.code, inboundQty, curDate, totalDays);
               whDayInbound[wh.code].total += inboundQty;
               whDayInbound[wh.code].cost += inboundQty * sku.cogs;
               whDayInbound[wh.code].skus.push(`${sku.code} (+${inboundQty})`);
@@ -157,12 +155,16 @@
       const m = getMonthFromDate(curDate);
       const dow = getDOW(curDate);
 
-      // Trọng số ngày trong tuần (DOW pattern: Thứ 7, CN và T2 cao điểm)
+      // Trọng số ngày trong tuần (DOW pattern: CN = 0.45 thấp nhất, T7 = 1.17 cao điểm nhất)
       const dowMultipliers = [0.45, 1.10, 1.08, 1.05, 1.05, 1.10, 1.17]; // CN=0, T2=1,...
       const dowMult = dowMultipliers[dow] || 1.0;
 
+      // Khởi tạo accumulator cho phần lẻ nhu cầu (cho hàng bán chậm)
+      if (!Store.fractionalDemand) Store.fractionalDemand = {};
+
       let dayTotalRev = 0;
       let dayTotalLost = 0;
+      const dayDemandByWh = {};
 
       SKUS.forEach(sku => {
         const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
@@ -190,7 +192,24 @@
 
           // Nhu cầu ngày: (base * w / 7) * sm * dow * evt * promo * noise
           const baseDaily = (sku.base * wh.w / 7.0);
-          const dDaily = Math.max(0, Math.round(baseDaily * sm * dowMult * evtMult * promoMult * noise));
+          const exactDaily = baseDaily * sm * dowMult * evtMult * promoMult * noise;
+          const exactBaseDaily = baseDaily * sm * dowMult * noise;
+
+          // Sử dụng tích lũy phần lẻ để tránh làm tròn về 0 cho hàng bán chậm
+          const key = `${sku.code}_${wh.code}`;
+          Store.fractionalDemand[key] = Store.fractionalDemand[key] || { demand: 0, base: 0 };
+          Store.fractionalDemand[key].demand += exactDaily;
+          Store.fractionalDemand[key].base += exactBaseDaily;
+
+          const dDaily = Math.floor(Store.fractionalDemand[key].demand);
+          const dBaseDaily = Math.floor(Store.fractionalDemand[key].base);
+
+          // Trừ phần đã dùng
+          Store.fractionalDemand[key].demand -= dDaily;
+          Store.fractionalDemand[key].base -= dBaseDaily;
+
+          // Ghi nhận nhu cầu PHÁT SINH TRONG NGÀY theo kho (cho Chart B)
+          dayDemandByWh[wh.code] = (dayDemandByWh[wh.code] || 0) + dDaily;
 
           const st = Store.stock[wh.code][sku.code];
           const sold = Math.min(st.on_hand, dDaily);
@@ -206,18 +225,18 @@
           dayTotalRev += rev;
           dayTotalLost += lostVal;
 
-          // Cập nhật tích lũy
+          // Cập nhật tích lũy: sold = tiêu thụ thực tế, base = cơ bản (loại promo/event)
           Store.currentWeekDemand[sku.code][wh.code] += sold;
+          Store.weekBaseDemand[sku.code][wh.code] += dBaseDaily;
           Store.lostSales[wh.code][sku.code] += lost;
         });
       });
 
       Store.dailySales[curDate] = {
         revenue: dayTotalRev,
-        lostSalesVal: dayTotalLost
+        lostSalesVal: dayTotalLost,
+        unitsByWh: dayDemandByWh
       };
-
-      // Không ghi SALES_DAILY vào nhật ký: người quản lý kho không import dữ liệu bán hàng.
     }
 
     // ----------------------------------------------------------------------------
@@ -229,88 +248,24 @@
         const sm = (typeof SI[sku.code] === 'object' && SI[sku.code] !== null) ? (SI[sku.code][m] || 1.0) : (SI[m] || 1.0);
         WAREHOUSES.forEach(wh => {
           const wDemand = Store.currentWeekDemand[sku.code][wh.code] || 0;
-          // Loại bỏ yếu tố mùa vụ
-          const deseason = Math.round(wDemand / (sm || 1.0));
+          const wBase = Store.weekBaseDemand[sku.code][wh.code] || 0;
+          // Lượng thực tế đã bán + lượng bị mất (lost sales) = tổng nhu cầu thực tế
+          // Dùng wBase (đã loại promo/event) để deseason: tránh dự báo giảm do KM ×1.6
+          const totalDemand = wBase;
+          // Giữ số thực (không Math.round) để không lệch dữ liệu seed
+          const deseason = sm > 0 ? totalDemand / sm : totalDemand;
           Store.history[sku.code][wh.code].push({
-            demand: wDemand,
+            demand: totalDemand,
             sm: sm,
             deseason: deseason
           });
           Store.currentWeekDemand[sku.code][wh.code] = 0;
+          Store.weekBaseDemand[sku.code][wh.code] = 0;
         });
       });
     }
 
     // ----------------------------------------------------------------------------
-    // 2.7 SỰ KIỆN NGOẠI LỆ CÓ CHỨNG TỪ (THAY THẾ balanceInventoryGroups GÁN THẲNG)
-    // ----------------------------------------------------------------------------
-    function balanceInventoryGroups(curDate) {
-      // Đảm bảo không gán thẳng on_hand.
-      // Chỉ kích hoạt sự kiện ngoại lệ có chứng từ khi quy trình tự nhiên thiếu nhóm.
-      // Mỗi kho mỗi ngày tối đa 1 sự kiện ngoại lệ.
-      const protectedOverrides = [
-        { sku: 'TLM-045', wh: 'HCM' },
-        { sku: 'TLM-045', wh: 'BD' },
-        { sku: 'PPR-025', wh: 'HN' },
-        { sku: 'GCH-DEC', wh: 'HCM' },
-        { sku: 'GCH-DEC', wh: 'DN' },
-        { sku: 'TBV-LAV', wh: 'HCM' },
-        { sku: 'TBV-LAV', wh: 'DN_CITY' }
-      ];
-
-      WAREHOUSES.forEach(wh => {
-        const items = SKUS.map(sku => {
-          const p = calcSKUParams(sku.code, wh.code, curDate, Store.history);
-          const st = Store.stock[wh.code][sku.code];
-          const eff = st.on_hand + st.in_transit - st.committed;
-          const status = getStatus(eff, p);
-          const isProtected = protectedOverrides.some(o => o.sku === sku.code && o.wh === wh.code);
-          return { sku, p, st, eff, status, isProtected };
-        });
-
-        let executedEventInWh = false;
-
-        // 1. Kiểm tra nhóm HIGH (cần ít nhất 1-2 SKU vượt MAX)
-        let highs = items.filter(it => it.status === 'HIGH');
-        if (highs.length < 2 && !executedEventInWh) {
-          const cands = items.filter(it => !it.isProtected && it.status === 'OK');
-          if (cands.length > 0) {
-            cands.sort((a, b) => (b.eff / b.p.qmax) - (a.eff / a.p.qmax));
-            const pick = cands[0];
-            // Tạo lô hàng NCC giao dư (chứng từ nhập kho)
-            const addQty = Math.max(1, Math.round(pick.p.qmax * 1.25 - pick.eff));
-            pick.st.on_hand += addQty;
-            executedEventInWh = true;
-            const exRec = createSupplierShipment(pick.sku.code, wh.code, addQty, curDate, 0, 'Chứng từ ngoại lệ: NCC giao dư');
-            pick.st.in_transit -= addQty;
-            exRec.status = 'Đã nhận';
-            exRec.receivedDate = curDate;
-            pushNotification('EXCEPTION_EVENT', pick.sku.code, `Chứng từ nhập kho ngoại lệ: NCC giao dư +${addQty} ${pick.sku.code} tại ${wh.name}`, wh.code);
-          }
-        }
-
-        // 2. Kiểm tra nhóm LOW (cần ít nhất 1-2 SKU dưới MIN)
-        let lows = items.filter(it => it.status === 'LOW');
-        if (lows.length < 2 && !executedEventInWh) {
-          const cands = items.filter(it => !it.isProtected && it.status === 'OK');
-          if (cands.length > 0) {
-            cands.sort((a, b) => (a.eff / a.p.rop) - (b.eff / b.p.rop));
-            const pick = cands[0];
-            // Tạo đơn xuất dự án lớn đột xuất (chứng từ xuất kho, tính doanh số)
-            const subQty = Math.min(pick.st.on_hand, Math.max(1, Math.round(pick.eff - pick.p.rop * 0.78)));
-            if (subQty > 0) {
-              pick.st.on_hand -= subQty;
-              executedEventInWh = true;
-              const rev = subQty * pick.sku.price;
-              if (Store.dailySales[curDate]) Store.dailySales[curDate].revenue += rev;
-              pushNotification('EXCEPTION_EVENT', pick.sku.code, `Chứng từ xuất kho ngoại lệ: Dự án lớn mua gấp ${subQty} ${pick.sku.code} tại ${wh.name}`, wh.code);
-            }
-          }
-        }
-      });
-    }
-
-        // ----------------------------------------------------------------------------
     // 2.7b EVENT LIFECYCLE TRACKER & ADVISORY (Yêu cầu 3.2 & 3.4d)
     // ----------------------------------------------------------------------------
     function formatWhEventImpact(ev, whCode) {
@@ -412,10 +367,8 @@ function advanceOneDay() {
       // Bước 5: Cập nhật lịch sử hàng tuần (cứ mỗi 7 ngày)
       if (dayIdx % 7 === 0) {
         updateWeeklyHistory(curDate);
+        if (typeof invalidateParamCache === 'function') invalidateParamCache();
       }
-
-      // Bước 6: Cân bằng tính đa dạng 3 nhóm
-      balanceInventoryGroups(curDate);
 
       // Bước 7: Quét và cập nhật danh sách đề xuất
       scanAndGenerateProposals(curDate);

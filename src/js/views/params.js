@@ -44,7 +44,7 @@ function renderParamsView() {
     const st = (Store.stock && Store.stock[wh.code] && Store.stock[wh.code][sku.code])
       ? Store.stock[wh.code][sku.code]
       : { on_hand: 0, in_transit: 0, committed: 0 };
-    const eff = st.on_hand + st.in_transit - st.committed;
+    const eff = st.on_hand + st.in_transit - st.committed + (typeof getPendingProposalReserve === 'function' ? getPendingProposalReserve(sku.code, wh.code) : 0);
     const status = getStatus(eff, p);
 
     rows.push({
@@ -185,16 +185,16 @@ function renderStepCalculator(skuCode, whCode) {
       </div>
       <div style="background:#F8FAFC;padding:12px;border-radius:6px;border:1px solid #E2E8F0;">
         <div style="font-size:11px;color:var(--text-muted);font-weight:600;">BƯỚC 2: THỜI GIAN ĐẶT HÀNG L</div>
-        <div style="font-size:16px;font-weight:800;color:var(--navy-main);margin:4px 0;">${Number(p.L).toFixed(2)} tuần</div>
+        <div style="font-size:16px;font-weight:800;color:var(--navy-main);margin:4px 0;">${Number(p.L).toFixed(2)} tuần (${p.leadDays || 0} ngày)</div>
         <div style="font-size:11px;color:var(--text-sub);">
-          = (${sku.lead} lead + ${sku.delay} trễ + ${p.totalEventDelay || 0} sự kiện) / 7 ngày
+          = (${sku.lead || 0} lead hồ sơ NCC + ${sku.delay || 0} trễ thường lệ + ${p.totalEventDelay || 0} trễ sự kiện) / 7
         </div>
       </div>
       <div style="background:#F8FAFC;padding:12px;border-radius:6px;border:1px solid #E2E8F0;">
         <div style="font-size:11px;color:var(--text-muted);font-weight:600;">BƯỚC 3: DỰ BÁO KHI CHỜ D_lead</div>
         <div style="font-size:16px;font-weight:800;color:var(--navy-main);margin:4px 0;">${p.d_lead} sp</div>
         <div style="font-size:11px;color:var(--text-sub);">
-          = F (${p.f_next}) × L (${Number(p.L).toFixed(2)})
+          = (D_SMA4 ${p.d_sma4} / 7) × Sm cửa sổ chờ (${p.smLead || sm}) × sự kiện (${p.eventMult || 1}) × ${p.leadDays || 0} ngày
         </div>
       </div>
       <div style="background:#F8FAFC;padding:12px;border-radius:6px;border:1px solid #E2E8F0;">
