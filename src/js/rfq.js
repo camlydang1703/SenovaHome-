@@ -69,19 +69,20 @@
       openModal('rfqModal');
     }
 
-    function sendRfqOrder() {
-      if (!activeRfqDraft) return;
-      const skuObj = SKUS.find(s => s.code === activeRfqDraft.sku) || {};
-      const matchingSups = Object.keys(SUPPLIERS).filter(s => !skuObj.cat || SUPPLIERS[s].cat === skuObj.cat);
-      const targetSups = matchingSups.length > 0 ? matchingSups : [activeRfqDraft.sup];
+    // Nhân lõi tạo chứng từ RFQ (không phụ thuộc DOM) - dùng chung cho UI và AI Agent
+    // Mọi NCC cùng ngành hàng của SKU — RFQ luôn gửi đồng loạt cho toàn bộ danh sách này
+    function getRfqTargetSuppliers(skuCode) {
+      const skuObj = SKUS.find(s => s.code === skuCode) || {};
+      const codes = Object.keys(SUPPLIERS).filter(s => !skuObj.cat || SUPPLIERS[s].cat === skuObj.cat);
+      return codes.length > 0 ? codes : (skuObj.sup ? [skuObj.sup] : []);
+    }
 
-      const qty = parseInt(document.getElementById('rfqModalQty') ? document.getElementById('rfqModalQty').value : 0, 10) || activeRfqDraft.qty;
-      const notes = document.getElementById('rfqModalNotes') ? document.getElementById('rfqModalNotes').value : '';
+    function createRfqRecords(skuCode, whCode, qty, supCodes, notes) {
+      const targetSups = (supCodes && supCodes.length > 0) ? supCodes : getRfqTargetSuppliers(skuCode);
 
-      if (qty <= 0) {
-        showToast('Số lượng yêu cầu phải > 0!', 'error');
-        return;
-      }
+      const n = parseInt(qty, 10) || 0;
+      if (n <= 0) return { ok: false, msg: 'Số lượng yêu cầu phải > 0!', ids: [], sups: [] };
+      if (targetSups.length === 0) return { ok: false, msg: `Không có NCC nào phù hợp cho SKU ${skuCode}!`, ids: [], sups: [] };
 
       const validUntil = addDays(Store.currentDate, 7);
       const createdIds = [];
@@ -92,10 +93,10 @@
         Store.rfqs.unshift({
           id: rfqId,
           date: Store.currentDate,
-          sku: activeRfqDraft.sku,
-          wh: activeRfqDraft.wh,
+          sku: skuCode,
+          wh: whCode,
           sup: sCode,
-          qty: qty,
+          qty: n,
           validUntil: validUntil,
           status: 'Đã gửi NCC',
           notes: notes || 'Yêu cầu chào giá cạnh tranh toàn mạng lưới'
@@ -103,21 +104,35 @@
       });
 
       // Cập nhật trạng thái đề xuất nếu có
-      const pairKey = `${activeRfqDraft.sku}-${activeRfqDraft.wh}`;
+      const pairKey = `${skuCode}-${whCode}`;
       if (Store.proposals[pairKey]) {
         Store.proposals[pairKey].status = `Đang chờ ${targetSups.length} NCC báo giá`;
         Store.proposals[pairKey].hasActiveRfq = true;
         Store.proposals[pairKey].rfqId = createdIds[0];
       }
 
-      closeModal('rfqModal');
       pushNotification('RFQ_SENT', createdIds.join(', '),
-        `Đã gửi Yêu cầu Báo giá cạnh tranh (${activeRfqDraft.sku} - ${qty} sp) tới ${targetSups.length} Nhà cung cấp.`
+        `Đã gửi Yêu cầu Báo giá cạnh tranh (${skuCode} - ${n} sp) tới ${targetSups.length} Nhà cung cấp.`
       );
       logAction('SEND_RFQ', createdIds.join(', '),
-        `Yêu cầu báo giá ${qty} ${activeRfqDraft.sku} tới ${targetSups.length} NCC (${targetSups.join(', ')}) cho kho ${activeRfqDraft.wh}. Hạn báo giá: ${fmtDateVN(validUntil)}`
+        `Yêu cầu báo giá ${n} ${skuCode} tới ${targetSups.length} NCC (${targetSups.join(', ')}) cho kho ${whCode}. Hạn báo giá: ${fmtDateVN(validUntil)}`
       );
-      showToast(`Đã gửi thành công RFQ tới ${targetSups.length} Nhà cung cấp!`, 'success');
+      return { ok: true, msg: '', ids: createdIds, sups: targetSups, qty: n, validUntil: validUntil };
+    }
+
+    function sendRfqOrder() {
+      if (!activeRfqDraft) return;
+      const qty = parseInt(document.getElementById('rfqModalQty') ? document.getElementById('rfqModalQty').value : 0, 10) || activeRfqDraft.qty;
+      const notes = document.getElementById('rfqModalNotes') ? document.getElementById('rfqModalNotes').value : '';
+
+      const res = createRfqRecords(activeRfqDraft.sku, activeRfqDraft.wh, qty, null, notes);
+      if (!res.ok) {
+        showToast(res.msg, 'error');
+        return;
+      }
+
+      closeModal('rfqModal');
+      showToast(`Đã gửi thành công RFQ tới ${res.sups.length} Nhà cung cấp!`, 'success');
 
       if (typeof switchWarehouse === 'function' && Store.ui && Store.ui.activeWh !== activeRfqDraft.wh) {
         switchWarehouse(activeRfqDraft.wh);

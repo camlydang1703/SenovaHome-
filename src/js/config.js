@@ -44,68 +44,25 @@
       ? { ...CSV_DATABASE.seasonal_parameters }
       : { 1:1.15, 2:0.60, 3:1.10, 4:1.15, 5:0.90, 6:0.80, 7:0.80, 8:0.85, 9:0.90, 10:1.05, 11:1.20, 12:1.25 };
 
-    // DANH MỤC NHÀ CUNG CẤP & ĐẠI LÝ THEO NGÀNH HÀNG
-    const BASE_SUPPLIERS = {
-      'SUP-SENVIET':   { code: 'SUP-SENVIET',   name: 'Nhà máy Tôn Sen Việt',              cat: 'Tôn thép',   leadDays: 7,  delay: 2, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-HOASEN':    { code: 'SUP-HOASEN',    name: 'Đại lý Tôn Hoa Sen Phía Nam',  cat: 'Tôn thép',   leadDays: 5,  delay: 1, priceMult: 1.025, freightMult: 1.0 },
-      'SUP-NAMKIM':    { code: 'SUP-NAMKIM',    name: 'Tôn Nam Kim Miền Trung',       cat: 'Tôn thép',   leadDays: 9,  delay: 3, priceMult: 0.985, freightMult: 1.2 },
+    // DANH MỤC NHÀ CUNG CẤP & ĐẠI LÝ THEO NGÀNH HÀNG — nguồn: data/suppliers_master.csv
+    const SUPPLIERS = {};
+    if (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.suppliers) {
+      Object.keys(CSV_DATABASE.suppliers).forEach(code => {
+        const s = CSV_DATABASE.suppliers[code];
+        SUPPLIERS[code] = {
+          code: s.code || code,
+          name: s.name || code,
+          cat: s.cat || '',
+          leadDays: s.lead,
+          delay: s.delay
+        };
+      });
+    }
 
-      'SUP-VIETSTEEL': { code: 'SUP-VIETSTEEL', name: 'Nhà máy Ống thép Việt Steel',       cat: 'Ống thép',   leadDays: 10, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-HOAPHAT':   { code: 'SUP-HOAPHAT',   name: 'Đại lý Thép Hòa Phát',         cat: 'Ống thép',   leadDays: 8,  delay: 2, priceMult: 1.02,  freightMult: 1.1 },
-      'SUP-VINAPIPE':  { code: 'SUP-VINAPIPE',  name: 'Ống thép Vinapipe',            cat: 'Ống thép',   leadDays: 12, delay: 4, priceMult: 0.99,  freightMult: 1.3 },
+    // HỆ SỐ CỒNG KỀNH THEO MẶT HÀNG — nguồn: cột freight_bulk_factor của data/products_master.csv
+    const ITEM_FREIGHT_MULT = {};
+    SKUS.forEach(s => { ITEM_FREIGHT_MULT[s.code] = (typeof s.bulk === 'number') ? s.bulk : 1.0; });
 
-      'SUP-LOTUS':     { code: 'SUP-LOTUS',     name: 'Công ty Nhựa Lotus',           cat: 'Ống nhựa',   leadDays: 14, delay: 3, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-TIENPHONG': { code: 'SUP-TIENPHONG', name: 'Đại lý Nhựa Tiền Phong',       cat: 'Ống nhựa',   leadDays: 12, delay: 2, priceMult: 1.03,  freightMult: 1.0 },
-      'SUP-BINHMINH':  { code: 'SUP-BINHMINH',  name: 'Nhà PP Nhựa Bình Minh',        cat: 'Ống nhựa',   leadDays: 16, delay: 4, priceMult: 0.98,  freightMult: 1.2 },
-
-      'SUP-DAIPHAT':   { code: 'SUP-DAIPHAT',   name: 'Nhà máy Gạch men Đại Phát',    cat: 'Gạch ngói',  leadDays: 21, delay: 4, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-DONGTAM':   { code: 'SUP-DONGTAM',   name: 'Tổng kho Gạch Đồng Tâm',       cat: 'Gạch ngói',  leadDays: 18, delay: 3, priceMult: 1.04,  freightMult: 1.1 },
-      'SUP-VIGLACERA': { code: 'SUP-VIGLACERA', name: 'Gạch men Viglacera Đà Nẵng',   cat: 'Gạch ngói',  leadDays: 24, delay: 5, priceMult: 0.97,  freightMult: 1.3 },
-
-      'SUP-MINHAN':    { code: 'SUP-MINHAN',    name: 'Tổng công ty Sơn & Thiết bị Minh An',    cat: 'Sơn & TBVS', leadDays: 5,  delay: 1, priceMult: 1.0,   freightMult: 1.0 },
-      'SUP-DULUX':     { code: 'SUP-DULUX',     name: 'Đại lý Dulux Phía Nam',        cat: 'Sơn & TBVS', leadDays: 4,  delay: 1, priceMult: 1.03,  freightMult: 1.0 },
-      'SUP-INAX':      { code: 'SUP-INAX',      name: 'Nhà phân phối TBVS Inax VN',   cat: 'Sơn & TBVS', leadDays: 7,  delay: 2, priceMult: 1.05,  freightMult: 1.2 }
-    };
-
-    const SUPPLIERS = (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.suppliers && Object.keys(CSV_DATABASE.suppliers).length > 0)
-      ? (() => {
-          const merged = { ...BASE_SUPPLIERS };
-          Object.keys(CSV_DATABASE.suppliers).forEach(key => {
-            const csvSup = CSV_DATABASE.suppliers[key];
-            if (merged[key]) {
-              // Merge: CSV override name, lead, delay; keep cat, leadDays, priceMult, freightMult from BASE
-              merged[key] = {
-                ...merged[key],
-                name: csvSup.name || merged[key].name,
-                leadDays: csvSup.lead !== undefined ? csvSup.lead : merged[key].leadDays,
-                delay: csvSup.delay !== undefined ? csvSup.delay : merged[key].delay
-              };
-            } else {
-              // New supplier from CSV, add minimal required fields
-              merged[key] = {
-                code: csvSup.code || key,
-                name: csvSup.name || key,
-                cat: 'Khác',
-                leadDays: csvSup.lead || 7,
-                delay: csvSup.delay || 2,
-                priceMult: 1.0,
-                freightMult: 1.0
-              };
-            }
-          });
-          return merged;
-        })()
-      : BASE_SUPPLIERS;
-
-    // ITEM FREIGHT MULTIPLIERS (Phụ phí theo tính chất cồng kềnh/nặng)
-    const ITEM_FREIGHT_MULT = {
-      'TLM-045': 1.0, 'TLM-040': 1.0, 'TMK-035': 1.0,
-      'OTK-049': 1.2, 'OTK-060': 1.2,
-      'PPR-025': 0.4,
-      'GCH-6060': 1.2, 'GCH-DEC': 1.2,
-      'SON-18L': 0.8,
-      'TBV-LAV': 0.6, 'TBV-VOI': 0.6
-    };
 
     // 1.2 & 1.3 LƯỢC ĐỒ VÀ BẢNG SỰ KIỆN TỪ CSV_DATABASE.events
     function isEventMatchingTarget(evtTarget, skuCode, skuCat, skuSup) {
@@ -213,6 +170,9 @@
       // Trần cước vận chuyển (đã gồm phí chuyến phân bổ) so với biên lợi nhuận gộp/đơn vị — ngưỡng sàng lọc tuyến điều chuyển
       freightMarginCap: 0.8,
       slowMovingWeeks: 30,
+      // Guardrail hệ số cầu AI (P6): AI chỉ được nhân vào CẦU trong khoảng này
+      aiCoefMin: 0.8,
+      aiCoefMax: 1.5,
       DOW: [0.45, 1.10, 1.08, 1.05, 1.05, 1.10, 1.17] // CN=0, T2=1, ..., T7=6
     };
 
@@ -230,6 +190,9 @@
       // Seeded history 12 weeks: history[sku][wh] = [{ demand, sm, deseason }]
       history: {},
       baseParams: {},
+
+      // P6: kiến nghị "hệ số cầu AI" theo SKU. items[sku] = { coef, reason, source }
+      aiCoefs: { gen: 0, items: {}, provider: null, status: 'Chưa gọi AI', proposals: [], server: null },
 
       // Stock structure: stock[wh][sku] = { on_hand, in_transit, committed }
       stock: {},

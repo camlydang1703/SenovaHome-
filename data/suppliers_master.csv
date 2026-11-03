@@ -1,6 +1,16 @@
-supplier_code,supplier_name,lead_time_weeks,lead_time_days,expected_delay_days
-SUP-SENVIET,Nhà máy Tôn Sen Việt,1.0,7,2
-SUP-VIETSTEEL,Nhà máy Ống thép Việt Steel,1.43,10,3
-SUP-LOTUS,Công ty Nhựa Lotus,2.0,14,3
-SUP-DAIPHAT,Nhà máy Gạch men Đại Phát,3.0,21,4
-SUP-MINHAN,Tổng công ty Sơn & Thiết bị Minh An,0.71,5,1
+supplier_code,supplier_name,category,lead_time_weeks,lead_time_days,expected_delay_days
+SUP-SENVIET,Nhà máy Tôn Sen Việt,Tôn thép,1.00,7,2
+SUP-HOASEN,Đại lý Tôn Hoa Sen Phía Nam,Tôn thép,0.71,5,1
+SUP-NAMKIM,Tôn Nam Kim Miền Trung,Tôn thép,1.29,9,3
+SUP-VIETSTEEL,Nhà máy Ống thép Việt Steel,Ống thép,1.43,10,3
+SUP-HOAPHAT,Đại lý Thép Hòa Phát,Ống thép,1.14,8,2
+SUP-VINAPIPE,Ống thép Vinapipe,Ống thép,1.71,12,4
+SUP-LOTUS,Công ty Nhựa Lotus,Ống nhựa,2.00,14,3
+SUP-TIENPHONG,Đại lý Nhựa Tiền Phong,Ống nhựa,1.71,12,2
+SUP-BINHMINH,Nhà PP Nhựa Bình Minh,Ống nhựa,2.29,16,4
+SUP-DAIPHAT,Nhà máy Gạch men Đại Phát,Gạch ngói,3.00,21,4
+SUP-DONGTAM,Tổng kho Gạch Đồng Tâm,Gạch ngói,2.57,18,3
+SUP-VIGLACERA,Gạch men Viglacera Đà Nẵng,Gạch ngói,3.43,24,5
+SUP-MINHAN,Tổng công ty Sơn & Thiết bị Minh An,Sơn & TBVS,0.71,5,1
+SUP-DULUX,Đại lý Dulux Phía Nam,Sơn & TBVS,0.57,4,1
+SUP-INAX,Nhà phân phối TBVS Inax VN,Sơn & TBVS,1.00,7,2

@@ -52,11 +52,6 @@ function getDOW(dateStr) {
   return new Date(dateStr).getUTCDay();
 }
 
-function fmt(n) {
-      if (n == null || isNaN(n)) return '0';
-      return Math.round(n).toLocaleString('vi-VN');
-    }
-
     function padSeq(prefix, num) {
       if (num === undefined || num === null) {
         if (typeof Store !== 'undefined') {
@@ -113,11 +108,12 @@ function fmt(n) {
     // PARAMETER CALCULATION PER SKU x WAREHOUSE (YÊU CẦU 0.4, 0.7)
     // Cache theo (skuCode, whCode, dateStr, historyLength) để không tính lại hàng trăm lần mỗi ngày.
     let _paramCache = {};
-    function calcSKUParams(skuCode, whCode, dateStr, historyOverride) {
+    function calcSKUParams(skuCode, whCode, dateStr, historyOverride, coefOverride) {
       const hist = historyOverride || Store.history;
       const weeks = (hist && hist[skuCode] && hist[skuCode][whCode]) ? hist[skuCode][whCode] : [];
       const histLen = weeks.length;
-      const cacheKey = `${skuCode}|${whCode}|${dateStr}|${histLen}`;
+      const coefGen = (typeof getAiCoefGeneration === 'function') ? getAiCoefGeneration() : 0;
+      const cacheKey = `${skuCode}|${whCode}|${dateStr}|${histLen}|${coefGen}|${coefOverride === undefined || coefOverride === null ? '' : coefOverride}`;
       if (_paramCache[cacheKey]) return _paramCache[cacheKey];
 
       const sku = SKUS.find(s => s.code === skuCode);
@@ -147,8 +143,12 @@ function fmt(n) {
     }
     const smLead = smCount > 0 ? (smSum / smCount) : sm;
     const eventMult = impact.demandMult || 1.0;   // nhân tích, cho phép cả sự kiện GIẢM cầu (<1)
-    const f_next = d_sma4 * sm * eventMult;       // cầu 1 tuần của tháng hiện tại (dùng cho band MAX)
-    const d_lead = (d_sma4 / 7.0) * smLead * eventMult * leadDays;
+    // Hệ số cầu AI (P6): 1.0 khi chưa áp dụng kiến nghị; chỉ nhân vào CẦU, không đụng z/σ/lead
+    const aiCoef = (coefOverride === undefined || coefOverride === null)
+      ? ((typeof getAiDemandCoef === 'function') ? getAiDemandCoef(skuCode) : 1.0)
+      : coefOverride;
+    const f_next = d_sma4 * sm * eventMult * aiCoef;       // cầu 1 tuần của tháng hiện tại (dùng cho band MAX)
+    const d_lead = (d_sma4 / 7.0) * smLead * eventMult * aiCoef * leadDays;
 
       // Sigma error: Lấy 8 tuần CUỐI của history (Yêu cầu 0.7)
       const errors = [];
@@ -187,6 +187,7 @@ function fmt(n) {
         leadDays: leadDays,
         smLead: Math.round(smLead * 100) / 100,
         eventMult: Math.round(eventMult * 100) / 100,
+        aiCoef: Math.round(aiCoef * 100) / 100,
         totalEventDelay: impact.supplyDelay || 0
       };
     }
@@ -227,6 +228,11 @@ function fmt(n) {
           const pct = Math.round((diffD / (baseP.f_next || 1)) * 100);
           reasons.push(`Nhu cầu SMA4 ${pct >= 0 ? 'tăng' : 'giảm'} ${Math.abs(pct)}%`);
         }
+      }
+
+      // 4. Hệ số cầu AI đang áp dụng (P6)
+      if (p && p.aiCoef && Math.abs(p.aiCoef - 1.0) > 0.001) {
+        reasons.push(`AI hiệu chỉnh cầu x${p.aiCoef}`);
       }
 
       const isInc = baseP ? (p.rop >= baseP.rop) : true;

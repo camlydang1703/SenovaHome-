@@ -12,6 +12,7 @@ JS_MODULES = [
     'src/js/config.js',
     'src/js/rng.js',
     'src/js/forecast.js',
+    'src/js/aicoef.js',
     'src/js/transfers.js',
     'src/js/rfq.js',
     'src/js/notifications.js',
@@ -91,6 +92,7 @@ def compile_csv_database():
                 suppliers[r['supplier_code']] = {
                     'code': r['supplier_code'],
                     'name': r['supplier_name'],
+                    'cat': r.get('category', ''),
                     'lead_weeks': float(r.get('lead_time_weeks', 1.0)),
                     'lead': int(r.get('lead_time_days', 7)),
                     'delay': int(r.get('expected_delay_days', 2))
@@ -111,7 +113,8 @@ def compile_csv_database():
                     'price': int(r['selling_price']),
                     'sup': r['supplier_code'],
                     'base': int(r.get('base_weekly_demand', 100)),
-                    'slow': bool(int(r.get('is_slow_moving', 0)))
+                    'slow': bool(int(r.get('is_slow_moving', 0))),
+                    'bulk': float(r.get('freight_bulk_factor', 1.0))
                 })
 
     # 7. events.csv

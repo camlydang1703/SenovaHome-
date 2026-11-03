@@ -154,7 +154,7 @@
         <div class="card-head">
           <div>
             <span class="card-title">Hàng Đợi Đề Xuất Điều Phối Tồn Kho Tức Thời</span>
-            <span style="font-size:11.5px;color:var(--text-muted);margin-left:8px;" id="recQueueSub">Sắp xếp theo số ngày còn bán tăng dần</span>
+            <span style="font-size:11.5px;color:var(--text-muted);margin-left:8px;" id="recQueueSub">Đề xuất cho kho đang xem</span>
           </div>
           <div style="display:flex;gap:8px;">
             <button class="btn-small" id="btnApproveAll" onclick="approveAllPendingTransfers()">
@@ -304,20 +304,7 @@
         </div>
         <div class="table-container">
           <table class="data-tbl" id="transferTable">
-            <thead id="transferThead">
-              <tr>
-                <th>Mã lệnh</th>
-                <th>Ngày tạo</th>
-                <th>SKU</th>
-                <th>Từ kho</th>
-                <th>Đến kho</th>
-                <th class="num-col">Số lượng</th>
-                <th class="num-col">Cước vận chuyển</th>
-                <th>Ngày đến dự kiến</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
+            <thead id="transferThead"></thead>
             <tbody id="transferTbody">
               <!-- Rendered dynamically -->
             </tbody>
@@ -337,20 +324,7 @@
         </div>
         <div class="table-container">
           <table class="data-tbl" id="rfqTable">
-            <thead id="rfqThead">
-              <tr>
-                <th>Mã chứng từ</th>
-                <th>Ngày gửi</th>
-                <th>SKU</th>
-                <th>Kho nhận</th>
-                <th>Nhà cung cấp đã gửi</th>
-                <th class="num-col">Số lượng yêu cầu</th>
-                <th class="num-col">Đơn giá ước tính</th>
-                <th>Ngày hết hạn</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
+            <thead id="rfqThead"></thead>
             <tbody id="rfqTbody">
               <!-- Rendered dynamically -->
             </tbody>
@@ -431,16 +405,16 @@
       <!-- 5 FORMULA CARDS -->
       <div class="formula-cards-grid">
         <div class="formula-card">
-          <div class="formula-card-title">1. Nhu cầu nền</div>
+          <div class="formula-card-title">1. Nhu cầu cơ sở</div>
           <div class="formula-card-desc">Trung bình 4 tuần gần nhất (sau khi đã khử mùa vụ D / Sm) để loại trừ sai số thời điểm.</div>
         </div>
         <div class="formula-card">
           <div class="formula-card-title">2. Dự báo tuần tới</div>
-          <div class="formula-card-desc"><code>F = D_SMA4 × Sm</code><br>Nhu cầu nền nhân hệ số mùa vụ tháng hiện tại.</div>
+          <div class="formula-card-desc"><code>F = D_SMA4 × Sm × eventMult × aiCoef</code><br>Nhu cầu cơ sở nhân hệ số mùa vụ tháng hiện tại, hệ số cầu của sự kiện đang tác động (cho phép cả sự kiện làm giảm cầu) và hệ số cầu AI (mặc định 1.00).</div>
         </div>
         <div class="formula-card">
           <div class="formula-card-title">3. Nhu cầu chờ hàng</div>
-          <div class="formula-card-desc"><code>D_lead = F × Lead_time</code><br>Lượng tiêu thụ dự kiến trong toàn bộ thời gian chờ hàng về.</div>
+          <div class="formula-card-desc"><code>D_lead = (D_SMA4 / 7) × Sm_lead × eventMult × aiCoef × Lead_time</code><br>Lượng tiêu thụ dự kiến trong toàn bộ thời gian chờ (lead = hồ sơ NCC + trễ thường lệ + trễ sự kiện); dùng Sm_lead bình quân trên đúng số tuần chờ.</div>
         </div>
         <div class="formula-card">
           <div class="formula-card-title">4. Tồn an toàn (SS)</div>
@@ -474,6 +448,25 @@
         </div>
       </div>
 
+      <!-- P6: AI KIẾN NGHỊ HỆ SỐ CẦU -->
+      <div class="card-panel" id="aiCoefCard" style="margin-bottom:16px;border-left:4px solid var(--navy-accent);">
+        <div class="card-head">
+          <div class="card-title">AI Kiến nghị Hệ số Cầu</div>
+          <span class="dot-pill neutral" id="aiCoefBadge">Chưa gọi AI</span>
+        </div>
+        <div style="padding:12px 18px 4px;font-size:11.8px;color:var(--text-muted);line-height:1.65;">
+          AI đọc số bán 4 tuần qua, các sự kiện đang diễn ra và những sự kiện sẽ bùng phát sau khi hàng về,
+          rồi gợi ý hệ số cầu cho từng mặt hàng kèm một câu giải thích dễ hiểu.
+        </div>
+        <div style="padding:8px 18px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn-table" id="aiCoefRunBtn" onclick="onAiCoefRunClick()">AI kiến nghị ngay</button>
+          <button class="btn-table btn-table-sec" id="aiCoefApplyBtn" onclick="onAiCoefApplyClick()">Áp dụng vào Min/Max</button>
+          <button class="btn-table btn-table-sec" onclick="onAiCoefResetClick()">Hoàn tác về hệ số gốc</button>
+          <span id="aiCoefSummary" style="font-size:11.5px;color:var(--text-muted);"></span>
+        </div>
+        <div id="aiCoefBody" style="padding:0 18px 16px;"></div>
+      </div>
+
       <!-- PARAMETERS TABLE -->
       <div class="card-panel">
         <div class="card-head">
@@ -481,32 +474,11 @@
         </div>
         <div class="table-container">
           <table class="data-tbl" id="paramsTable">
-            <thead id="paramsThead">
-              <tr>
-                <th>Mã SKU</th>
-                <th>Tên sản phẩm</th>
-                <th class="num-col">Nhu cầu tuần nền</th>
-                <th class="num-col">Tỷ trọng vùng</th>
-                <th class="num-col">D_SMA4 (sau khử mùa)</th>
-                <th class="num-col">Hệ số Sm</th>
-                <th class="num-col">Dự báo tuần tới (F)</th>
-                <th class="num-col">Lead time (tuần)</th>
-                <th class="num-col">Sigma sai số</th>
-                <th class="num-col">Tồn an toàn (SS)</th>
-                <th class="num-col" style="color:var(--status-red);">Mức đặt lại MIN (ROP)</th>
-                <th class="num-col" style="color:var(--status-yellow);">Tồn tối đa MAX (Qmax)</th>
-                <th>Trạng thái</th>
-              </tr>
-            </thead>
+            <thead id="paramsThead"></thead>
             <tbody id="paramsTbody">
               <!-- Rendered dynamically -->
             </tbody>
           </table>
-        </div>
-        <div style="padding:12px 16px;background:#FAFAF8;border-top:1px solid var(--border-color);font-size:11.5px;color:var(--text-muted);line-height:1.6;">
-          <strong>Ghi chú kỹ thuật:</strong><br>
-          • Tổng hệ số mùa vụ SI trung bình = 0.979 (giữ nguyên theo báo cáo gốc, không chuẩn hóa lại).<br>
-          • Dữ liệu là mô phỏng có can thiệp. Hàng về định kỳ và bước cân bằng 3 nhóm được áp dụng để đảm bảo tính đa dạng. Hạt giống tất định (FNV-1a hash) đảm bảo tái hiện được.
         </div>
       </div>
     </section>
@@ -531,7 +503,6 @@
           </div>
           <div style="padding:16px;position:relative;">
             <canvas id="chartDemandForecast" style="width:100%;height:220px;display:block;"></canvas>
-            <div id="tooltipChartA" style="display:none;position:absolute;background:rgba(15,23,42,0.9);color:white;padding:6px 10px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;"></div>
           </div>
         </div>
 
@@ -542,7 +513,6 @@
           </div>
           <div style="padding:16px;position:relative;">
             <canvas id="chartServiceLevel" style="width:100%;height:220px;display:block;"></canvas>
-            <div id="tooltipChartB" style="display:none;position:absolute;background:rgba(15,23,42,0.9);color:white;padding:6px 10px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;"></div>
           </div>
         </div>
       </div>
@@ -554,10 +524,10 @@
         </div>
         <div style="padding:16px;position:relative;">
           <canvas id="chartStockTrajectory" style="width:100%;height:240px;display:block;"></canvas>
-          <div id="tooltipChartC" style="display:none;position:absolute;background:rgba(15,23,42,0.9);color:white;padding:6px 10px;border-radius:4px;font-size:11px;pointer-events:none;z-index:10;"></div>
         </div>
       </div>
     </section>
+
 
   </main>
 
@@ -687,7 +657,7 @@
   <div class="modal-overlay" id="selfTestModal">
     <div class="modal-box wide">
       <div class="modal-head">
-        <span>Bảng Tự kiểm tra & Nghiệm thu Hệ thống (14 Tiêu chí)</span>
+        <span>Bảng Tự kiểm tra & Nghiệm thu Hệ thống (15 Tiêu chí)</span>
         <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('selfTestModal')">✕</button>
       </div>
       <div class="modal-body" style="padding:16px 20px;">
@@ -698,20 +668,6 @@
       </div>
       <div class="modal-foot">
         <button class="btn-large" onclick="closeModal('selfTestModal')">Đóng</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: SKU DETAIL -->
-  <div class="modal-overlay" id="skuDetailModal">
-    <div class="modal-box wide">
-      <div class="modal-head">
-        <span id="skuDetailTitle">Chi tiết SKU</span>
-        <button style="border:none;background:none;cursor:pointer;font-size:16px;" onclick="closeModal('skuDetailModal')">✕</button>
-      </div>
-      <div class="modal-body" id="skuDetailBody" style="padding:16px 20px;"></div>
-      <div class="modal-foot">
-        <button class="btn-large-sec" onclick="closeModal('skuDetailModal')">Đóng</button>
       </div>
     </div>
   </div>

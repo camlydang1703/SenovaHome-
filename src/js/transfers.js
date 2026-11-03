@@ -2,20 +2,6 @@
 // INTERNAL TRANSFERS & FREIGHT RATES
 // ============================================================================
 
-    function getRouteMultiplier(fromWh, toWh) {
-      if (fromWh === toWh) return 0;
-      const sameSouth = (fromWh === 'HCM' && toWh === 'BD') || (fromWh === 'BD' && toWh === 'HCM');
-      if (sameSouth) return 1.0;
-      const centralNorth = (fromWh === 'DN' && toWh === 'HN') || (fromWh === 'HN' && toWh === 'DN');
-      if (centralNorth) return 1.5;
-      const haGiangNorth = (fromWh === 'HN' && toWh === 'HG') || (fromWh === 'HG' && toWh === 'HN');
-      if (haGiangNorth) return 1.2;
-      const southCentral = (fromWh === 'HCM' || fromWh === 'BD') && toWh === 'DN';
-      const centralSouth = toWh === 'DN' && (fromWh === 'HCM' || fromWh === 'BD');
-      if (southCentral || centralSouth) return 1.8;
-      return 2.2;
-    }
-
     function getRouteData(fromWh, toWh) {
       if (fromWh === toWh) return { lead: 0, base: 0, unit: 0 };
       if (typeof CSV_DATABASE !== 'undefined' && CSV_DATABASE.routes) {
@@ -98,6 +84,22 @@
       return Math.max(0, Math.min(hard, Math.floor(eff - getSafeTarget(p))));
     }
 
+    // Nhãn tuyến đường thống nhất cho mọi màn hình: luôn là "Nơi đi ➔ Nơi đến",
+    // tự phân biệt mã NCC (kind SUPPLIER) với mã kho nên không thể hiển thị ngược chiều.
+    function getRouteEndpoints(srcCode, dstCode) {
+      const sup = (typeof SUPPLIERS !== 'undefined' && SUPPLIERS[srcCode]) || null;
+      const sWh = WAREHOUSES.find(w => w.code === srcCode) || null;
+      const dWh = WAREHOUSES.find(w => w.code === dstCode) || null;
+      const from = sup ? `NCC ${sup.name || srcCode}` : (sWh ? sWh.name : srcCode);
+      const to = dWh ? dWh.name : dstCode;
+      return { from: from, to: to, isSupplierInbound: !!sup, kind: sup ? 'SUPPLIER' : 'TRANSFER' };
+    }
+
+    function getRouteLabel(srcCode, dstCode) {
+      const e = getRouteEndpoints(srcCode, dstCode);
+      return `${e.from} ➔ ${e.to}`;
+    }
+
     // Chứng từ hàng NCC đang về (đi chung sổ với lệnh chuyển kho, kind = 'SUPPLIER')
     function createSupplierShipment(skuCode, whCode, qty, curDate, days, note, stockOverride) {
       const sku = SKUS.find(s => s.code === skuCode);
@@ -160,9 +162,10 @@
       const dstSt = Store.stock[dstWh][sku];
       const dstP = calcSKUParams(sku, dstWh, Store.currentDate, Store.history);
       const dstSafe = Math.floor(getSafeTarget(dstP));
-      const dstEffAfter = dstSt.on_hand + dstSt.in_transit - dstSt.committed + qty;
+      const dstPlanned = (typeof getPlannedInboundQty === 'function') ? getPlannedInboundQty(sku, dstWh, proposalKey) : 0;
+      const dstEffAfter = dstSt.on_hand + dstSt.in_transit - dstSt.committed + dstPlanned + qty;
       if (dstEffAfter > dstSafe) {
-        return { ok: false, msg: `Kho ${dstWh} sẽ vượt mức an toàn (${dstEffAfter} > ${dstSafe}, MAX=${dstP.qmax}) nếu nhận ${qty} ${sku}. Giảm số lượng hoặc chọn kho khác.` };
+        return { ok: false, msg: `Kho ${dstWh} sẽ vượt mức an toàn (${dstEffAfter} > ${dstSafe}, đã tính ${dstPlanned} ${sku} đang có trong kế hoạch về kho này; MAX=${dstP.qmax}) nếu nhận ${qty} ${sku}. Giảm số lượng hoặc chọn kho khác.` };
       }
 
       // Tính cước vận chuyển
@@ -211,7 +214,7 @@
       const logType = logTypeMap[source] || 'MANUAL_TRANSFER';
 
       // Log và notification
-      const logMsg = `Lệnh chuyển ${qty} ${sku} (${srcWh} -> ${dstWh}), dự kiến ${tDays} ngày, cước: ${fmtVND(totalFreight)}`;
+      const logMsg = `Lệnh chuyển ${qty} ${sku} (${getRouteLabel(srcWh, dstWh)}), dự kiến ${tDays} ngày, cước: ${fmtVND(totalFreight)}`;
       const notifMsg = getTransferNotifMsg(source, qty, sku, srcWh, dstWh);
 
       logAction(logType, trId, logMsg, totalFreight, dstWh, {
@@ -254,9 +257,10 @@
       const dstSt = Store.stock[dstWh][sku];
       const dstP = calcSKUParams(sku, dstWh, Store.currentDate, Store.history);
       const dstSafe = Math.floor(getSafeTarget(dstP));
-      const dstEffAfter = dstSt.on_hand + dstSt.in_transit - dstSt.committed + qty;
+      const dstPlanned = (typeof getPlannedInboundQty === 'function') ? getPlannedInboundQty(sku, dstWh, proposalKey) : 0;
+      const dstEffAfter = dstSt.on_hand + dstSt.in_transit - dstSt.committed + dstPlanned + qty;
       if (dstEffAfter > dstSafe) {
-        return { ok: false, msg: `Kho ${dstWh} sẽ vượt mức an toàn (${dstEffAfter} > ${dstSafe}) nếu nhận ${qty} ${sku}. Giảm số lượng hoặc chọn kho khác.` };
+        return { ok: false, msg: `Kho ${dstWh} sẽ vượt mức an toàn (${dstEffAfter} > ${dstSafe}, đã tính ${dstPlanned} ${sku} đang có trong kế hoạch về kho này). Giảm số lượng hoặc chọn kho khác.` };
       }
 
       const skuObj = SKUS.find(s => s.code === sku) || { cogs: 0 };
@@ -276,17 +280,18 @@
         cost: calcFreightCost(srcWh, dstWh, sku, qty, Store.currentDate),
         savingVsRfq: savingVsRfq,
         value: qty * skuObj.cogs,
-        note: note || `Kho ${dstWh} đồng ý nhận — chờ kho ${srcWh} xác nhận gửi hàng`
+        note: note || `${getRouteEndpoints(dstWh, srcWh).from} đồng ý nhận — chờ ${getRouteEndpoints(srcWh, dstWh).from} xác nhận gửi hàng`
       };
       Store.transfers.unshift(rec);
       if (proposalKey && Store.proposals[proposalKey]) {
         delete Store.proposals[proposalKey];
       }
+      const ep = getRouteEndpoints(srcWh, dstWh);
       pushNotification('TRANSFER_REQUEST', rec.id,
-        `Yêu cầu điều chuyển ${rec.id}: ${qty} ${sku} từ ${srcWh} về ${dstWh} — mở "Chi tiết" để xem tồn kho hiện tại trước khi xác nhận gửi.`, srcWh);
+        `Yêu cầu điều chuyển ${rec.id}: ${qty} ${sku} từ ${ep.from} về ${ep.to} — mở "Chi tiết" để xem tồn kho hiện tại trước khi xác nhận gửi.`, srcWh);
       logAction('REQUEST_TRANSFER', rec.id,
-        `Kho ${dstWh} xác nhận nhận ${qty} ${sku}; tạo lệnh ${rec.id} chờ kho ${srcWh} gửi.`);
-      return { ok: true, msg: `Đã gửi yêu cầu ${rec.id} sang kho ${srcWh}. Bên đó bấm "Xác nhận gửi hàng" để hoàn tất.`, transfer: rec };
+        `${ep.to} xác nhận nhận ${qty} ${sku}; tạo lệnh ${rec.id} chờ ${ep.from} gửi.`);
+      return { ok: true, msg: `Đã gửi yêu cầu ${rec.id} sang ${ep.from}. Bên đó bấm "Xác nhận gửi hàng" để hoàn tất.`, transfer: rec };
     }
 
     // Helper: ghi chú theo nguồn
@@ -304,15 +309,18 @@
 
     // Helper: thông báo theo nguồn
     function getTransferNotifMsg(source, qty, sku, srcWh, dstWh) {
+      const route = getRouteLabel(srcWh, dstWh);
+      const srcName = getRouteEndpoints(srcWh, dstWh).from;
+      const dstName = getRouteEndpoints(srcWh, dstWh).to;
       const msgMap = {
-        'PROPOSAL': `Đã duyệt lệnh chuyển ${qty} ${sku} (${srcWh} -> ${dstWh})`,
-        'BATCH_APPROVE': `Đã duyệt hàng loạt lệnh chuyển ${qty} ${sku} (${srcWh} -> ${dstWh})`,
-        'OVERSTOCK': `Đã thực hiện san tải ${qty} ${sku} (${srcWh} -> ${dstWh})`,
-        'MODAL_COMPARE': `Đã tạo lệnh chuyển ${qty} ${sku} (${srcWh} -> ${dstWh})`,
-        'SRC_CONFIRM': `Kho ${srcWh} đã xác nhận gửi ${qty} ${sku} sang ${dstWh}`,
-        'MANUAL': `Đã tạo lệnh chuyển thủ công ${qty} ${sku} (${srcWh} -> ${dstWh})`
+        'PROPOSAL': `Đã duyệt lệnh chuyển ${qty} ${sku} (${route})`,
+        'BATCH_APPROVE': `Đã duyệt hàng loạt lệnh chuyển ${qty} ${sku} (${route})`,
+        'OVERSTOCK': `Đã thực hiện san tải ${qty} ${sku} (${route})`,
+        'MODAL_COMPARE': `Đã tạo lệnh chuyển ${qty} ${sku} (${route})`,
+        'SRC_CONFIRM': `${srcName} đã xác nhận gửi ${qty} ${sku} sang ${dstName}`,
+        'MANUAL': `Đã tạo lệnh chuyển thủ công ${qty} ${sku} (${route})`
       };
-      return msgMap[source] || `Đã tạo lệnh chuyển ${qty} ${sku} (${srcWh} -> ${dstWh})`;
+      return msgMap[source] || `Đã tạo lệnh chuyển ${qty} ${sku} (${route})`;
     }
 
     // Nhập kho một lô hàng (điều chuyển hoặc NCC): on_hand tăng, in_transit giảm đúng bằng số lượng
@@ -370,14 +378,16 @@
 
     function receiveShipment(transferId) {
       const tr = Store.transfers.find(t => t.id === transferId);
-      if (!tr || (tr.status !== 'Đang chuyển' && tr.status !== 'Đã đến kho')) return;
+      if (!tr || (tr.status !== 'Đang chuyển' && tr.status !== 'Đã đến kho')) return { ok: false, msg: 'Không tìm thấy lô hàng đang chờ nhận.' };
       if (Store.ui && Store.ui.viewDate) {
         showToast('Đang xem lại ngày cũ, hãy quay về hiện tại để nhận hàng.', 'error');
-        return;
+        return { ok: false, msg: 'Đang xem lại ngày cũ — không thể nhận hàng.' };
       }
       applyShipmentReceipt(tr, 'manual');
-      showToast(`${tr.receiveTiming}: lô ${tr.id} đã cộng ${tr.qty} ${tr.sku} vào tồn kho ${tr.dstWh}.`, 'success');
+      const msg = `${tr.receiveTiming}: lô ${tr.id} đã cộng ${tr.qty} ${tr.sku} vào tồn kho ${tr.dstWh}.`;
+      showToast(msg, 'success');
       refreshAfterStockChange();
+      return { ok: true, msg: msg, sku: tr.sku, dstWh: tr.dstWh, qty: tr.qty };
     }
 
     function checkTransferSafety(skuCode, srcWh, qty, curDate, releasedQty) {
@@ -430,8 +440,10 @@
       const orderCost = PARAMS.orderCostFixed || 500000;
       const shortageUnits = days => Math.max(0, Math.ceil(dailyDemand * days) - Math.max(0, eff));
 
-      // Sức chứa còn lại của kho nhận theo đúng trần kiểm tra trong createTransfer (mức an toàn, chặt hơn MAX)
-      const dstRoom = Math.max(0, Math.floor(getSafeTarget(p) - (st.on_hand + st.in_transit - st.committed)));
+      // Sức chứa còn lại của kho nhận theo đúng trần kiểm tra trong createTransfer (mức an toàn, chặt hơn MAX),
+      // trừ phần đã bị các đề xuất/lệnh chờ khác chiếm để không hứa hàng về hai lần cho cùng một ô.
+      const plannedIn = (typeof getPlannedInboundQty === 'function') ? getPlannedInboundQty(skuCode, toWh, o.excludeKey) : 0;
+      const dstRoom = Math.max(0, Math.floor(getSafeTarget(p) - (st.on_hand + st.in_transit - st.committed) - plannedIn));
 
       const blocked = (o && o.blockedSrcWhs) || [];
       const sources = WAREHOUSES.filter(w => w.code !== toWh && !blocked.includes(w.code)).map(w => {
@@ -560,10 +572,6 @@
       }
     }
 
-    function receiveTransferEarly(transferId) {
-      receiveShipment(transferId);
-    }
-
     // ----------------------------------------------------------------------------
     // 2.11 MANUAL TRANSFER CONTROLS (Yêu cầu 2.4)
     // ----------------------------------------------------------------------------
@@ -643,9 +651,10 @@
       const dstSt = Store.stock[dstWh][skuCode];
       const dstP = calcSKUParams(skuCode, dstWh, Store.currentDate, Store.history);
       const dstSafe = Math.floor(getSafeTarget(dstP));
-      const dstEffAfter = dstSt.on_hand + dstSt.in_transit - dstSt.committed + qty;
+      const dstPlanned = (typeof getPlannedInboundQty === 'function') ? getPlannedInboundQty(skuCode, dstWh) : 0;
+      const dstEffAfter = dstSt.on_hand + dstSt.in_transit - dstSt.committed + dstPlanned + qty;
       if (dstEffAfter > dstSafe) {
-        fb.innerHTML = `<span style="color:var(--status-red);font-weight:600;">❌ Kho ${dstWh} sẽ vượt mức an toàn (${dstEffAfter} > ${dstSafe}). Hãy giảm số lượng hoặc chọn kho khác!</span>`;
+        fb.innerHTML = `<span style="color:var(--status-red);font-weight:600;">❌ Kho ${dstWh} sẽ vượt mức an toàn (${dstEffAfter} > ${dstSafe}, đã tính ${dstPlanned} ${skuCode} đang có trong kế hoạch về kho này). Hãy giảm số lượng hoặc chọn kho khác!</span>`;
         fb.style.background = '#FEE2E2';
         btn.disabled = true;
         return;
@@ -696,11 +705,11 @@
       const idx = Store.transfers.findIndex(t => t.id === recId && t.kind === 'TRANSFER' && t.status === 'Chờ kho nguồn xác nhận');
       if (idx < 0) {
         showToast('Không tìm thấy yêu cầu chờ xác nhận.', 'error');
-        return;
+        return { ok: false, msg: 'Không tìm thấy yêu cầu chờ xác nhận.' };
       }
       if (Store.ui && Store.ui.viewDate) {
         showToast('Đang xem lại ngày cũ — hãy quay về hiện tại để xác nhận gửi hàng.', 'info');
-        return;
+        return { ok: false, msg: 'Đang xem lại ngày cũ — không thể xác nhận gửi hàng.' };
       }
       const rec = Store.transfers[idx];
 
@@ -712,7 +721,7 @@
         srcWh: rec.srcWh,
         dstWh: rec.dstWh,
         qty: rec.qty,
-        note: `Kho ${rec.srcWh} xác nhận gửi cho ${rec.dstWh} (theo yêu cầu ${rec.id})`,
+        note: `${getRouteLabel(rec.srcWh, rec.dstWh)} — ${getRouteEndpoints(rec.srcWh, rec.dstWh).from} xác nhận gửi (theo yêu cầu ${rec.id})`,
         source: 'SRC_CONFIRM',
         releasedQty: rec.qty,
         savingVsRfq: rec.savingVsRfq || 0
@@ -722,11 +731,12 @@
         // Hoàn tác: đặt lại lệnh XC để giữ phần đang giữ chỗ
         Store.transfers.splice(idx, 0, rec);
         showToast(result.msg, 'error');
-        return;
+        return { ok: false, msg: result.msg };
       }
 
       showToast(result.msg, 'success');
       refreshAfterStockChange();
+      return { ok: true, msg: result.msg, id: (result.transfer && result.transfer.id) || rec.id, sku: rec.sku, srcWh: rec.srcWh, dstWh: rec.dstWh, qty: rec.qty };
     }
 
     // Cooldown tuyến vừa bị kho nguồn từ chối: không sinh lại đúng đề xuất đó trong 3 ngày
@@ -752,7 +762,7 @@
       const idx = Store.transfers.findIndex(t => t.id === recId && t.kind === 'TRANSFER' && t.status === 'Chờ kho nguồn xác nhận');
       if (idx < 0) {
         showToast('Không tìm thấy yêu cầu chờ xác nhận.', 'error');
-        return;
+        return { ok: false, msg: 'Không tìm thấy yêu cầu chờ xác nhận.' };
       }
       const rec = Store.transfers[idx];
       Store.transfers.splice(idx, 1);
@@ -764,6 +774,7 @@
         `Kho ${rec.srcWh} từ chối gửi ${rec.qty} ${rec.sku}. Đề xuất sẽ chuyển hướng sau ${REJECT_COOLDOWN_DAYS} ngày.`, rec.dstWh);
       showToast(`Đã từ chối yêu cầu ${rec.id}. Hệ thống sẽ quét lại đề xuất.`, 'info');
       refreshAfterStockChange();
+      return { ok: true, msg: `Đã từ chối yêu cầu ${rec.id}; tuyến ${rec.srcWh}→${rec.dstWh} ngưng đề xuất ${REJECT_COOLDOWN_DAYS} ngày.` };
     }
 
     // ----------------------------------------------------------------------------

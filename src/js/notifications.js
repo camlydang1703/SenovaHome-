@@ -186,20 +186,23 @@
     // và đồng bộ data/ledger.csv qua server.py.
     // ----------------------------------------------------------------------------
     const MANAGER_LOG_TYPES = {
-      PROPOSE_TRANSFER: 1,
+      // Điều chuyển
+      REQUEST_TRANSFER: 1,
+      REJECT_OUTBOUND_REQUEST: 1,
       APPROVE_TRANSFER: 1,
+      BATCH_APPROVE_TRANSFER: 1,
+      CONFIRM_OUTBOUND_TRANSFER: 1,
       MANUAL_TRANSFER: 1,
-      TRANSFER_ACCEPTED: 1,
-      TRANSFER_REJECTED: 1,
-      TRANSFER_EARLY_RECEIVE: 1,
+      SAN_TAI_2A: 1,
+      TRANSFER_FROM_COMPARE: 1,
       TRANSFER_ARRIVED: 1,
       SUPPLIER_RECEIVE: 1,
-      SAN_TAI_2A: 1,
+      // Mua / RFQ
       SEND_RFQ: 1,
       CANCEL_RFQ: 1,
-      QUICK_IN: 1,
-      SUPPLIER_QUICK_IN: 1,
-      QUICK_OUT: 1
+      // Phiếu nhanh & giải phóng vốn
+      QUICK_OUT: 1,
+      PROMOTION_2B: 1
     };
 
     function apiUrl(path) {
@@ -325,12 +328,13 @@
           note: note
         });
       } else {
+        // Loại không làm thay đổi tồn kho tại thời điểm ghi (RFQ mới gửi, hủy RFQ, khuyến mãi): delta = 0
         lines.push({
           warehouse_code: act.wh,
           sku: act.sku || '',
           delta_on_hand: 0,
           delta_in_transit: 0,
-          delta_on_order: act.type === 'SEND_RFQ' ? 1 : 0,
+          delta_on_order: 0,
           note: note
         });
       }
@@ -472,9 +476,9 @@
       const el = document.getElementById('serverStatusBadge');
       if (!el) return;
       if (Store.serverStatus === 'online') {
-        el.innerHTML = '<span style="color:#16A34A;font-size:11px;font-weight:600;">● Đã kết nối ledger.csv</span>';
+        el.innerHTML = '<span style="color:#16A34A;font-size:11px;font-weight:600;">● Đã lưu nhật ký</span>';
       } else {
-        el.innerHTML = '<span style="color:#D97706;font-size:11px;font-weight:600;" title="Server backend chưa khởi động - Chưa ghi ledger.csv">⚠️ Chưa kết nối ledger.csv</span>';
+        el.innerHTML = '<span style="color:#D97706;font-size:11px;font-weight:600;" title="Nhật ký thao tác chưa được ghi ra file">⚠️ Chưa lưu được nhật ký</span>';
       }
     }
 
@@ -517,9 +521,9 @@
         let roleBadge = '';
         if (act.srcWh && act.dstWh) {
           if (act.srcWh === activeWh) {
-            roleBadge = `<span class="log-role role-src">Xuất đi tới ${act.dstWh}</span>`;
+            roleBadge = `<span class="log-role role-src">Xuất đi tới ${getRouteEndpoints(act.srcWh, act.dstWh).to}</span>`;
           } else if (act.dstWh === activeWh) {
-            roleBadge = `<span class="log-role role-dst">Nhận về từ ${act.srcWh}</span>`;
+            roleBadge = `<span class="log-role role-dst">Nhận về từ ${getRouteEndpoints(act.srcWh, act.dstWh).from}</span>`;
           }
         }
 

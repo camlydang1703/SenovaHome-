@@ -60,6 +60,59 @@
       return sum;
     }
 
+    // Phần hàng SẮP VỀ một ô đã bị kế hoạch khác chiếm (đề xuất chờ duyệt + lệnh XC chờ gửi).
+    // Mọi phép tính "sức chứa còn lại của kho nhận" phải trừ con số này để không hứa hai lần.
+    function getPlannedInboundQty(skuCode, whCode, excludeKey) {
+      let sum = 0;
+      if (Store.proposals) {
+        Object.keys(Store.proposals).forEach(k => {
+          if (excludeKey && k === excludeKey) return;
+          const p = Store.proposals[k];
+          if (p && (p.type === 'TRANSFER' || p.type === 'OVERSTOCK') && p.sku === skuCode && p.dstWh === whCode) sum += p.qty;
+        });
+      }
+      if (Store.transfers) {
+        Store.transfers.forEach(tr => {
+          if (tr.kind === 'TRANSFER' && tr.status === 'Chờ kho nguồn xác nhận' && tr.sku === skuCode && tr.dstWh === whCode) sum += tr.qty;
+        });
+      }
+      return sum;
+    }
+
+    // Nguồn sự thật duy nhất cho bài toán san tải: bộ quét đề xuất, modal chọn kho nhận và
+    // trần kiểm tra lúc tạo lệnh đều đọc chung hàm này nên nhãn UI không thể mâu thuẫn nhau.
+    function getOverstockTargets(skuCode, srcWh, curDate, excludeKey) {
+      const sku = SKUS.find(s => s.code === skuCode) || { price: 0, cogs: 0, unit: 'sp' };
+      const p = calcSKUParams(skuCode, srcWh, curDate, Store.history);
+      const st = Store.stock[srcWh][skuCode];
+      const eff = st.on_hand + st.in_transit - st.committed;
+      const reserve = getPendingProposalReserve(skuCode, srcWh);
+      const overMaxView = Math.max(0, eff + reserve - p.qmax);
+      const excess = Math.max(0, Math.min(eff - p.qmax, getAiTransferableQty(skuCode, srcWh, curDate)));
+      const marginCap = Math.max(0, sku.price - sku.cogs) * (PARAMS.freightMarginCap || 0.5);
+      const targets = WAREHOUSES.filter(w => w.code !== srcWh).map(w => {
+        const dp = calcSKUParams(skuCode, w.code, curDate, Store.history);
+        const ds = Store.stock[w.code][skuCode];
+        const effBase = ds.on_hand + ds.in_transit - ds.committed;
+        const planned = getPlannedInboundQty(skuCode, w.code, excludeKey);
+        const room = Math.max(0, Math.floor(getSafeTarget(dp) - effBase - planned));
+        const tDays = getTransferDays(srcWh, w.code, curDate);
+        const planQty = Math.max(1, Math.min(excess, room));
+        const freight = calcFreightCost(srcWh, w.code, skuCode, planQty, curDate);
+        const unitFreight = freight / planQty;
+        const isLow = (effBase + planned) <= dp.rop;
+        const gateOk = unitFreight <= marginCap;
+        return {
+          code: w.code, name: w.name, p: dp, eff: effBase, planned: planned, room: room,
+          isLow: isLow, tDays: tDays, planQty: planQty, freight: freight, unitFreight: unitFreight,
+          gateOk: gateOk, marginCap: marginCap,
+          score: (isLow ? 0 : 1e9) + (gateOk ? 0 : 1e7) + (room >= 1 ? 0 : 1e11) + unitFreight * 10 + tDays * 1000 - planQty
+        };
+      }).sort((a, b) => a.score - b.score);
+      return { excess: excess, overMaxView: overMaxView, reserve: reserve, eff: eff, params: p,
+               targets: targets, best: targets.find(t => t.room >= 1) || null };
+    }
+
 // Sau mọi thao tác làm đổi số lượng: quét lại đề xuất + snapshot ngày hiện tại rồi vẽ lại mọi tab
 function refreshAfterStockChange() {
   if (typeof invalidateParamCache === 'function') invalidateParamCache();
@@ -113,7 +166,6 @@ function scanAndGenerateProposals(curDate) {
         const s = Store.stock[whCode][skuCode];
         return s.on_hand + s.in_transit - s.committed;
       };
-      const plannedInbound = {}; // `${sku}-${wh}` -> qty từ các đề xuất vừa sinh trong lần quét này
 
       // 2b. Kho THIẾU (LOW): xử lý kho nguy cấp nhất trước (eff/ROP thấp nhất)
       const lowCells = [];
@@ -166,9 +218,9 @@ function scanAndGenerateProposals(curDate) {
             status: 'Chờ duyệt',
             hasActiveRfq: false
           };
-          // Giữ chỗ tại kho nguồn để các kho thiếu sau không đặt trùng
+          // Giữ chỗ tại kho nguồn để các kho thiếu sau không đặt trùng; sức chứa kho nhận
+          // được tính động qua getPlannedInboundQty nên không cần theo dõi thêm.
           Store.stock[best.srcWh][sku.code].committed += best.qty;
-          plannedInbound[pairKey] = (plannedInbound[pairKey] || 0) + best.qty;
         } else {
           Store.proposals[pairKey] = {
             id: dxId,
@@ -179,6 +231,7 @@ function scanAndGenerateProposals(curDate) {
             action: 'Yêu cầu Báo giá (RFQ)',
             qty: ev.rfq.qty,
             sup: sku.sup,
+            sups: (typeof getRfqTargetSuppliers === 'function') ? getRfqTargetSuppliers(sku.code) : [sku.sup],
             leadDays: best.days,
             arrivalDate: addDays(curDate, best.days),
             freightCost: 0,
@@ -203,26 +256,10 @@ function scanAndGenerateProposals(curDate) {
             if (Store.proposals[pairKey] && Store.proposals[pairKey].type === 'OVERSTOCK') delete Store.proposals[pairKey];
             return;
           }
-          const excessQty = Math.min(eff - p.qmax, getTransferableQty(sku.code, wh.code, curDate));
+          const scan = getOverstockTargets(sku.code, wh.code, curDate, pairKey);
+          const excessQty = scan.excess;
           if (excessQty < 1) return;
-
-          // Kho nhận: ưu tiên kho thiếu, sau đó kho còn chỗ dưới MAX, cước/đơn vị thấp + lead time ngắn
-          let best = null;
-          WAREHOUSES.forEach(otherWh => {
-            if (otherWh.code === wh.code) return;
-            const oP = calcSKUParams(sku.code, otherWh.code, curDate, Store.history);
-            const oEff = effOf(sku.code, otherWh.code) + (plannedInbound[`${sku.code}-${otherWh.code}`] || 0);
-            const room = Math.floor(getSafeTarget(oP) - oEff); // kho nhận chỉ lên tới mức an toàn, không lên MAX
-            if (room < 1) return;
-            const qty = Math.min(excessQty, room);
-            const freight = calcFreightCost(wh.code, otherWh.code, sku.code, qty, curDate);
-            const unit = getUnitFreightRate(wh.code, otherWh.code, sku.code);
-            // Ngưỡng sàng lọc dùng cước THỰC TẾ/đv của lô (đã chia phí chuyến), khớp evaluateReplenishmentOptions
-            if (qty < 1 || freight / qty > (sku.price - sku.cogs) * (PARAMS.freightMarginCap || 0.5)) return;
-            const tDays = getTransferDays(wh.code, otherWh.code, curDate);
-            const score = (oEff <= oP.rop ? 0 : 1e9) + unit * 10 + tDays * 1000 - qty;
-            if (!best || score < best.score) best = { dst: otherWh.code, qty, unit, freight, tDays, score };
-          });
+          const best = scan.best;
 
           if (best) {
             Store.proposals[pairKey] = {
@@ -231,17 +268,18 @@ function scanAndGenerateProposals(curDate) {
               sku: sku.code,
               wh: wh.code,
               srcWh: wh.code,
-              dstWh: best.dst,
+              dstWh: best.code,
               type: 'OVERSTOCK',
               action: 'Điều chuyển san tải',
-              qty: best.qty,
+              qty: best.planQty,
               leadDays: best.tDays,
               arrivalDate: addDays(curDate, best.tDays),
               freightCost: best.freight,
-              status: 'Cần giải phóng vốn',
+              unitFreight: Math.round(best.unitFreight),
+              freightVsMargin: best.gateOk ? 'Dưới ngưỡng biên LN' : `Vượt ${Math.round((PARAMS.freightMarginCap || 0.5) * 100)}% biên LN`,
+              status: best.gateOk ? 'Cần giải phóng vốn' : 'Cần giải phóng vốn · cước vượt biên LN',
               hasActiveRfq: false
             };
-            plannedInbound[`${sku.code}-${best.dst}`] = (plannedInbound[`${sku.code}-${best.dst}`] || 0) + best.qty;
           } else {
             Store.proposals[pairKey] = {
               id: getDxId(pairKey),
@@ -256,7 +294,7 @@ function scanAndGenerateProposals(curDate) {
               leadDays: 0,
               arrivalDate: curDate,
               freightCost: 0,
-              status: 'Cần giải phóng vốn',
+              status: 'Cần giải phóng vốn · mọi kho đều đủ',
               hasActiveRfq: false
             };
           }

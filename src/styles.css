@@ -40,15 +40,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    .num-val {
-      font-variant-numeric: tabular-nums;
-      font-feature-settings: 'tnum';
-    }
 
-    .font-mono {
-      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-      font-variant-numeric: tabular-nums;
-    }
 
     .btn-small {
       display: inline-flex;
@@ -218,19 +210,6 @@
       max-height: 380px;
       overflow-y: auto;
     }
-    .bell-pop-item {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border-subtle);
-      font-size: 11.5px;
-      cursor: pointer;
-      transition: background 0.1s;
-    }
-    .bell-pop-item:hover { background: var(--bg-page); }
-    .bell-pop-item.unread {
-      background: #F8FAFC;
-      border-left: 3px solid var(--navy-main);
-      font-weight: 600;
-    }
 
     .nav-tabs-bar {
       background: #FFFFFF;
@@ -391,13 +370,6 @@
       border-color: var(--border-subtle);
       color: var(--text-main);
     }
-    .cell-tag {
-      display: block;
-      font-size: 10px;
-      font-weight: 600;
-      opacity: 0.85;
-      margin-top: 2px;
-    }
 
     .dot-pill {
       display: inline-flex;
@@ -506,52 +478,6 @@
       gap: 10px;
     }
 
-    .plan-card-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-    .plan-card {
-      border: 2px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: 14px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      background: #FFFFFF;
-      transition: all 0.15s ease;
-    }
-    .plan-card:hover { border-color: var(--navy-border); }
-    .plan-card.selected {
-      border-color: var(--navy-main);
-      background: var(--navy-subtle);
-    }
-    .plan-badge-top {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      padding: 2px 6px;
-      border-radius: 4px;
-      display: inline-block;
-      margin-bottom: 6px;
-    }
-    .plan-badge-optimal { background: #DCFCE7; color: #166534; }
-    .plan-badge-sub { background: #E2E8F0; color: #475569; }
-    .plan-cost-hero {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--navy-main);
-      margin: 6px 0 2px 0;
-    }
-    .plan-breakdown-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 3px;
-    }
 
     .form-row {
       display: flex;
@@ -585,7 +511,7 @@
       gap: 8px;
       z-index: 2000;
     }
-    .toast-item, .toast-msg {
+    .toast-item {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -598,19 +524,19 @@
       border: 1px solid #10B981;
       box-shadow: 0 8px 24px rgba(0,0,0,0.25);
     }
-    .toast-item.toast-success, .toast-msg.success {
+    .toast-item.toast-success {
       background: #047857;
       border: 1px solid #10B981;
     }
-    .toast-item.toast-warning, .toast-msg.warning {
+    .toast-item.toast-warning {
       background: #B45309;
       border: 1px solid #F59E0B;
     }
-    .toast-item.toast-error, .toast-msg.error {
+    .toast-item.toast-error {
       background: #991B1B;
       border: 1px solid #EF4444;
     }
-    .toast-item.toast-info, .toast-msg.info {
+    .toast-item.toast-info {
       background: #0F766E;
       border: 1px solid #14B8A6;
     }
@@ -626,14 +552,11 @@
       padding: 10px 14px;
     }
     .log-accordion-body.open, .log-accordion-body.active { display: block; }
-    .log-line { margin-bottom: 4px; line-height: 1.4; }
     .log-time { color: #94A3B8; margin-right: 8px; }
-    .log-type { color: #38BDF8; margin-right: 6px; font-weight: 600; }
 
     @media (max-width: 1024px) {
       .kpi-row { grid-template-columns: repeat(2, 1fr); }
       .formula-cards-grid { grid-template-columns: repeat(2, 1fr); }
-      .plan-card-grid { grid-template-columns: 1fr; }
     }
 
     /* --- TABLE BUTTONS (B3) --- */
@@ -753,12 +676,6 @@
       color: var(--text-muted);
       margin-top: 1px;
     }
-    .cell-tag {
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--navy-accent);
-      margin-top: 2px;
-    }
 
     /* --- NOTIFICATION POPOVER & LOGS --- */
     .bell-item {
@@ -791,25 +708,6 @@
     }
 
     /* --- AI MIN/MAX VALUE STYLES --- */
-    .mm-base {
-      color: var(--text-muted);
-      font-size: 11px;
-      text-decoration: line-through;
-      margin-right: 4px;
-    }
-    .mm-ai {
-      color: #D12420;
-      font-weight: 800;
-      font-size: 1.15em;
-    }
-    .mm-delta {
-      font-size: 10.5px;
-      font-weight: 700;
-      margin-left: 2px;
-    }
-    .mm-row-changed {
-      background-color: rgba(254, 242, 242, 0.45);
-    }
 
     /* --- WAREHOUSE SEGMENTED CONTROL BAR (C1) --- */
     .warehouse-bar {
@@ -929,15 +827,7 @@
     .diff-down {
       color: var(--status-yellow);
     }
-    .diff-same {
-      color: var(--status-green);
-    }
 
-    .risk-badge {
-      display: inline-block;
-      font-size: 11px;
-      white-space: nowrap;
-    }
     .risk-tag {
       display: inline-block;
       padding: 2px 7px;
@@ -965,11 +855,6 @@
       background: #ECFDF5;
       color: #065F46;
       border: 1px solid #A7F3D0;
-    }
-    .risk-sub {
-      font-size: 10px;
-      color: var(--text-muted);
-      font-weight: 500;
     }
 
     /* MA TRAN TON KHO - Grid lines nhe & active column */

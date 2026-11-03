@@ -350,6 +350,9 @@ window.addEventListener('DOMContentLoaded', () => {
   // 7b. Kết nối ledger.csv (server.py) và nạp nhật ký quản trị tồn kho
   pingLedgerServer();
 
+  // 7c. Kiểm tra server proxy AI (chỉ ảnh hưởng panel "AI kiến nghị", không chặn phần còn lại)
+  refreshAiCoefServerStatus();
+
   // 8. Bind Global Modal Click Outside to Close
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {

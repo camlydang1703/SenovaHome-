@@ -95,6 +95,18 @@ function renderParamsView() {
       render: r => Number(r.sm).toFixed(3)
     },
     {
+      key: 'aiCoef',
+      header: 'Hệ số cầu AI',
+      align: 'right',
+      render: r => {
+        const c = Number(r.p.aiCoef || 1);
+        if (Math.abs(c - 1) < 0.001) return '<span style="color:var(--text-muted);">×1.00</span>';
+        const up = c > 1;
+        return `<strong style="color:${up ? 'var(--status-red)' : 'var(--navy-accent)'};">×${c.toFixed(2)}</strong>`
+          + `<div style="font-size:10px;color:var(--text-muted);">AI${up ? ' nâng' : ' hạ'} cầu</div>`;
+      }
+    },
+    {
       key: 'f_next',
       header: 'F_next/tuần',
       align: 'right',
@@ -157,6 +169,118 @@ function renderParamsView() {
     rows: rows,
     emptyMsg: 'Không có thông số cấu hình.'
   });
+
+  renderAiCoefPanel();
+}
+
+// ----------------------------------------------------------------------------
+// P6: PANEL "AI KIẾN NGHỊ HỆ SỐ CẦU" — bằng chứng + diễn giải + trước/sau
+// ----------------------------------------------------------------------------
+function renderAiCoefPanel() {
+  const body = document.getElementById('aiCoefBody');
+  if (!body) return;
+  const st = getAiCoefState();
+  const badge = document.getElementById('aiCoefBadge');
+  const summary = document.getElementById('aiCoefSummary');
+  const activeWh = (Store.ui && Store.ui.activeWh) || 'HCM';
+  const whObj = WAREHOUSES.find(w => w.code === activeWh) || WAREHOUSES[0];
+
+  const appliedCount = Object.keys(st.items || {}).length;
+  if (badge) {
+    badge.textContent = st.status || 'Chưa gọi AI';
+    badge.className = 'dot-pill ' + (appliedCount > 0 ? 'high' : (st.proposals && st.proposals.length ? 'neutral' : 'neutral'));
+  }
+  if (summary) {
+    const appliedList = Object.keys(st.items || {}).map(k => ({ sku: k, coef: st.items[k].coef }));
+    const eff = summarizeAiCoefEffect(activeWh, appliedList);
+    summary.innerHTML = appliedCount > 0
+      ? `Đang áp dụng <strong>${appliedCount}</strong>/11 SKU tại ${whObj.name}: ROP ${eff.ropBefore} → <strong>${eff.ropAfter}</strong> · vốn ứ đọng MAX ${eff.capDelta >= 0 ? '+' : '−'}${fmtVND(Math.abs(Math.round(eff.capDelta)))}`
+      : 'Chưa áp dụng hệ số nào — đang dùng hệ số gốc ×1.00.';
+  }
+
+  const props = st.proposals || [];
+  if (!props.length) {
+    body.innerHTML = `<div style="padding:14px;background:#F8FAFC;border:1px dashed var(--border-color);border-radius:6px;font-size:12px;color:var(--text-muted);">
+      Bấm <strong>AI kiến nghị ngay</strong> để lấy gợi ý hệ số cầu cho từng mặt hàng, dựa trên số bán 4 tuần qua,
+      các sự kiện đang diễn ra và số ô dưới MIN của 11 SKU.${st.lastError ? '<div style="margin-top:6px;color:var(--status-red);">Chưa lấy được gợi ý lúc này — hệ thống đã tính sẵn phương án an toàn.</div>' : ''}
+    </div>`;
+    return;
+  }
+
+  const rowsHtml = props.map(p => {
+    const sku = SKUS.find(s => s.code === p.sku) || { code: p.sku, name: p.sku, unit: 'sp' };
+    const before = getBaselineParams(p.sku, activeWh, Store.currentDate);
+    const after = calcSKUParams(p.sku, activeWh, Store.currentDate, Store.history, p.coef);
+    const cur = getAiDemandCoef(p.sku);
+    const ev = getDemandEvidence(p.sku, Store.currentDate);
+    const up = p.coef > cur;
+    const tag = p.source === 'AI'
+      ? '<span class="status-pill status-pill-ok" style="background:#EDE9FE;color:#6D28D9;border-color:#DDD6FE;">AI gợi ý</span>'
+      : '<span class="status-pill" style="background:#F1F5F9;color:var(--text-muted);">Hệ thống chốt</span>';
+    return `<tr>
+      <td><strong>${sku.code}</strong><div style="font-size:11px;color:var(--text-muted);">${escapeHtml(sku.name)}</div></td>
+      <td style="font-size:11.5px;color:var(--text-muted);">
+        Bán ${fmtNum(ev.actual)}/${fmtNum(ev.expected)} sp (<strong>${Math.round(ev.bias * 100)}%</strong>) · ${ev.lowCells}/${ev.whCount} ô dưới MIN<br>
+        ${ev.eventCount ? ev.eventCount + ' sự kiện đang diễn ra' : 'Không có sự kiện nào đang diễn ra'}
+        ${ev.upcoming && ev.upcoming.length
+          ? `<div style="margin-top:4px;color:#B45309;font-weight:600;">Sự kiện sắp tới: ${escapeHtml(ev.upcoming.join(', '))}${ev.upcomingMore ? ' và ' + ev.upcomingMore + ' sự kiện khác' : ''}</div>` : ''}
+      </td>
+      <td class="num-col">×${cur.toFixed(2)} → <strong style="color:${up ? 'var(--status-red)' : 'var(--navy-accent)'};">×${p.coef.toFixed(2)}</strong>
+        <div style="font-size:10px;color:var(--text-muted);">do bán hàng ×${ev.biasCoef.toFixed(2)} · do sự kiện sắp tới ×${ev.lookAhead.toFixed(2)}</div></td>
+      <td class="num-col">${before.rop} → <strong>${after.rop}</strong></td>
+      <td class="num-col">${before.qmax} → <strong>${after.qmax}</strong></td>
+      <td style="font-size:11.5px;">${tag}<div style="margin-top:4px;color:var(--text-main);">${escapeHtml(p.reason || '')}</div></td>
+    </tr>`;
+  }).join('');
+
+  const eff = summarizeAiCoefEffect(activeWh, props, Store.currentDate);
+  body.innerHTML = `
+    <table class="data-table" id="aiCoefTable">
+      <thead><tr>
+        <th>SKU</th><th>Tín hiệu 4 tuần qua</th>
+        <th class="num-col">Hệ số cầu</th><th class="num-col">MIN (ROP) ${whObj.name}</th>
+        <th class="num-col">MAX (Qmax) ${whObj.name}</th><th>AI diễn giải</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <div style="margin-top:10px;padding:10px 12px;background:#F8FAFC;border:1px solid var(--border-color);border-radius:6px;font-size:11.8px;color:var(--text-muted);">
+      <strong style="color:var(--navy-main);">Nếu bấm "Áp dụng vào Min/Max"</strong> tại ${whObj.name}: tổng ROP 11 SKU
+      ${eff.ropBefore} → <strong>${eff.ropAfter}</strong> (+${eff.ropAfter - eff.ropBefore}), vốn ứ đọng theo MAX
+      ${fmtVND(Math.round(eff.capBefore))} → <strong>${fmtVND(Math.round(eff.capAfter))}</strong>.
+      Hàng đợi đề xuất (RFQ / điều chuyển / san tải) được quét lại ngay theo ngưỡng mới.
+    </div>`;
+}
+
+function onAiCoefRunClick() {
+  const btn = document.getElementById('aiCoefRunBtn');
+  if (btn) btn.disabled = true;
+  const st = getAiCoefState();
+  delete st.lastError;
+  requestAiCoefProposals(Store.currentDate).then(() => {
+    if (btn) btn.disabled = false;
+    renderAiCoefPanel();
+    showToast(`AI đã trả về ${(st.proposals || []).length} kiến nghị hệ số cầu.`, 'success');
+  }).catch(() => {
+    if (btn) btn.disabled = false;
+    renderAiCoefPanel();
+  });
+}
+
+function onAiCoefApplyClick() {
+  const st = getAiCoefState();
+  if (!st.proposals || !st.proposals.length) {
+    showToast('Chưa có kiến nghị nào. Bấm "AI kiến nghị ngay" trước.', 'error');
+    return;
+  }
+  const res = applyAiCoefProposals(st.proposals, st.provider || 'AI');
+  showToast(`Đã áp dụng ${res.applied}/${st.proposals.length} hệ số cầu AI — Min/Max và hàng đợi đề xuất tính lại.`, 'success');
+  renderParamsView();
+}
+
+function onAiCoefResetClick() {
+  resetAiCoefs();
+  showToast('Đã hoàn tác hệ số cầu AI về ×1.00.', 'success');
+  renderParamsView();
 }
 
 function renderStepCalculator(skuCode, whCode) {

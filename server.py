@@ -15,6 +15,141 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # Cache in-memory for LLM responses: hash_key -> json_dict
 AI_CACHE = {}
 
+_dotenv_cache = None
+
+
+def load_dotenv():
+    """Nạp .env (gitignored) vào env vars. Trả về dict đã đọc (có thể rỗng)."""
+    global _dotenv_cache
+    if _dotenv_cache is not None:
+        return _dotenv_cache
+    _dotenv_cache = {}
+    path = os.path.join(DIRECTORY, '.env')
+    if os.path.exists(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#') or '=' not in line:
+                        continue
+                    k, v = line.split('=', 1)
+                    k, v = k.strip(), v.strip().strip('"').strip("'")
+                    _dotenv_cache[k] = v
+                    os.environ.setdefault(k, v)
+        except Exception as err:
+            print('.env read failed:', err)
+    return _dotenv_cache
+
+
+def gemini_api_key():
+    load_dotenv()
+    return os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY') or ''
+
+
+def gemini_model():
+    load_dotenv()
+    # Override bằng GEMINI_MODEL trong biến môi trường hoặc file .env
+    return os.environ.get('GEMINI_MODEL') or 'gemini-2.5-flash'
+
+
+
+# ---------------------------------------------------------------------------
+# P6: AI "hệ số cầu" (aiCoef) — key nằm ở server, mô hình chỉ diễn giải và
+# dịch số trong ±nudge quanh hệ số sàn tất định; ngoài khoảng đó bị kéo về sàn.
+# ---------------------------------------------------------------------------
+def clamp_coef(v, floor, lo, hi):
+    try:
+        n = float(v)
+    except (TypeError, ValueError):
+        return floor
+    if n <= 0:
+        return floor
+    return round(min(hi, max(lo, n)), 2)
+
+
+def coef_floor(e, lo, hi):
+    return clamp_coef(e.get('floorCoef'), 1.0, lo, hi)
+
+
+def evidence_text(e):
+    """Mot cau ngan — phai khop het offlineReason() trong src/js/aicoef.js de backend va frontend cung chu."""
+    coef = float(e.get('floorCoef') or 1.0)
+    coefTxt = (u"nâng cầu lên" if coef > 1 else u"giữ cầu") + u" ×%.2f" % coef
+    top = e.get('topWave') or u''
+    if top:
+        more = int(e.get('waveCount') or 1)
+        tail = u" và %d sự kiện khác" % (more - 1) if more > 1 else u""
+        return [u"%s%s sẽ bùng phát sau khi hàng về → %s." % (top, tail, coefTxt)]
+    bias = float(e.get('bias') or 1.0)
+    dirn = (u"bán nhanh hơn dự báo" if bias >= 1.05
+            else u"bán chậm hơn dự báo" if bias <= 0.95 else u"bán đúng như dự báo")
+    return [u"Sản phẩm %s, chưa có sự kiện mới trước khi hàng về → %s." % (dirn, coefTxt)]
+
+
+def ai_coef_deterministic(brief):
+    guard = brief.get('guard') or {}
+    lo = float(guard.get('min', 0.8))
+    hi = float(guard.get('max', 1.5))
+    items = []
+    for e in brief.get('items') or []:
+        floor = coef_floor(e, lo, hi)
+        items.append({'sku': e.get('sku'), 'coef': floor, 'reason': u' '.join(evidence_text(e))})
+    return {'ok': True, 'provider': 'OFFLINE', 'items': items}
+
+
+def ai_coef_call_gemini(brief):
+    api_key = gemini_api_key()
+    if not api_key:
+        return None
+    guard = brief.get('guard') or {}
+    lo = float(guard.get('min', 0.8))
+    hi = float(guard.get('max', 1.5))
+    nudge = float(guard.get('maxNudge', 0.1))
+    prompt = (
+        u"Bạn là AI Cố vấn Tồn kho của SenNova Home. Với từng SKU trong payload: "
+        u"(1) chọn hệ số cầu aiCoef nhân vào công thức Min/Max, "
+        u"(2) viết 1 câu diễn giải tiếng Việt tối đa 20 từ, tự nhiên như người tư vấn, nêu đúng sự kiện quyết định (tên ngắn + ngày + hệ số); "
+        u"KHÔNG dùng thuật ngữ kỹ thuật, KHÔNG liệt kê lại toàn bộ payload, KHÔNG lặp các con số đã có ở cột tín hiệu. "
+        u"RÀNG BUỘC: coef phải trong [%.2f, %.2f] và lệch tối đa %.2f so với floorCoef "
+        u"(= mức bán lệch 4 tuần qua × phần cầu tăng thêm của các sự kiện sẽ diễn ra SAU ngày hàng về, "
+        u"tính theo số ngày sự kiện phủ lên cửa sổ dự báo). "
+        u"Lead time NCC đã nằm trong ROP, "
+        u"KHÔNG được tính trùng. Không được bịa số liệu ngoài payload. "
+        u'Dầu ra duy nhất là JSON: {"items":[{"sku":"...","coef":1.25,"reason":"..."}]}'
+    ) % (lo, hi, nudge)
+    url = ("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s"
+           % (gemini_model(), api_key))
+    req_data = {
+        "contents": [{"parts": [{"text": prompt + u"\n\nPayload:\n" + json.dumps(brief, ensure_ascii=False)}]}],
+        "generationConfig": {"temperature": 0.2, "response_mime_type": "application/json"}
+    }
+    try:
+        req = urllib.request.Request(url, data=json.dumps(req_data).encode('utf-8'),
+                                     headers={'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            res_json = json.loads(resp.read().decode('utf-8'))
+            text = res_json['candidates'][0]['content']['parts'][0]['text']
+            parsed = json.loads(text)
+            known = {e.get('sku'): e for e in (brief.get('items') or [])}
+            out = []
+            for it in (parsed.get('items') or []):
+                e = known.get(it.get('sku'))
+                if not e:
+                    continue
+                floor = coef_floor(e, lo, hi)
+                coef = clamp_coef(it.get('coef'), floor,
+                                  round(max(lo, floor - nudge), 2), round(min(hi, floor + nudge), 2))
+                reason = str(it.get('reason') or u'').strip()
+                out.append({'sku': e.get('sku'), 'coef': coef,
+                            'reason': (reason or u' '.join(evidence_text(e)))[:400]})
+            if not out:
+                return None
+            return {'ok': True, 'provider': 'gemini:' + gemini_model(), 'items': out}
+    except Exception as err:
+        print('Gemini ai_coef call failed:', err)
+        return None
+
+
 class EnterpriseDataHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
@@ -50,7 +185,11 @@ class EnterpriseDataHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({"status": "ok", "ledger": "data/ledger.csv"}).encode('utf-8'))
+            self.wfile.write(json.dumps({
+                "status": "ok", "ledger": "data/ledger.csv",
+                "aiCoef": {"model": gemini_model(), "has_key": bool(gemini_api_key()),
+                          "endpoint": "/api/ai_coef"}
+            }).encode('utf-8'))
             return
 
         # Fallback to standard file serving
@@ -82,6 +221,34 @@ class EnterpriseDataHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "success", "file": filename}).encode('utf-8'))
             except Exception as e:
                 self.send_error(500, str(e))
+            return
+
+
+        # API 1a: P6 — AI kiến nghị hệ số cầu (Gemini, key ở server, có cache + fallback)
+        if parsed.path == '/api/ai_coef':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8') if length else '{}'
+            try:
+                brief = json.loads(body)
+            except Exception as e:
+                self.send_error(400, 'Invalid JSON: %s' % e)
+                return
+            cache_key = 'aicoef:' + hashlib.sha256(
+                json.dumps({'model': gemini_model(), 'brief': brief}, sort_keys=True).encode('utf-8')).hexdigest()
+            result = AI_CACHE.get(cache_key)
+            from_cache = result is not None
+            if result is None:
+                result = ai_coef_call_gemini(brief) or ai_coef_deterministic(brief)
+                AI_CACHE[cache_key] = result
+            result = dict(result)
+            result['from_cache'] = from_cache
+            result['has_key'] = bool(gemini_api_key())
+            result['model'] = gemini_model()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
             return
 
         # API 1b: Append manager inventory actions to ledger.csv
@@ -129,109 +296,6 @@ class EnterpriseDataHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
-        # API 2: AI Explain & Recommend (LLM Integration with Cache & Fallback)
-        if parsed.path == '/api/ai_recommend':
-            length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(length).decode('utf-8')
-            try:
-                payload = json.loads(body)
-                # Compute deterministic hash for (date + input_context)
-                raw_hash_str = json.dumps(payload, sort_keys=True)
-                cache_key = hashlib.sha256(raw_hash_str.encode('utf-8')).hexdigest()
-
-                if cache_key in AI_CACHE:
-                    cached_resp = AI_CACHE[cache_key].copy()
-                    cached_resp["from_cache"] = True
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json; charset=utf-8')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(json.dumps(cached_resp, ensure_ascii=False).encode('utf-8'))
-                    return
-
-                # Read API key from environment variable
-                gemini_api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
-
-                llm_result = None
-
-                # Call Gemini API if key is present
-                if gemini_api_key:
-                    try:
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_api_key}"
-                        system_prompt = (
-                            "Bạn là AI Cố Vấn Chuỗi Cung Ứng Cao Cấp (Supply Chain AI Advisor) cho SenNova Home. "
-                            "Nhiệm vụ của bạn là phân tích ngữ cảnh kho nhận và kho xuất, đánh giá 3 phương án A (Mua RFQ), B (Chuyển kho) và C (Kết hợp chuyển dư + mua phần còn lại). "
-                            "YÊU CẦU BẮT BUỘC: Đầu ra chỉ là duy nhất một JSON object với schema: "
-                            '{"recommended_option": "A" | "B" | "C", "reason": "giải thích kinh tế sắc bén dưới 80 từ", "risk_flags": ["danh sách cờ rủi ro ngắn"]}. '
-                            "KHÔNG được tự bịa con số. Chỉ được chọn trong 3 phương án A, B hoặc C và dùng đúng các con số chi phí đã tính sẵn."
-                        )
-                        req_data = {
-                            "contents": [{
-                                "parts": [
-                                    {"text": system_prompt + "\n\nNgữ cảnh dữ liệu tính toán:\n" + json.dumps(payload, ensure_ascii=False)}
-                                ]
-                            }],
-                            "generationConfig": {
-                                "temperature": 0.0,
-                                "response_mime_type": "application/json"
-                            }
-                        }
-                        req = urllib.request.Request(url, data=json.dumps(req_data).encode('utf-8'), headers={'Content-Type': 'application/json'})
-                        with urllib.request.urlopen(req, timeout=10) as resp:
-                            res_json = json.loads(resp.read().decode('utf-8'))
-                            text_out = res_json['candidates'][0]['content']['parts'][0]['text']
-                            llm_result = json.loads(text_out)
-                    except Exception as err:
-                        print("Gemini API call failed, falling back to math engine:", err)
-
-                # Fallback to Math Cost Engine if no LLM key or call failed
-                if not llm_result or "recommended_option" not in llm_result:
-                    # Pick option with lowest total cost
-                    plans = payload.get("options", {})
-                    best_opt = "A"
-                    lowest_cost = float('inf')
-                    for opt_id, opt_data in plans.items():
-                        c = opt_data.get("total_cost", float('inf'))
-                        if c < lowest_cost:
-                            lowest_cost = c
-                            best_opt = opt_id
-                    
-                    # Generate deterministic expert reason based on the chosen plan
-                    chosen_plan = plans.get(best_opt, {})
-                    c_stockout = chosen_plan.get("c_stockout", 0)
-                    time_days = chosen_plan.get("time_days", 1)
-                    
-                    if best_opt == "A":
-                        reason = f"Phương án A (Mua RFQ) tối ưu tổng chi phí do không làm phát sinh chi phí bù mua lại tại kho nguồn và các kho khác không đủ hàng dư an toàn."
-                    elif best_opt == "B":
-                        reason = f"Phương án B (Chuyển kho) có thời gian về nhanh ({time_days} ngày), triệt tiêu hoàn toàn rủi ro thiếu hàng C_stockout."
-                    else:
-                        reason = f"Phương án C (Kết hợp) tận dụng triệt để lượng tồn dư của kho nguồn (chi phí mua lại = 0), đồng thời mua bổ sung phần còn thiếu qua RFQ."
-
-                    risks = []
-                    if c_stockout > 0:
-                        risks.append(f"Cảnh báo thiếu hàng trong {time_days} ngày chờ giao")
-                    if chosen_plan.get("resupply_cost", 0) > 0:
-                        risks.append("Kho nguồn phải mua bù lại phần tồn trích xuất dưới Qmax")
-
-                    llm_result = {
-                        "recommended_option": best_opt,
-                        "reason": reason,
-                        "risk_flags": risks,
-                        "fallback_used": True
-                    }
-
-                # Save to cache
-                AI_CACHE[cache_key] = llm_result
-
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json; charset=utf-8')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps(llm_result, ensure_ascii=False).encode('utf-8'))
-            except Exception as e:
-                self.send_error(500, str(e))
-            return
 
         self.send_error(404, "Unknown API")
 

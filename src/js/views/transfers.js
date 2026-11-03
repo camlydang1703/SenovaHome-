@@ -51,13 +51,9 @@ function renderTransfersView() {
       key: 'route',
       header: 'Tuyến chuyển',
       render: tr => {
-        const sWh = WAREHOUSES.find(w => w.code === tr.srcWh);
-        const dWh = WAREHOUSES.find(w => w.code === tr.dstWh);
-        if (tr.kind === 'SUPPLIER') {
-          const sup = (typeof SUPPLIERS !== 'undefined' && SUPPLIERS[tr.srcWh]) || null;
-          return `<strong>NCC ${sup && sup.name ? sup.name : tr.srcWh}</strong> ➔ <strong>${dWh ? dWh.name : tr.dstWh}</strong><div style="font-size:11px;color:var(--text-muted);">${tr.note || ''}</div>`;
-        }
-        return `<strong>${sWh ? sWh.name : tr.srcWh}</strong> ➔ <strong>${dWh ? dWh.name : tr.dstWh}</strong>`;
+        const ep = getRouteEndpoints(tr.srcWh, tr.dstWh);
+        const note = tr.kind === 'SUPPLIER' ? `<div style="font-size:11px;color:var(--text-muted);">${escapeHtml(tr.note || '')}</div>` : '';
+        return `<strong>${ep.from}</strong> ➔ <strong>${ep.to}</strong>${note}`;
       }
     },
     {

@@ -46,67 +46,27 @@
     function openOverstockModal(skuCode, whCode) {
       const sku = SKUS.find(s => s.code === skuCode);
       const wh  = WAREHOUSES.find(w => w.code === whCode);
-      const p   = calcSKUParams(skuCode, whCode, Store.currentDate, Store.history);
-      const st  = Store.stock[whCode][skuCode];
-      const effSrc = st.on_hand + st.in_transit - st.committed;
-      // Mức Vượt MAX nhìn thấy = tồn khả dụng + phần đang bị đề xuất/lệnh chờ xuất GIỮ CHỖ (khớp KPI & ma trận)
-      const reserve = getPendingProposalReserve(skuCode, whCode);
-      const overMaxView = Math.max(0, effSrc + reserve - p.qmax);
-      // Lượng còn chuyển thêm được NGAY hôm nay: đã trừ phần giữ chỗ, và kho nguồn vẫn giữ ở mức an toàn
-      const excess = Math.max(0, Math.min(effSrc - p.qmax, getAiTransferableQty(skuCode, whCode, Store.currentDate)));
+      const pairKey = `${skuCode}-${whCode}`;
+      // Bộ quét đề xuất và modal dùng chung getOverstockTargets → nhãn "chưa có kho nhận"
+      // không thể mâu thuẫn với danh sách kho nhận hiện ra trong modal.
+      const scan = getOverstockTargets(skuCode, whCode, Store.currentDate, pairKey);
+      const p = scan.params;
+      const st = Store.stock[whCode][skuCode];
+      const overMaxView = scan.overMaxView;
+      const reserve = scan.reserve;
+      const excess = scan.excess;
 
-      // Phân tích các kho nhận tiềm năng trong mạng lưới
-      // Ưu tiên:
-      // 1. Kho đang thiếu hụt (isLow = true) ưu tiên hơn kho không thiếu
-      // 2. Trong các kho cùng thiếu (hoặc cùng không thiếu), ưu tiên kho có chi phí vận chuyển thấp hơn + lead time nhanh hơn
-      // 3. Nếu chênh lệch cước rất lớn, hệ thống chọn kho có tổng hiệu quả chi phí / cứu nguy cao nhất
-      const candidateWhs = WAREHOUSES.filter(w => w.code !== whCode).map(w => {
-        const destP = calcSKUParams(skuCode, w.code, Store.currentDate, Store.history);
-        const destSt = Store.stock[w.code][skuCode];
-        const destEff = destSt.on_hand + destSt.in_transit - destSt.committed;
-        const tDays = getTransferDays(whCode, w.code, Store.currentDate);
-        const isLow = destEff <= destP.rop;
-        const capacity = Math.max(0, Math.floor(getSafeTarget(destP) - destEff)); // chỉ nhận tới mức an toàn, khớp engine đề xuất
-        // Cước tính trên đúng lô dự kiến chuyển sang kho này (tồn dư khả dụng ∩ sức chứa), tối thiểu 1 thùng
-        const planQty = Math.max(1, Math.min(excess, capacity));
-        // freight: quy về cùng mặt bằng tồn dư để xếp hạng công bằng giữa các kho
-        // freightPlan: cước thật của lô dự kiến chuyển sang kho này (hiển thị)
-        const freight = calcFreightCost(whCode, w.code, skuCode, Math.max(1, excess), Store.currentDate);
-        const freightPlan = calcFreightCost(whCode, w.code, skuCode, planQty, Store.currentDate);
-        const deficit = isLow ? (destP.rop - destEff) : 0;
-        const ratio = destP.rop > 0 ? (destEff / destP.rop) : 1;
-        return {
-          code: w.code,
-          name: w.name,
-          p: destP,
-          st: destSt,
-          eff: destEff,
-          tDays: tDays,
-          freight: freight,
-          freightPlan: freightPlan,
-          planQty: planQty,
-          isLow: isLow,
-          capacity: capacity,
-          deficit: deficit,
-          ratio: ratio
-        };
-      }).sort((a, b) => {
-        // Cùng thiếu hụt: ưu tiên chi phí vận chuyển thấp hơn (ví dụ Bình Dương gần hơn nhiều so với Hà Nội)
-        if (a.isLow && b.isLow) {
-          if (a.freight !== b.freight) return a.freight - b.freight;
-          return a.tDays - b.tDays;
-        }
-        // Một bên thiếu, một bên không thiếu
-        if (a.isLow !== b.isLow) return a.isLow ? -1 : 1;
-        // Cùng không thiếu: ưu tiên cước thấp hơn
-        if (a.freight !== b.freight) return a.freight - b.freight;
-        return a.ratio - b.ratio;
-      });
+      const candidateWhs = scan.targets.map(t => ({
+        code: t.code, name: t.name, p: t.p, eff: t.eff, planned: t.planned,
+        capacity: t.room, isLow: t.isLow, tDays: t.tDays,
+        freight: t.freight, freightPlan: t.freight, planQty: t.planQty,
+        unitFreight: t.unitFreight, gateOk: t.gateOk, marginCap: t.marginCap
+      }));
 
-      const bestTarget = candidateWhs.find(c => c.capacity >= 1) || candidateWhs[0];
-      const hasCapacity = candidateWhs.some(c => c.capacity >= 1);
+      const bestTarget = scan.best;
+      const hasCapacity = !!bestTarget;
       const hasValidTarget = hasCapacity && excess >= 1;
-      const recommendedQty = hasValidTarget ? Math.max(1, Math.min(excess, bestTarget.capacity)) : 0;
+      const recommendedQty = hasValidTarget ? Math.max(1, Math.min(excess, bestTarget.room)) : 0;
 
       // Liệt kê phần tồn dư đang bị giữ chỗ (đề xuất chờ duyệt + lệnh XC chờ kho này xác nhận gửi)
       const pendingOut = [];
@@ -167,12 +127,14 @@
                         </label>
                       </td>
                       <td style="padding:8px 10px;text-align:right;font-weight:600;">
-                        ${cw.eff} / ${cw.p.rop}
+                        ${cw.eff}${cw.planned > 0 ? ` <span style="font-size:10px;color:var(--text-muted);font-weight:500;">(+${cw.planned} theo kế hoạch)</span>` : ''} / ${cw.p.rop}
                       </td>
                       <td style="padding:8px 10px;">
-                        ${cw.isLow 
-                          ? '<span style="color:var(--status-red);font-weight:700;">Dưới MIN (Thiếu hụt hàng)</span>' 
-                          : (canReceive ? '<span style="color:var(--status-green);font-weight:600;">Còn sức chứa (dưới mức an toàn)</span>' : '<span style="color:var(--status-yellow);">Đã trên mức an toàn — không nên nhận</span>')}
+                        ${cw.isLow
+                          ? '<span style="color:var(--status-red);font-weight:700;">Dưới MIN (Thiếu hụt hàng)</span>'
+                          : (canReceive ? '<span style="color:var(--status-green);font-weight:600;">Còn sức chứa (dưới mức an toàn)</span>'
+                                        : `<span style="color:var(--status-yellow);">Đã trên mức an toàn${cw.planned > 0 ? ` hoặc đã có ${cw.planned} ${sku.unit} trong kế hoạch về kho này` : ''} — không nên nhận</span>`)}
+                        ${canReceive && !cw.gateOk ? `<div style="font-size:10px;color:#B45309;">Cước ${fmtVND(Math.round(cw.unitFreight))}/${sku.unit} vượt ${Math.round((PARAMS.freightMarginCap || 0.5) * 100)}% biên LN (${fmtVND(Math.round(cw.marginCap))}/${sku.unit}) — chỉ nên dùng khi buộc giải phóng vốn</div>` : ''}
                       </td>
                       <td style="padding:8px 10px;text-align:right;">${cw.tDays} ngày</td>
                       <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy-accent);">${excess >= 1 && canReceive ? `${fmtVND(cw.freightPlan)}<div style="font-size:10px;font-weight:500;color:var(--text-muted);">cho lô ${cw.planQty} ${sku.unit}</div>` : '—'}</td>
@@ -194,6 +156,9 @@
             <div id="overstockCostLine" style="font-size:12px;color:var(--text-sub);margin-bottom:16px;"></div>
             <div style="display:flex;gap:10px;justify-content:flex-end;">
               <button class="btn-large-sec" onclick="closeModal('overstockModal')">Hủy bỏ</button>
+              <button class="btn-large-sec" style="background:#FFF7ED;border-color:#FDBA74;color:#B45309;" onclick="executeOverstockPromotion('${sku.code}', '${wh.code}', 15)">
+                2B: Flash Sale 15% tại chỗ (7 ngày)
+              </button>
               <button class="btn-large" onclick="executeBatch2ATransfer('${sku.code}', '${wh.code}')">
                 Thực thi chuyển kho san tải
               </button>
@@ -204,15 +169,18 @@
                 Mức vượt MAX ${overMaxView} ${sku.unit}${pendingOut.length ? ` đã nằm trong ${pendingOut.length} chứng từ chờ xuất của chính ${sku.code} tại kho này:` : ' đã bị hút hết bởi nhu cầu bán và các lệnh đang chạy:'}
                 ${pendingOut.length ? `<ul style="margin:6px 0 6px 18px;padding:0;">${pendingOut.map(x => `<li>${x}</li>`).join('')}</ul>
                 <span style="color:#B45309;">→ Sang tab <strong>Điều chuyển</strong>, chọn kho ${whCode} rồi bấm <strong>"Xác nhận gửi hàng"</strong> để hàng rời kho — vốn ứ đọng sẽ giảm đúng phần đã chuyển.</span>` : ''}
-                <br>Phương án thay thế: chạy <strong>Flash Sale / thanh lý</strong> tại chỗ, hoặc chờ nhu cầu tăng rồi quét lại đề xuất vào ngày hôm sau.
+                <br>Phương án thay thế: chạy <strong>Flash Sale / thanh lý</strong> tại chỗ (nút dưới), hoặc chờ nhu cầu tăng rồi quét lại đề xuất vào ngày hôm sau.
               ` : `
-                <strong>⚠ Không có kho nhận khả thi.</strong> Cả 4 kho còn lại đều đang ở <strong>trên mức an toàn</strong> (đã gần hoặc vượt MAX), nên mọi lệnh điều chuyển lúc này sẽ bị chặn để không đẩy kho nhận vượt trần.<br>
+                <strong>⚠ Chưa chọn được kho nhận khả thi.</strong> Cả 4 kho còn lại đều đã ở <strong>trên mức an toàn</strong> hoặc đã bị chiếm hết sức chứa bởi ${candidateWhs.some(c => c.planned > 0) ? 'các chứng từ đang chờ trong chính kế hoạch hôm nay' : 'lượng hàng hiện hữu'}, nên lệnh điều chuyển lúc này sẽ bị chặn để không đẩy kho nhận vượt trần.<br>
                 Phương án giải phóng vốn thay thế: chạy <strong>Flash Sale / thanh lý</strong> tại chỗ cho ${fmtNum(overMaxView)} ${sku.unit} dư (vốn chiếm dụng ≈ <strong>${fmtVND(overMaxView * sku.cogs)}</strong>), hoặc chờ nhu cầu giảm rồi quét lại đề xuất vào ngày hôm sau.<br>
                 <span style="color:#B45309;">Nếu vẫn muốn buộc điều chuyển (van nhân hiệu, vượt khuyến nghị hệ thống), dùng nút bên dưới — hệ thống sẽ kiểm tra lại ràng buộc an toàn trước khi tạo lệnh.</span>
               `}
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;">
               <button class="btn-large-sec" onclick="closeModal('overstockModal')">Đóng</button>
+              <button class="btn-large-sec" style="background:#FFF7ED;border-color:#FDBA74;color:#B45309;" onclick="executeOverstockPromotion('${sku.code}', '${wh.code}', 15)">
+                2B: Flash Sale 15% tại chỗ (7 ngày)
+              </button>
               <button class="btn-large" style="background:#B45309;border-color:#B45309;" onclick="closeModal('overstockModal'); openManualTransferModal('${sku.code}', '${wh.code}', '', 1)">
                 Mở lệnh thủ công…
               </button>
@@ -323,9 +291,24 @@ recalcCommittedStock();
       refreshAfterStockChange();
     }
 
-    function execute2BPromotion(skuCode, whCode) {
-      const discountSelect = document.getElementById('promoDiscountSelect');
-      const discountPct = discountSelect ? parseInt(discountSelect.value, 10) : 15;
+    // 2B: Giải phóng vốn ứ đọng TẠI CHỖ bằng Flash Sale (sim tăng cầu x1.6 trong 7 ngày, chiết khấu ăn vào biên LN)
+    function executeOverstockPromotion(skuCode, whCode, discountPct) {
+      if (Store.ui && Store.ui.viewDate) {
+        showToast('Đang xem lại ngày cũ — không thể mở chương trình mới.', 'info');
+        return;
+      }
+      Store.promotions = Store.promotions || [];
+      Store.promotions.forEach(pm => {
+        if (pm.status === 'Đang chạy' && Store.currentDate > pm.validUntil) pm.status = 'Hết hạn';
+      });
+      const running = Store.promotions.find(pm => pm.sku === skuCode && pm.wh === whCode && pm.status === 'Đang chạy');
+      if (running) {
+        showToast(`Flash Sale ${running.id} đang chạy cho ${skuCode} tại ${whCode} đến ${fmtDateVN(running.validUntil)}.`, 'info');
+        return;
+      }
+      const pct = parseInt(discountPct, 10) || 15;
+      const skuObj = SKUS.find(s => s.code === skuCode) || { name: skuCode, unit: 'sp', cogs: 0, price: 0 };
+      const salePrice = Math.round(skuObj.price * (100 - pct) / 100);
       const kmId = padSeq('KM'); // Yêu cầu 0.10: Định dạng KM-xxxx
 
       Store.promotions.unshift({
@@ -333,7 +316,7 @@ recalcCommittedStock();
         date: Store.currentDate,
         sku: skuCode,
         wh: whCode,
-        discountPct: discountPct,
+        discountPct: pct,
         validUntil: addDays(Store.currentDate, 7),
         status: 'Đang chạy'
       });
@@ -343,12 +326,13 @@ recalcCommittedStock();
 
       closeModal('overstockModal');
       pushNotification('PROMOTION_2B', kmId,
-        `Kích hoạt chương trình Flash Sale ${kmId} giảm ${discountPct}% cho ${skuCode} tại ${whCode}.`
+        `Kích hoạt Flash Sale ${kmId}: ${skuObj.name} tại ${whCode} giảm ${pct}% còn ${fmtVND(salePrice)} (${skuObj.unit}), chạy 7 ngày đến ${fmtDateVN(addDays(Store.currentDate, 7))}.`
       );
       logAction('PROMOTION_2B', kmId,
-        `Kích hoạt Flash Sale ${kmId} cho ${skuCode} tại kho ${whCode}: Chiết khấu ${discountPct}%, thời hạn 7 ngày.`
+        `Kích hoạt Flash Sale ${kmId} cho ${skuCode} tại kho ${whCode}: Chiết khấu ${pct}%, thời hạn đến ${fmtDateVN(addDays(Store.currentDate, 7))}, Engine kỳ vọng cầu tăng x1.6. Hàng vẫn nằm nguyên ${whCode}, chưa phát sinh xuất kho.`,
+        0, whCode, { sku: skuCode }
       );
-      showToast(`Đã kích hoạt thành công chương trình Flash Sale ${kmId}`, 'success');
+      showToast(`Đã kích hoạt Flash Sale ${kmId} (${pct}%) — hàng vẫn nằm kho ${whCode}, chờ cầu tăng 7 ngày.`, 'success');
       refreshAfterStockChange();
     }
 
@@ -511,27 +495,9 @@ recalcCommittedStock();
       renderReplenishmentModalUI();
     }
 
-    function selectModalPlan(planId) {
-      if (!ActiveModalContext) return;
-      ActiveModalContext.selectedPlan = planId;
-      renderReplenishmentModalUI();
-    }
-
     function onModalCustomQtyChange(val) {
       if (!ActiveModalContext) return;
       ActiveModalContext.customQty = parseInt(val, 10) || 1;
-      renderReplenishmentModalUI();
-    }
-
-    function onModalSourceWhChange(whCode) {
-      if (!ActiveModalContext) return;
-      ActiveModalContext.sourceWh = whCode;
-      renderReplenishmentModalUI();
-    }
-
-    function onModalSupplierChange(supCode) {
-      if (!ActiveModalContext) return;
-      ActiveModalContext.supplier = supCode;
       renderReplenishmentModalUI();
     }
 
@@ -627,7 +593,7 @@ recalcCommittedStock();
 
 
     // ----------------------------------------------------------------------------
-    // 3.12 AUTOMATED SELF-TESTS (14 tiêu chí nghiệm thu, gọi hàm thật của engine)
+    // 3.12 AUTOMATED SELF-TESTS (15 tiêu chí nghiệm thu, gọi hàm thật của engine)
     // ----------------------------------------------------------------------------
     function runSelfTests() {
       const results = [];
@@ -740,12 +706,16 @@ recalcCommittedStock();
       const badgeEl = document.getElementById('bellBadge');
       const badgeDisplay = badgeEl ? parseInt(badgeEl.textContent, 10) || 0 : 0;
       const badgeHidden = !badgeEl || badgeEl.style.display === 'none';
-      const t5_ok = unreadActual === 0 ? badgeHidden : (!badgeHidden && badgeDisplay === unreadActual);
+      // UI chủ ý trần nhãn ở "99+" → từ 100 chưa đọc trở đi chỉ cần badge còn hiện và ≥ 99
+      const badgeOk5 = unreadActual > 99
+        ? (!badgeHidden && badgeDisplay >= 99)
+        : (unreadActual === 0 ? badgeHidden : (!badgeHidden && badgeDisplay === unreadActual));
+      const t5_ok = badgeOk5;
       results.push({
         num: 5,
         title: 'Badge chuông thông báo khớp số chưa đọc của kho đang xem',
         pass: t5_ok,
-        detail: `Kho đang xem ${activeWh5}: chưa đọc ${unreadActual}/${unreadAll} toàn mạng — badge hiển thị "${badgeHidden ? '(ẩn)' : badgeDisplay}". ${t5_ok ? 'Khớp phạm vi.' : 'Lệch: badge phải bằng số chưa đọc của kho đang xem.'}`
+        detail: `Kho đang xem ${activeWh5}: chưa đọc ${unreadActual}/${unreadAll} toàn mạng — badge hiển thị "${badgeHidden ? '(ẩn)' : (unreadActual > 99 ? '99+' : badgeDisplay)}". ${t5_ok ? 'Khớp phạm vi (trần hiển thị 99+).' : 'Lệch: badge phải bằng số chưa đọc của kho đang xem.'}`
       });
 
       // Test 6: Triệt tiêu hoàn toàn PO trong Store
@@ -901,6 +871,47 @@ recalcCommittedStock();
           : `Thiếu định nghĩa CSS: ${missingCss14.join(', ')}${hasAccent14 ? '' : ', --navy-accent'}`
       });
 
+      // Test 15 (P6): Guardrail "hệ số cầu AI" — trong guardrail, khớp công thức, không lệch quá sàn ±nudge
+      const st15 = (typeof getAiCoefState === 'function') ? getAiCoefState() : { items: {}, proposals: [] };
+      const all15 = Object.keys(st15.items).map(k => ({ sku: k, coef: st15.items[k].coef }))
+        .concat((st15.proposals || []).map(p => ({ sku: p.sku, coef: p.coef })));
+      const outGuard15 = all15.filter(c => !(c.coef >= PARAMS.aiCoefMin && c.coef <= PARAMS.aiCoefMax));
+      const wh15 = (Store.ui && Store.ui.activeWh) || WAREHOUSES[0].code;
+      const badFormula15 = [];
+      const badNudge15 = [];
+      Object.keys(st15.items).forEach(code => {
+        const p15 = calcSKUParams(code, wh15, Store.currentDate, Store.history);
+        const base15 = getBaselineParams(code, wh15, Store.currentDate);
+        if (Math.abs(p15.d_lead - base15.d_lead * p15.aiCoef) > 0.5) {
+          badFormula15.push(`${code} d_lead=${p15.d_lead} ≠ ${base15.d_lead}×${p15.aiCoef}`);
+        }
+        const floor15 = st15.items[code].floorCoef !== undefined
+          ? st15.items[code].floorCoef
+          : getDemandEvidence(code, Store.currentDate).floorCoef;
+        if (Math.abs(st15.items[code].coef - floor15) > AI_COEF_NUDGE + 0.005) {
+          badNudge15.push(`${code} ×${st15.items[code].coef} (sàn ×${floor15})`);
+        }
+      });
+      let negStock15 = 0;
+      WAREHOUSES.forEach(w => SKUS.forEach(s => {
+        const st15s = Store.stock[w.code][s.code];
+        if (st15s && st15s.on_hand < 0) negStock15++;
+      }));
+      const coef15Pass = outGuard15.length === 0 && badFormula15.length === 0 &&
+        badNudge15.length === 0 && negStock15 === 0;
+      results.push({
+        num: 15,
+        title: 'Guardrail AI hệ số cầu: mọi coef trong [0.80–1.50], lệch ≤0.10 so với sàn tất định, ROP/MAX khớp công thức',
+        pass: coef15Pass,
+        detail: coef15Pass
+          ? `${Object.keys(st15.items).length} hệ số đang áp dụng + ${(st15.proposals || []).length} kiến nghị: ` +
+            `tất cả trong guardrail [${PARAMS.aiCoefMin}–${PARAMS.aiCoefMax}], không quá ±${AI_COEF_NUDGE} quanh sàn sai số, ` +
+            `D_lead/MIN/MAX tính lại đúng công thức gốc, 0 ô on_hand < 0.` +
+            (Object.keys(st15.items).length === 0 ? ' (chưa áp dụng hệ số nào — bất biến kiểm tra trên hiện trạng)' : '')
+          : `Vi phạm: ${outGuard15.length} coef ngoài guardrail, ${badNudge15.length} coef lệch quá sàn ` +
+            `(${badNudge15.join('; ')}), ${badFormula15.length} coef lệch công thức (${badFormula15.join('; ')}), ${negStock15} ô âm.`
+      });
+
       // Render Results into Modal
       const summaryEl = document.getElementById('selfTestSummary');
       const resultsEl = document.getElementById('selfTestResults');
@@ -937,6 +948,7 @@ recalcCommittedStock();
       }
 
       openModal('selfTestModal');
+      return results;
     }
 
     function openSelfTestModal() {

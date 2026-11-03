@@ -126,12 +126,19 @@ function renderDashboardView() {
           return `<strong>${sWh ? sWh.name : r.srcWh}</strong>`;
         }
         if (r.type === 'RFQ') {
-          const supObj = SUPPLIERS[r.sup];
-          return `<strong>${supObj ? supObj.name : (r.sup || 'Nhà cung cấp')}</strong>`;
+          // RFQ luôn gửi đồng loạt cho mọi NCC cùng ngành hàng — hiển thị đủ danh sách
+          const codes = (r.sups && r.sups.length) ? r.sups
+            : (typeof getRfqTargetSuppliers === 'function' ? getRfqTargetSuppliers(r.sku) : [r.sup]);
+          const names = codes.map(c => (SUPPLIERS[c] && SUPPLIERS[c].name) || c);
+          const head = `<strong>${names[0]}</strong>`;
+          const rest = names.length > 1
+            ? `<div style="font-size:10.5px;color:var(--text-muted);">+ ${names.length - 1} NCC cùng ngành (${names.slice(1).join(', ')})</div>`
+            : '';
+          return `${head}${rest}`;
         }
         if (r.type === 'OVERSTOCK') {
           const sWh = WAREHOUSES.find(w => w.code === r.srcWh);
-          return `<strong>${sWh ? sWh.name : whObj.name}</strong>`;
+          return `<strong>${sWh ? sWh.name : r.srcWh}</strong>`;
         }
         return `<strong>${whObj.name}</strong>`;
       }
@@ -166,7 +173,7 @@ function renderDashboardView() {
         let pillClass = 'status-pill-ok';
         if (r.type === 'RFQ' || r.status.includes('Chờ')) pillClass = 'status-pill-low';
         if (r.type === 'OVERSTOCK') pillClass = 'status-pill-high';
-        const label = (r.type === 'OVERSTOCK' && !r.dstWh) ? 'Cần giải phóng vốn · chưa có kho nhận' : r.status;
+        const label = r.status;
         return `<span class="status-pill ${pillClass}">${label}</span>`;
       }
     },

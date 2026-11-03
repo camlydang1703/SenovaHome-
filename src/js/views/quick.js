@@ -29,7 +29,7 @@
       if (type === 'IN_SHIPMENT') {
         return getOpenShipments(whCode, skuCode).map(t => ({
           value: t.id, qty: t.qty,
-          label: `${t.id} · ${t.kind === 'SUPPLIER' ? 'NCC ' + t.srcWh : 'Kho ' + t.srcWh} · ${t.qty} ${sku.unit} · dự kiến ${fmtDateVN(t.arrivalDate)} · ${t.status}`
+          label: `${t.id} · ${getRouteEndpoints(t.srcWh, t.dstWh).from} · ${t.qty} ${sku.unit} · dự kiến ${fmtDateVN(t.arrivalDate)} · ${t.status}`
         }));
       }
       if (type === 'OUT_TRANSFER') {
@@ -59,7 +59,7 @@
         qty = tr.qty;
         applyShipmentReceipt(tr, 'manual');
         refId = tr.id;
-        partyLabel = `${tr.kind === 'SUPPLIER' ? 'NCC ' : 'Kho '}${tr.srcWh} (lô ${tr.id})`;
+        partyLabel = `${getRouteEndpoints(tr.srcWh, tr.dstWh).from} (lô ${tr.id})`;
       } else {
         if (qty <= 0) return { ok: false, msg: 'Số lượng phải > 0!' };
         if (!o.party) return { ok: false, msg: 'Phải chọn nơi nhập / nơi xuất!' };
@@ -105,8 +105,13 @@
 
       // Phiếu nhận lô hàng / nhập NCC đã có thông báo + nhật ký từ applyShipmentReceipt
       if (o.type !== 'IN_SHIPMENT' && o.type !== 'IN_SUPPLIER') {
-        const route = o.type === 'OUT_TRANSFER' ? ` (${o.wh} -> ${o.party})` : '';
-        logAction('QUICK_OUT', refId || id, `${def.label} ${qty} ${o.sku} tại ${o.wh}${route}. Nơi xuất: ${partyLabel}. Ghi chú: ${o.note || 'Không có'}`, 0, o.wh);
+        const route = o.type === 'OUT_TRANSFER' ? ` (${getRouteLabel(o.wh, o.party)})` : '';
+        const deltas = o.type === 'OUT_TRANSFER'
+          ? { [o.wh]: { on_hand: -qty, in_transit: 0, on_order: 0 }, [o.party]: { on_hand: 0, in_transit: qty, on_order: 0 } }
+          : { [o.wh]: { on_hand: -qty, in_transit: 0, on_order: 0 } };
+        logAction('QUICK_OUT', refId || id,
+          `${def.label} ${qty} ${o.sku} tại ${o.wh}${route}. Nơi xuất: ${partyLabel}. Ghi chú: ${o.note || 'Không có'}`,
+          0, o.wh, { sku: o.sku, ledgerDeltas: deltas });
         pushNotification(o.type === 'OUT_TRANSFER' ? 'TRANSFER_APPROVED' : 'STOCK_OUT', refId || id,
           `${def.label} ${qty} ${o.sku} tại kho ${o.wh} → ${partyLabel}.`, o.wh);
       }
