@@ -1,4 +1,4 @@
-# SenNova Home IMS - Quy tắc làm việc & Bối cảnh
+# SenNova Home - Quy tắc làm việc & Bối cảnh
 
 ## 1. Bối cảnh
 - Quản trị tồn kho Min/Max động cho SenNova Home (5 kho x 11 SKU, mô phỏng 84 ngày từ 2026-08-01 đến 2026-10-23).

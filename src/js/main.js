@@ -345,7 +345,7 @@ window.addEventListener('DOMContentLoaded', () => {
   recordDailySnapshot(Store.startDate);
 
   // 7. Initial Log Entry
-  logAction('SYSTEM_INIT', 'ALL', 'Khởi tạo hệ thống SenNova Home IMS v3 thành công với 5 kho x 11 SKU.');
+  logAction('SYSTEM_INIT', 'ALL', 'Khởi tạo hệ thống SenNova Home thành công với 5 kho x 11 SKU.');
 
   // 7b. Kết nối ledger.csv (server.py) và nạp nhật ký quản trị tồn kho
   pingLedgerServer();
@@ -365,5 +365,5 @@ window.addEventListener('DOMContentLoaded', () => {
   // 9. Initial Render
   renderAllViews();
 
-  showToast('Hệ thống SenNova Home IMS sẵn sàng!', 'success');
+  showToast('Hệ thống SenNova Home sẵn sàng!', 'success');
 });
