@@ -1,0 +1,30 @@
+name: build-and-test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Build dong goi src/ -> dist/sennova_ims.html; cac test doc trực tiếp file này
+      - name: Build bundle
+        run: python build.py
+
+      - name: Acceptance tests
+        run: |
+          python -X utf8 tests/sim_test.py
+          python -X utf8 tests/test_phase_b.py
+          python -X utf8 tests/test_phase_c.py
+          python -X utf8 tests/test_phase_d.py
+          python -X utf8 tests/test_phase_3.py
+
+      - name: Bundled page must not contain the Gemini key
+        run: '! grep -q "AIza" dist/sennova_ims.html'
