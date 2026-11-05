@@ -192,6 +192,17 @@ class EnterpriseDataHandler(http.server.SimpleHTTPRequestHandler):
             }).encode('utf-8'))
             return
 
+        # Giup gan 404 kho hieu thanh loi that: /api/ai_coef chi nhan POST
+        if parsed.path == '/api/ai_coef':
+            self.send_response(405)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": False,
+                                         "error": "Method Not Allowed",
+                                         "hint": "Goi POST /api/ai_coef (payload: brief he so cau AI)"}).encode('utf-8'))
+            return
+
         # Fallback to standard file serving
         return super().do_GET()
 

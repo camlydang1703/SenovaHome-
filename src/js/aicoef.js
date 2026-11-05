@@ -300,10 +300,16 @@ function summarizeAiCoefEffect(whCode, coefList, curDate) {
 // ----------------------------------------------------------------------------
 // NETWORK: chỉ lấy diễn giải từ mô hình; không có key / lỗi -> fallback tất định
 // ----------------------------------------------------------------------------
+// Trang mở bằng file:// hoặc bằng một static server khác cổng 8000 thì đường dẫn tương đối
+// '/api/...' sẽ rơi vào 404 — dùng chung apiUrl() với ledger để luôn trỏ về server Python.
+function aiEndpoint(path) {
+  return (typeof apiUrl === 'function') ? apiUrl(path) : path;
+}
+
 function refreshAiCoefServerStatus() {
   const st = getAiCoefState();
   if (typeof fetch !== 'function') return Promise.resolve(null);
-  return fetch('/api/health')
+  return fetch(aiEndpoint('/api/health'))
     .then(r => r.json())
     .then(j => {
       st.server = (j && j.aiCoef) || null;
@@ -326,7 +332,7 @@ function requestAiCoefProposals(curDate) {
   if (typeof fetch !== 'function') { fallback(); return Promise.resolve(st.proposals); }
   st.status = 'Đang lấy kiến nghị...';
   if (typeof renderAiCoefPanel === 'function') renderAiCoefPanel();
-  return fetch('/api/ai_coef', {
+  return fetch(aiEndpoint('/api/ai_coef'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(brief)

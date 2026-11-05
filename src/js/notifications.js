@@ -128,7 +128,7 @@
                 <span style="color:${color};font-weight:600;">${n.type}</span>
                 <span>•</span>
                 <span>${n.refId}</span>
-                ${n.type === 'TRANSFER_REQUEST' ? `<span style="color:var(--navy-accent);font-weight:700;cursor:pointer;text-decoration:underline;" onclick="event.stopPropagation(); openTransferRequestDetail('${n.refId}')">Chi tiết ▸</span>` : ''}
+                ${(n.type === 'TRANSFER_REQUEST' || n.type === 'TRANSFER_INBOUND_REQUEST') ? `<span style="color:var(--navy-accent);font-weight:700;cursor:pointer;text-decoration:underline;" onclick="event.stopPropagation(); openTransferRequestDetail('${n.refId}')">Chi tiết ▸</span>` : ''}
               </div>
             </div>
             ${n.read ? '' : '<span style="width:7px;height:7px;border-radius:50%;background:var(--navy-accent);display:inline-block;margin-top:6px;"></span>'}
@@ -189,6 +189,8 @@
       // Điều chuyển
       REQUEST_TRANSFER: 1,
       REJECT_OUTBOUND_REQUEST: 1,
+      ACCEPT_INBOUND_TRANSFER: 1,
+      REJECT_INBOUND_REQUEST: 1,
       APPROVE_TRANSFER: 1,
       BATCH_APPROVE_TRANSFER: 1,
       CONFIRM_OUTBOUND_TRANSFER: 1,

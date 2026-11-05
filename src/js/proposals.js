@@ -32,10 +32,10 @@
         });
       }
 
-      // Cộng giữ chỗ của lệnh điều chuyển kho nhận đã xác nhận, đang chờ kho nguồn gửi hàng
+      // Cộng giữ chỗ của lệnh điều chuyển chưa rời kho: chờ kho nguồn gửi HOẶC chờ kho đích nhận hàng
       if (Store.transfers) {
         Store.transfers.forEach(tr => {
-          if (tr.kind === 'TRANSFER' && tr.status === 'Chờ kho nguồn xác nhận' && Store.stock[tr.srcWh] && Store.stock[tr.srcWh][tr.sku]) {
+          if (isAwaitingCounterpart(tr) && Store.stock[tr.srcWh] && Store.stock[tr.srcWh][tr.sku]) {
             Store.stock[tr.srcWh][tr.sku].committed += tr.qty;
           }
         });
@@ -54,7 +54,7 @@
       }
       if (Store.transfers) {
         Store.transfers.forEach(tr => {
-          if (tr.kind === 'TRANSFER' && tr.status === 'Chờ kho nguồn xác nhận' && tr.sku === skuCode && tr.srcWh === whCode) sum += tr.qty;
+          if (isAwaitingCounterpart(tr) && tr.sku === skuCode && tr.srcWh === whCode) sum += tr.qty;
         });
       }
       return sum;
@@ -73,7 +73,7 @@
       }
       if (Store.transfers) {
         Store.transfers.forEach(tr => {
-          if (tr.kind === 'TRANSFER' && tr.status === 'Chờ kho nguồn xác nhận' && tr.sku === skuCode && tr.dstWh === whCode) sum += tr.qty;
+          if (isAwaitingCounterpart(tr) && tr.sku === skuCode && tr.dstWh === whCode) sum += tr.qty;
         });
       }
       return sum;
@@ -197,8 +197,7 @@ function scanAndGenerateProposals(curDate) {
           // Bỏ qua nếu ô nhận đã có lệnh XC chờ kho nguồn xác nhận gửi hàng —
           // tránh đặt trùng đề xuất mới khi hàng chưa rời kho nguồn.
           const xcPending = (Store.transfers || []).some(t =>
-            t.kind === 'TRANSFER' && t.status === 'Chờ kho nguồn xác nhận' &&
-            t.sku === sku.code && t.dstWh === wh.code);
+            isAwaitingCounterpart(t) && t.sku === sku.code && t.dstWh === wh.code);
           if (xcPending) return;
           Store.proposals[pairKey] = {
             id: dxId,

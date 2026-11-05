@@ -41,7 +41,7 @@ function renderDashboardView() {
   // Tính tiết kiệm chi phí TỪ LỆNH ĐÃ THỰC HIỆN GỬI HÀNG, quy về kho nhận đang xem
   Store.transfers.forEach(tr => {
     if (tr.kind === 'TRANSFER' && tr.dstWh === activeWh &&
-        tr.status !== 'Chờ kho nguồn xác nhận' && tr.savingVsRfq > 0) {
+        !isAwaitingCounterpart(tr) && tr.savingVsRfq > 0) {
       costDiff += tr.savingVsRfq;
     }
   });
@@ -71,6 +71,18 @@ function renderDashboardView() {
   const inboundRows = propKeys
     .filter(k => Store.proposals[k].wh === activeWh)
     .map(k => ({ key: k, ...Store.proposals[k] }));
+
+  // Lệnh XC do kho nguồn đề nghị đẩy hàng: kho đang xem chính là bên phải chấp nhận nhập
+  const xcInboundRows = Store.transfers
+    .filter(t => t.kind === 'TRANSFER' && t.status === 'Chờ kho đích nhận hàng' && t.dstWh === activeWh)
+    .map(t => ({
+      key: `XC:${t.id}`, id: t.id, isXcInbound: true, type: 'TRANSFER',
+      sku: t.sku, qty: t.qty, srcWh: t.srcWh, wh: t.dstWh,
+      leadDays: t.leadDays, arrivalDate: t.arrivalDate,
+      freightCost: t.cost, savingVsRfq: t.savingVsRfq || 0,
+      status: 'Chờ kho đích chấp nhận nhập'
+    }));
+  const inboundAll = [...inboundRows, ...xcInboundRows];
 
   const proposalColumns = [
     {
@@ -182,6 +194,15 @@ function renderDashboardView() {
       header: 'Thao tác',
       align: 'center',
       render: r => {
+        if (r.isXcInbound) {
+          return `
+            <div style="display:flex;gap:4px;justify-content:center;">
+              <button class="btn-table btn-table-sec" onclick="openTransferRequestDetail('${r.id}')">Chi tiết</button>
+              <button class="btn-table" onclick="confirmTransferInbound('${r.id}')">Chấp nhận nhập hàng</button>
+              <button class="btn-table btn-table-danger" onclick="rejectTransferInbound('${r.id}')">Từ chối</button>
+            </div>
+          `;
+        }
         const compareBtn = `<button class="btn-table" onclick="openTransferCompareModal('${r.sku}', '${r.wh}')">So sánh</button>`;
         if (r.type === 'TRANSFER') {
           return `
@@ -214,7 +235,7 @@ function renderDashboardView() {
     theadId: 'proposalThead',
     tbodyId: 'proposalTbody',
     columns: proposalColumns,
-    rows: inboundRows,
+    rows: inboundAll,
     emptyMsg: `Kho ${whObj.name} đang ở trạng thái an toàn. Không có đề xuất hành động cấp bách nào.`
   });
 

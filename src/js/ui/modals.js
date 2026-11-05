@@ -76,8 +76,8 @@
           pendingOut.push(`${q.qty} ${sku.unit} → ${q.dstWh} (chờ kho nhận bấm đồng ý nhận)`);
       });
       Store.transfers.forEach(tr => {
-        if (tr.kind === 'TRANSFER' && tr.status === 'Chờ kho nguồn xác nhận' && tr.sku === skuCode && tr.srcWh === whCode)
-          pendingOut.push(`${tr.qty} ${sku.unit} → ${tr.dstWh} (lệnh ${tr.id} chờ kho ${whCode} xác nhận gửi)`);
+        if (isAwaitingCounterpart(tr) && tr.sku === skuCode && tr.srcWh === whCode)
+          pendingOut.push(`${tr.qty} ${sku.unit} → ${tr.dstWh} (lệnh ${tr.id} ${tr.status === 'Chờ kho đích nhận hàng' ? 'chờ kho đích chấp nhận nhập' : `chờ kho ${whCode} xác nhận gửi`})`);
       });
 
       const title = document.getElementById('overstockModalTitle');
@@ -270,14 +270,15 @@
       const qtyInput = document.getElementById('overstockQtyInput');
       const qty = Math.max(1, Math.min(qtyInput ? (parseInt(qtyInput.value, 10) || excess) : excess, dstRoom));
 
-      const result = createTransfer({
+      // Buoc 1/2 cua chieu day hang: kho nguon de nghi -> cho kho dich chap nhan nhap hang
+      const result = createTransferRequest({
         sku: skuCode,
         srcWh: srcWhCode,
         dstWh: targetWh.code,
         qty: qty,
-        note: 'San tải tồn dư vượt MAX',
-        source: 'OVERSTOCK',
-        proposalKey: `${skuCode}-${srcWhCode}`
+        note: 'San tải tồn dư vượt MAX — chờ kho đích chấp nhận nhập',
+        proposalKey: `${skuCode}-${srcWhCode}`,
+        initiatedBy: 'SRC'
       });
 
       if (!result.ok) {
@@ -1085,7 +1086,7 @@ function openEventDetailModal(eventId, whCode) {
 // gửi để quyết định Xác nhận / Từ chối lệnh XC (flow hai bước)
 // ----------------------------------------------------------------------------
 function openTransferRequestDetail(recId) {
-  const rec = Store.transfers.find(t => t.id === recId && t.kind === 'TRANSFER' && t.status === 'Chờ kho nguồn xác nhận');
+  const rec = Store.transfers.find(t => t.id === recId && isAwaitingCounterpart(t));
   if (!rec) {
     showToast('Không tìm thấy yêu cầu chờ xác nhận.', 'error');
     return;
@@ -1115,8 +1116,22 @@ function openTransferRequestDetail(recId) {
       ${sub ? `<div style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">${sub}</div>` : ''}
     </div>`;
 
+  const askInbound = rec.status === 'Chờ kho đích nhận hàng';
   let advice = '';
-  if (effAfter < p.rop) {
+  if (askInbound) {
+    const dSt = Store.stock[rec.dstWh][rec.sku];
+    const dP = calcSKUParams(rec.sku, rec.dstWh, Store.currentDate, Store.history);
+    const dSafe = Math.floor(getSafeTarget(dP));
+    const dPlannedAll = (typeof getPlannedInboundQty === 'function') ? getPlannedInboundQty(rec.sku, rec.dstWh, null) : 0;
+    const dEffAfter = dSt.on_hand + dSt.in_transit - dSt.committed + Math.max(0, dPlannedAll - rec.qty) + rec.qty;
+    advice = dEffAfter > dSafe
+      ? `<div style="margin-top:12px;padding:10px 12px;border-radius:6px;background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;font-size:12px;font-weight:600;">
+        ⚠ Nếu nhập đủ ${fmtNum(rec.qty)} ${skuObj.unit}, ${dstObj.name} sẽ VƯỢT mức an toàn (${fmtNum(dEffAfter)}/${fmtNum(dSafe)}). Nên thương lượng giảm số lượng hoặc từ chối — từ chối thì hàng ở lại ${srcObj.name}.
+      </div>`
+      : `<div style="margin-top:12px;padding:10px 12px;border-radius:6px;background:#DCFCE7;border:1px solid #BBF7D0;color:#166534;font-size:12px;font-weight:600;">
+        ✓ Sau khi nhập, ${dstObj.name} vẫn trong ngưỡng an toàn (${fmtNum(dEffAfter)}/${fmtNum(dSafe)} ${skuObj.unit}) — bấm chấp nhận để ${srcObj.name} gửi hàng.
+      </div>`;
+  } else if (effAfter < p.rop) {
     advice = `<div style="margin-top:12px;padding:10px 12px;border-radius:6px;background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;font-size:12px;font-weight:600;">
       ⚠ Nếu gửi đủ ${fmtNum(rec.qty)} ${skuObj.unit}, kho sẽ rơi xuống DƯỚI MIN (${fmtNum(effAfter)}/${fmtNum(p.rop)}). Nên thương lượng giảm số lượng hoặc từ chối.
     </div>`;
@@ -1126,7 +1141,9 @@ function openTransferRequestDetail(recId) {
     </div>`;
   }
 
-  document.getElementById('trdTitle').textContent = `Chi tiết yêu cầu ${rec.id} — ${srcObj.name}`;
+  document.getElementById('trdTitle').textContent = askInbound
+    ? `Chi tiết đề nghị ${rec.id} — ${dstObj.name} cân nhắc nhập hàng`
+    : `Chi tiết yêu cầu ${rec.id} — ${srcObj.name}`;
   document.getElementById('trdBody').innerHTML = `
     <div style="font-size:13px;margin-bottom:12px;">
       <strong>${rec.sku}</strong> — ${escapeHtml(skuObj.name)} ·
@@ -1147,7 +1164,10 @@ function openTransferRequestDetail(recId) {
 
   const btnC = document.getElementById('trdConfirmBtn');
   const btnR = document.getElementById('trdRejectBtn');
-  if (btnC) btnC.onclick = () => { closeModal('transferRequestDetailModal'); confirmTransferOutbound(rec.id); };
-  if (btnR) btnR.onclick = () => { closeModal('transferRequestDetailModal'); rejectTransferRequest(rec.id); };
+  if (btnC) {
+    btnC.textContent = askInbound ? 'Chấp nhận nhập hàng' : 'Xác nhận gửi hàng';
+    btnC.onclick = () => { closeModal('transferRequestDetailModal'); (askInbound ? confirmTransferInbound(rec.id) : confirmTransferOutbound(rec.id)); };
+  }
+  if (btnR) btnR.onclick = () => { closeModal('transferRequestDetailModal'); (askInbound ? rejectTransferInbound(rec.id) : rejectTransferRequest(rec.id)); };
   openModal('transferRequestDetailModal');
 }

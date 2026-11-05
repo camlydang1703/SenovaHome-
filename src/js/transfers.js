@@ -100,6 +100,14 @@
       return `${e.from} ➔ ${e.to}`;
     }
 
+    // Lệnh XC đang chờ bên đối diện (bước 1/2, hàng CHƯA rời kho):
+    //  - 'Chờ kho nguồn xác nhận': kho đích đồng ý nhận, chờ kho nguồn gửi.
+    //  - 'Chờ kho đích nhận hàng': kho nguồn đề nghị đẩy hàng, chờ kho đích chấp nhận nhập.
+    function isAwaitingCounterpart(tr) {
+      return !!tr && tr.kind === 'TRANSFER' &&
+        (tr.status === 'Chờ kho nguồn xác nhận' || tr.status === 'Chờ kho đích nhận hàng');
+    }
+
     // Chứng từ hàng NCC đang về (đi chung sổ với lệnh chuyển kho, kind = 'SUPPLIER')
     function createSupplierShipment(skuCode, whCode, qty, curDate, days, note, stockOverride) {
       const sku = SKUS.find(s => s.code === skuCode);
@@ -209,6 +217,7 @@
         'OVERSTOCK': 'SAN_TAI_2A',
         'MODAL_COMPARE': 'TRANSFER_FROM_COMPARE',
         'SRC_CONFIRM': 'CONFIRM_OUTBOUND_TRANSFER',
+        'DST_CONFIRM': 'ACCEPT_INBOUND_TRANSFER',
         'MANUAL': 'MANUAL_TRANSFER'
       };
       const logType = logTypeMap[source] || 'MANUAL_TRANSFER';
@@ -235,7 +244,7 @@
     //    modal so sánh) đều đi qua đây — kho nguồn còn phải xác nhận gửi thật.
     // ----------------------------------------------------------------------------
     function createTransferRequest(options) {
-      const { sku, srcWh, dstWh, qty, note = '', savingVsRfq = 0, proposalKey = null } = options;
+      const { sku, srcWh, dstWh, qty, note = '', savingVsRfq = 0, proposalKey = null, initiatedBy = 'DST' } = options;
 
       if (!sku || !srcWh || !dstWh || qty <= 0) {
         return { ok: false, msg: 'Dữ liệu không hợp lệ: SKU, kho nguồn, kho đích và số lượng là bắt buộc.' };
@@ -265,6 +274,8 @@
 
       const skuObj = SKUS.find(s => s.code === sku) || { cogs: 0 };
       const tDays = getTransferDays(srcWh, dstWh, Store.currentDate);
+      const srcInitiated = initiatedBy === 'SRC';
+      const ep = getRouteEndpoints(srcWh, dstWh);
       const rec = {
         id: padSeq('XC'),
         kind: 'TRANSFER',
@@ -276,17 +287,25 @@
         shipDate: null,
         arrivalDate: addDays(Store.currentDate, tDays),
         leadDays: tDays,
-        status: 'Chờ kho nguồn xác nhận',
+        status: srcInitiated ? 'Chờ kho đích nhận hàng' : 'Chờ kho nguồn xác nhận',
         cost: calcFreightCost(srcWh, dstWh, sku, qty, Store.currentDate),
         savingVsRfq: savingVsRfq,
         value: qty * skuObj.cogs,
-        note: note || `${getRouteEndpoints(dstWh, srcWh).from} đồng ý nhận — chờ ${getRouteEndpoints(srcWh, dstWh).from} xác nhận gửi hàng`
+        note: note || (srcInitiated
+          ? `${ep.from} đề nghị gửi — chờ ${ep.to} chấp nhận nhập hàng`
+          : `${ep.to} đồng ý nhận — chờ ${ep.from} xác nhận gửi hàng`)
       };
       Store.transfers.unshift(rec);
       if (proposalKey && Store.proposals[proposalKey]) {
         delete Store.proposals[proposalKey];
       }
-      const ep = getRouteEndpoints(srcWh, dstWh);
+      if (srcInitiated) {
+        pushNotification('TRANSFER_INBOUND_REQUEST', rec.id,
+          `Kho ${ep.from} đề nghị gửi ${qty} ${sku} sang ${ep.to} — mở "Chi tiết" để xem tồn kho hiện tại trước khi chấp nhận nhập.`, dstWh);
+        logAction('REQUEST_TRANSFER', rec.id,
+          `${ep.from} đề nghị gửi ${qty} ${sku}; tạo lệnh ${rec.id} chờ ${ep.to} chấp nhận nhập.`);
+        return { ok: true, msg: `Đã gửi đề nghị ${rec.id} sang ${ep.to}. Bên đó bấm "Chấp nhận nhập hàng" để hàng chính rời kho.`, transfer: rec };
+      }
       pushNotification('TRANSFER_REQUEST', rec.id,
         `Yêu cầu điều chuyển ${rec.id}: ${qty} ${sku} từ ${ep.from} về ${ep.to} — mở "Chi tiết" để xem tồn kho hiện tại trước khi xác nhận gửi.`, srcWh);
       logAction('REQUEST_TRANSFER', rec.id,
@@ -302,6 +321,7 @@
         'OVERSTOCK': 'San tải tồn dư vượt MAX',
         'MODAL_COMPARE': 'Từ modal so sánh',
         'SRC_CONFIRM': 'Kho nguồn xác nhận gửi hàng',
+        'DST_CONFIRM': 'Kho đích chấp nhận nhập hàng',
         'MANUAL': 'Lệnh chuyển thủ công'
       };
       return noteMap[source] || 'Lệnh chuyển';
@@ -678,13 +698,13 @@
       const dstWh   = document.getElementById('trfToWh').value;
       const qty     = parseInt(document.getElementById('trfQty').value, 10) || 0;
 
-      const result = createTransfer({
+      const result = createTransferRequest({
         sku: skuCode,
         srcWh: srcWh,
         dstWh: dstWh,
         qty: qty,
-        note: 'Lệnh chuyển thủ công',
-        source: 'MANUAL'
+        note: 'Lệnh chuyển thủ công — chờ kho đích chấp nhận nhập',
+        initiatedBy: 'SRC'
       });
 
       if (!result.ok) {
@@ -692,6 +712,7 @@
         return;
       }
 
+      recalcCommittedStock();
       closeModal('manualTransferModal');
       showToast(result.msg, 'success');
       refreshAfterStockChange();
@@ -775,6 +796,67 @@
       showToast(`Đã từ chối yêu cầu ${rec.id}. Hệ thống sẽ quét lại đề xuất.`, 'info');
       refreshAfterStockChange();
       return { ok: true, msg: `Đã từ chối yêu cầu ${rec.id}; tuyến ${rec.srcWh}→${rec.dstWh} ngưng đề xuất ${REJECT_COOLDOWN_DAYS} ngày.` };
+    }
+
+    // ----------------------------------------------------------------------------
+    // BƯỚC 2 CỦA CHIỀU NGƯỢC LẠI: KHO ĐÍCH CHẤP NHẬN / TỪ CHỐI NHẬP HÀNG
+    //    (lệnh XC do kho nguồn đề nghị đẩy hàng, trạng thái 'Chờ kho đích nhận hàng')
+    // ----------------------------------------------------------------------------
+    function confirmTransferInbound(recId) {
+      const idx = Store.transfers.findIndex(t => t.id === recId && t.kind === 'TRANSFER' && t.status === 'Chờ kho đích nhận hàng');
+      if (idx < 0) {
+        showToast('Không tìm thấy đề nghị chờ chấp nhận nhập.', 'error');
+        return { ok: false, msg: 'Không tìm thấy đề nghị chờ chấp nhận nhập.' };
+      }
+      if (Store.ui && Store.ui.viewDate) {
+        showToast('Đang xem lại ngày cũ — hãy quay về hiện tại để chấp nhận nhập hàng.', 'info');
+        return { ok: false, msg: 'Đang xem lại ngày cũ — không thể chấp nhận nhập hàng.' };
+      }
+      const rec = Store.transfers[idx];
+
+      // Gỡ lệnh XC trước để phần giữ chỗ ở kho nguồn được release qua releasedQty = rec.qty
+      Store.transfers.splice(idx, 1);
+      const result = createTransfer({
+        sku: rec.sku,
+        srcWh: rec.srcWh,
+        dstWh: rec.dstWh,
+        qty: rec.qty,
+        note: `${getRouteLabel(rec.srcWh, rec.dstWh)} — ${getRouteEndpoints(rec.srcWh, rec.dstWh).to} chấp nhận nhập (theo đề nghị ${rec.id})`,
+        source: 'DST_CONFIRM',
+        releasedQty: rec.qty,
+        savingVsRfq: rec.savingVsRfq || 0
+      });
+
+      if (!result.ok) {
+        // Hoàn tác: đặt lại lệnh XC để giữ phần đang giữ chỗ
+        Store.transfers.splice(idx, 0, rec);
+        showToast(result.msg, 'error');
+        return { ok: false, msg: result.msg };
+      }
+
+      showToast(result.msg, 'success');
+      refreshAfterStockChange();
+      return { ok: true, msg: result.msg, id: (result.transfer && result.transfer.id) || rec.id, sku: rec.sku, srcWh: rec.srcWh, dstWh: rec.dstWh, qty: rec.qty };
+    }
+
+    function rejectTransferInbound(recId) {
+      const idx = Store.transfers.findIndex(t => t.id === recId && t.kind === 'TRANSFER' && t.status === 'Chờ kho đích nhận hàng');
+      if (idx < 0) {
+        showToast('Không tìm thấy đề nghị chờ chấp nhận nhập.', 'error');
+        return { ok: false, msg: 'Không tìm thấy đề nghị chờ chấp nhận nhập.' };
+      }
+      const rec = Store.transfers[idx];
+      // Hàng ở lại kho nguồn: chỉ xóa lệnh XC, giữ chỗ sẽ được recalcCommittedStock gỡ khi render lại
+      Store.transfers.splice(idx, 1);
+      const ep = getRouteEndpoints(rec.srcWh, rec.dstWh);
+      logAction('REJECT_INBOUND_REQUEST', rec.id,
+        `Kho ${rec.dstWh} từ chối nhập ${rec.qty} ${rec.sku} từ ${ep.from}. Hàng ở lại ${ep.from}.`, 0, rec.srcWh,
+        { sku: rec.sku, ledgerDeltas: {} });
+      pushNotification('TRANSFER_REJECTED', rec.id,
+        `Kho ${rec.dstWh} từ chối nhập ${rec.qty} ${rec.sku}. Hàng vẫn ở ${ep.from}.`, rec.srcWh);
+      showToast(`Đã từ chối đề nghị ${rec.id}. Hàng ở lại ${ep.from}.`, 'info');
+      refreshAfterStockChange();
+      return { ok: true, msg: `Đã từ chối đề nghị ${rec.id}; ${rec.qty} ${rec.sku} ở lại ${ep.from}.` };
     }
 
     // ----------------------------------------------------------------------------

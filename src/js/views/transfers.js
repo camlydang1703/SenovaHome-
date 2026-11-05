@@ -92,6 +92,9 @@ function renderTransfersView() {
         if (tr.status === 'Chờ kho nguồn xác nhận') {
           return `<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">⏳ Chờ kho nguồn xác nhận gửi</span>`;
         }
+        if (tr.status === 'Chờ kho đích nhận hàng') {
+          return `<span class="status-pill status-pill-high" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;font-weight:700;">⏳ Chờ kho đích chấp nhận nhập</span>`;
+        }
         if (tr.status === 'Bị từ chối') {
           return `<span class="status-pill status-pill-low" style="background:#FEE2E2;color:#991B1B;border-color:#FECACA;">✕ Bị từ chối</span>`;
         }
@@ -115,6 +118,19 @@ function renderTransfersView() {
             `;
           }
           return '<span style="font-size:11.5px;color:var(--text-muted);">Đang chờ kho nguồn xác nhận</span>';
+        }
+        // Lệnh XC do kho nguồn đề nghị đẩy hàng: kho đích mới là bên quyết định nhập hay không
+        if (tr.status === 'Chờ kho đích nhận hàng') {
+          if (tr.dstWh === activeWh) {
+            return `
+              <div style="display:inline-flex;gap:4px;">
+                <button class="btn-table btn-table-sec" onclick="openTransferRequestDetail('${tr.id}')">Chi tiết</button>
+                <button class="btn-table" onclick="confirmTransferInbound('${tr.id}')">Chấp nhận nhập hàng</button>
+                <button class="btn-table btn-table-danger" onclick="rejectTransferInbound('${tr.id}')">Từ chối</button>
+              </div>
+            `;
+          }
+          return '<span style="font-size:11.5px;color:var(--text-muted);">Đang chờ kho đích chấp nhận nhập</span>';
         }
         // Nếu đang chuyển
         if (tr.status === 'Đang chuyển' || tr.status === 'Đã đến kho') {
