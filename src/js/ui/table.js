@@ -36,17 +36,18 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, rowAttrs, empty
   if (theadEl && columns && columns.length > 0) {
     let theadHtml = '<tr>';
     columns.forEach(col => {
-      const classes = [];
-      const styles = [];
+      let attrs = [];
       if (col.align === 'right' || col.align === 'num') {
-        classes.push('num-col');
+        attrs.push('class="num-col"');
       } else if (col.align === 'center') {
-        styles.push('text-align:center;');
+        attrs.push('style="text-align:center;"');
       }
-      if (col.headerStyle) styles.push(col.headerStyle);
-      if (col.width) styles.push(`width:${col.width};`);
-      const attrStr = (classes.length ? ' class="' + classes.join(' ') + '"' : '') +
-                      (styles.length ? ' style="' + styles.join('') + '"' : '');
+      if (col.headerStyle) {
+        attrs.push(`style="${col.headerStyle}"`);
+      } else if (col.width) {
+        attrs.push(`style="width:${col.width};"`);
+      }
+      const attrStr = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
       theadHtml += `<th${attrStr}>${col.header}</th>`;
     });
     theadHtml += '</tr>';
@@ -67,16 +68,16 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, rowAttrs, empty
     const ra = rowAttrs ? rowAttrs(row) : '';
     tbodyHtml += ra ? `<tr ${ra}>` : '<tr>';
     columns.forEach(col => {
-      const classes = [];
-      const styles = [];
+      let tdAttrs = [];
       if (col.align === 'right' || col.align === 'num') {
-        classes.push('num-col');
+        tdAttrs.push('class="num-col"');
       } else if (col.align === 'center') {
-        styles.push('text-align:center;');
+        tdAttrs.push('style="text-align:center;"');
       }
-      if (col.tdStyle) styles.push(col.tdStyle);
-      const attrStr = (classes.length ? ' class="' + classes.join(' ') + '"' : '') +
-                      (styles.length ? ' style="' + styles.join('') + '"' : '');
+      if (col.tdStyle) {
+        tdAttrs.push(`style="${col.tdStyle}"`);
+      }
+      const attrStr = tdAttrs.length > 0 ? ' ' + tdAttrs.join(' ') : '';
       const cellContent = col.render ? col.render(row, rowIdx) : (row[col.key] !== undefined ? row[col.key] : '');
       tbodyHtml += `<td${attrStr}>${cellContent}</td>`;
     });
