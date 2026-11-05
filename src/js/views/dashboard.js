@@ -196,7 +196,7 @@ function renderDashboardView() {
       render: r => {
         if (r.isXcInbound) {
           return `
-            <div style="display:flex;gap:4px;justify-content:center;">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;">
               <button class="btn-table btn-table-sec" onclick="openTransferRequestDetail('${r.id}')">Chi tiết</button>
               <button class="btn-table" onclick="confirmTransferInbound('${r.id}')">Chấp nhận nhập hàng</button>
               <button class="btn-table btn-table-danger" onclick="rejectTransferInbound('${r.id}')">Từ chối</button>
@@ -206,14 +206,14 @@ function renderDashboardView() {
         const compareBtn = `<button class="btn-table" onclick="openTransferCompareModal('${r.sku}', '${r.wh}')">So sánh</button>`;
         if (r.type === 'TRANSFER') {
           return `
-            <div style="display:flex;gap:4px;justify-content:center;">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;">
               ${compareBtn}
               <button class="btn-table" onclick="approveProposal('${r.key}')">Xử lý đơn hàng</button>
             </div>
           `;
         } else if (r.type === 'RFQ') {
           return `
-            <div style="display:flex;gap:4px;justify-content:center;">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;">
               ${compareBtn}
               <button class="btn-table" ${r.hasActiveRfq ? 'disabled' : ''} onclick="approveProposal('${r.key}')">Xử lý đơn hàng</button>
             </div>
@@ -221,7 +221,7 @@ function renderDashboardView() {
         } else {
           const btnLabel = r.dstWh ? 'Xử lý' : 'Chọn kho nhận';
           return `
-            <div style="display:flex;gap:4px;justify-content:center;">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;">
               <button class="btn-table" onclick="openOverstockModal('${r.sku}', '${r.wh}')">${btnLabel}</button>
             </div>
           `;
@@ -321,7 +321,7 @@ function renderDashboardView() {
       render: r => {
         if (r.isXc) {
           return `
-            <div style="display:flex;gap:4px;justify-content:center;">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;">
               <button class="btn-table btn-table-sec" onclick="openTransferRequestDetail('${r.id}')">Chi tiết</button>
               <button class="btn-table" onclick="confirmTransferOutbound('${r.id}')">Xác nhận gửi hàng</button>
               <button class="btn-table btn-table-danger" onclick="rejectTransferRequest('${r.id}')">Từ chối</button>

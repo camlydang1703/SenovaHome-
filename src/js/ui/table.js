@@ -36,18 +36,17 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, rowAttrs, empty
   if (theadEl && columns && columns.length > 0) {
     let theadHtml = '<tr>';
     columns.forEach(col => {
-      let attrs = [];
+      const classes = [];
+      const styles = [];
       if (col.align === 'right' || col.align === 'num') {
-        attrs.push('class="num-col"');
+        classes.push('num-col');
       } else if (col.align === 'center') {
-        attrs.push('style="text-align:center;"');
+        styles.push('text-align:center;');
       }
-      if (col.headerStyle) {
-        attrs.push(`style="${col.headerStyle}"`);
-      } else if (col.width) {
-        attrs.push(`style="width:${col.width};"`);
-      }
-      const attrStr = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+      if (col.headerStyle) styles.push(col.headerStyle);
+      if (col.width) styles.push(`width:${col.width};`);
+      const attrStr = (classes.length ? ' class="' + classes.join(' ') + '"' : '') +
+                      (styles.length ? ' style="' + styles.join('') + '"' : '');
       theadHtml += `<th${attrStr}>${col.header}</th>`;
     });
     theadHtml += '</tr>';
@@ -68,16 +67,16 @@ function renderTable({ tableId, theadId, tbodyId, columns, rows, rowAttrs, empty
     const ra = rowAttrs ? rowAttrs(row) : '';
     tbodyHtml += ra ? `<tr ${ra}>` : '<tr>';
     columns.forEach(col => {
-      let tdAttrs = [];
+      const classes = [];
+      const styles = [];
       if (col.align === 'right' || col.align === 'num') {
-        tdAttrs.push('class="num-col"');
+        classes.push('num-col');
       } else if (col.align === 'center') {
-        tdAttrs.push('style="text-align:center;"');
+        styles.push('text-align:center;');
       }
-      if (col.tdStyle) {
-        tdAttrs.push(`style="${col.tdStyle}"`);
-      }
-      const attrStr = tdAttrs.length > 0 ? ' ' + tdAttrs.join(' ') : '';
+      if (col.tdStyle) styles.push(col.tdStyle);
+      const attrStr = (classes.length ? ' class="' + classes.join(' ') + '"' : '') +
+                      (styles.length ? ' style="' + styles.join('') + '"' : '');
       const cellContent = col.render ? col.render(row, rowIdx) : (row[col.key] !== undefined ? row[col.key] : '');
       tbodyHtml += `<td${attrStr}>${cellContent}</td>`;
     });
